@@ -11,7 +11,7 @@ void initialize_python() {
   // Add current directory to path
   PyObject *sys = PyImport_ImportModule("sys");
   PyObject *sys_path = PyObject_GetAttrString(sys, "path");
-  PyList_Append(sys_path, PyUnicode_FromString("../InGeneer/"));
+  PyList_Append(sys_path, PyUnicode_FromString("./python/"));
 }
 
 void finalize_python() { Py_Finalize(); }

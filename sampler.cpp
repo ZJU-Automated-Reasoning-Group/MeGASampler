@@ -54,8 +54,7 @@ void Sampler::parse_formula(std::string input) {
   z3::expr_vector formulas =
       c.parse_file(input.c_str()); // bat: reads smt2 file
   std::cout << "Number of formulas in file: " << formulas.size() << std::endl;
-  assert(formulas.size() == 2);
-  z3::expr formula = formulas[0];
+  z3::expr formula = mk_and(formulas);
   Z3_ast ast = formula;
   if (ast == NULL) {
     std::cout << "Could not read input formula.\n";

@@ -94,7 +94,7 @@ class StrenghenedFormula():
         elif op in Z3_GE_OPS:
             lhs_value = sum(lhs_children_values)
             diff = lhs_value - rhs_value
-            assert diff >= 0
+            assert diff >= 0, f"diff is {diff}, {lhs_children_values}"
             minimal_subtraction = diff // num_children
             extra_subtraction = diff - (minimal_subtraction * num_children)
             count_given_extra_subtraction = 0

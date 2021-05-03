@@ -8,6 +8,7 @@ MEGASampler::MEGASampler(std::string input, int max_samples, double max_time,
     : Sampler(input, max_samples, max_time, max_epoch_samples, max_epoch_time,
               strategy),
       simpl_formula(c) {
+  initialize_solvers();
   std::cout << "starting MEGA" << std::endl;
 }
 

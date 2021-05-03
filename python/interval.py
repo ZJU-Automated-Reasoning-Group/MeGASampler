@@ -296,11 +296,11 @@ class IntervalSet:
         return str(self)
 
     def __contains__(self, item):
-        return item.get_id() in self.dict
+        return item in self.dict
 
     def get_interval(self, var):
-        if var.get_id() in self.dict:
-            return self.dict[var.get_id()]
+        if var in self.dict:
+            return self.dict[var]
         else:
             return IntervalSet.get_top()
 
@@ -344,7 +344,7 @@ class IntervalSet:
         return not self.__eq__(other)
 
     def add_interval(self, var, interval):
-        var_key = var.get_id()
+        var_key = var
         if interval.is_top():
             return
         elif var_key not in self.dict.keys():
@@ -413,8 +413,8 @@ class IntervalSet:
     def is_variable_in_range(self, var, value):
         if self.is_bottom():
             return False
-        if var.get_id() in self.dict.keys():
-            interval = self.dict[var.get_id()]
+        if var in self.dict.keys():
+            interval = self.dict[var]
             return interval.is_value_in_range(value)
         else:
             return True
@@ -423,8 +423,8 @@ class IntervalSet:
     def delete_interval(self, var):
         if self.is_bottom():
             return
-        if var.get_id() in self.dict:
-            del self.dict[var.get_id()]
+        if var in self.dict:
+            del self.dict[var]
 
 
 def max_of_two_with_minf(n, m):

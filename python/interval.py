@@ -1,5 +1,9 @@
 import sys
 from z3 import And, IntVal, Int, BoolVal
+import random
+import itertools
+import infinite
+import math
 
 MINF = "minf"
 INF = "inf"
@@ -261,10 +265,20 @@ class Interval:
                 yield n
                 n = n + 1
 
+    def get_random_value(self):
+        high = MAXINT if self.is_high_inf() else self.get_high_value()
+        low = MININT if self.is_low_minf() else self.get_low_value()
+        return random.randint(low, high)
+
     def is_value_in_range(self, value):
         assert isinstance(value, int)
         # Chained operators in Python: https://www.geeksforgeeks.org/chaining-comparison-operators-python/
         return self.low <= value <= self.high
+
+    def as_range(self):
+        high = MAXINT if self.is_high_inf() else self.get_high_value()
+        low = MININT if self.is_low_minf() else self.get_low_value()
+        return range(low, high+1)
 
     def get_high_value(self):
         assert not self.is_high_inf()
@@ -361,7 +375,7 @@ class IntervalSet:
             return
         res = []
         limit_fake_list = [limit]
-        remaining_vars = self.dict.keys()
+        remaining_vars = list(self.dict.keys())
         remaining_len = len(self.dict.keys())
         self._print_all_values_aux(limit_fake_list, res, remaining_vars, remaining_len)
         return limit - limit_fake_list[0]
@@ -380,6 +394,10 @@ class IntervalSet:
             if limit[0] == 0:
                 return
             res.pop()
+
+    def random_values(self, k=100):
+        for i in range(k):
+            yield { symbol: self.dict[symbol].get_random_value() for symbol in self.dict }
 
     def as_formula(self):
         if self.is_top():
@@ -469,4 +487,3 @@ def min_with_inf(numbers):
     for n in numbers:
         min = min_of_two_with_inf(min, n)
     return min
-

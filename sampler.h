@@ -15,6 +15,8 @@
 #include <vector>
 #include <z3++.h>
 
+#include "samples.capnp.h"
+
 enum { STRAT_SMTBIT, STRAT_SMTBV, STRAT_SAT };
 
 Z3_ast parse_bv(char const *n, Z3_sort s, Z3_context ctx);
@@ -145,6 +147,7 @@ protected:
   void assert_soft(z3::expr const &e);
   void save_and_output_sample_if_unique(const std::string &sample);
   std::string model_to_string(const z3::model &model);
+  SampleContainer::Sample::Builder model_to_capnp(const z3::model &m);
   /*
    * Assigns a random value to all variables and
    * adds equivalence constraints as soft constraints to opt.

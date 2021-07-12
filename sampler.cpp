@@ -5,6 +5,10 @@
  *      Author: batchen
  */
 #include "sampler.h"
+#include "samples.capnp.h"
+
+#include <capnp/message.h>
+#include <capnp/serialize-packed.h>
 
 Sampler::Sampler(std::string input, int max_samples, double max_time,
                  int max_epoch_samples, double max_epoch_time, int strategy)
@@ -309,6 +313,20 @@ void Sampler::save_and_output_sample_if_unique(const std::string &sample) {
     unique_valid_samples++;
     results_file << unique_valid_samples << ": " << sample << std::endl;
   }
+}
+
+SampleContainer::Sample::Builder Sampler::model_to_capnp(const z3::model &model) {
+    ::capnp::MallocMessageBuilder m;
+
+    SampleContainer::Sample::Builder builder = m.initRoot<SampleContainer::Sample>();
+    ::capnp::List<SampleContainer::Sample::Variable>::Builder vs = builder.initVariables(variables.size());
+
+    for (size_t i; i < variables.size(); ++i) {
+        SampleContainer::Sample::Variable::Builder v = vs[i];
+        v.setSymbol(variables[i].name().str());
+        v.setValue(42);
+    }
+    return builder;
 }
 
 std::string Sampler::model_to_string(const z3::model &m) {

@@ -4,7 +4,7 @@
 
 #include "sampler.h"
 #include "megasampler.h"
-#include "pythoncaller.h"
+#include "pythonfuncs.h"
 
 int main(int argc, char *argv[]) {
   int max_epochs = 10;
@@ -62,7 +62,7 @@ int main(int argc, char *argv[]) {
     exit(0);
   }
 
-  initialize_python();
+  // initialize_python();
   MEGASampler s(argv[argc - 1], max_samples, max_time, max_epoch_samples,
                 max_epoch_time, strategy);
   patch_global_context(s.c);
@@ -85,7 +85,7 @@ int main(int argc, char *argv[]) {
   }
   s.accumulate_time("total");
   s.finish();
-  finalize_python();
+  // finalize_python();
   return 0;
 
   //    double time = get_time_diff(s.get_start_time());

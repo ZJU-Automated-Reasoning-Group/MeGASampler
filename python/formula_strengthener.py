@@ -2,6 +2,10 @@ from z3 import *
 from interval import Interval, IntervalSet, INF, MINF
 from z3_utils import *
 
+import capnp
+
+samples_capnp = capnp.load("./samples.capnp")
+
 
 class StrenghenedFormula():
     def __init__(self, debug=False):
@@ -327,6 +331,7 @@ def remove_or(nnf_formula, guiding_model):
         return And(new_children)
 
 def patch_z3_context(context_pointer):
+    print(context_pointer)
     ctxobj = ContextObj(context_pointer)
     ctxobj.value = context_pointer # why?!
     z3.main_ctx().ctx = ctxobj
@@ -341,4 +346,21 @@ def strengthen_wrapper(f, model):
     model = ModelRef(modelobj, z3.main_ctx())
     print(f"Calling strengthen with expr: {f}, model: {model}")
     res = strengthen(f, model)
-    print(f"Result: {res}")
+    b = samples_capnp.SampleContainer.new_message()
+
+    k = 24
+
+    b.init('samples', k)
+    for i, value in enumerate(res.interval_set.random_values(k)):
+        sample = b.samples[i]
+        sample.id = i
+        sample.init('variables', len(value))
+        for j, symbol in enumerate(value):
+            var = sample.variables[j]
+            var.symbol = str(symbol)
+            var.value = value[symbol]
+
+    out = b.to_bytes()
+    print(f"Result binary length: {len(out)}")
+    print(b)
+    return out

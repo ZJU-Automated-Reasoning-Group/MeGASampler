@@ -129,7 +129,7 @@ bool Sampler::is_time_limit_reached() {
   return false;
 }
 
-void Sampler::finish() {
+void Sampler::finish() { //todo: remove exit and add where calling
   print_stats();
   results_file.close();
   exit(0);

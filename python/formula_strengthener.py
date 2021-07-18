@@ -301,7 +301,7 @@ def nnf_simplify_and_remove_or(f, guiding_model):
     t_1 = Tactic('nnf')
     # nnf_formula = t_1(goal).as_expr()
     nnf_formula = Then(t_1, With('simplify', arith_lhs=True))(goal).as_expr()
-    return remove_or(nnf_formula, guiding_model)
+    return And(remove_or(nnf_formula, guiding_model))
 
 
 def nnf_simplify(f):
@@ -318,7 +318,7 @@ def remove_or(nnf_formula, guiding_model):
     # We assume conversion to nnf already removed other operators,
     # such as Implies, Ite, etc.
     if nnf_op not in Z3_OR_OPS and nnf_op not in Z3_AND_OPS:
-        return nnf_formula
+        return [nnf_formula]
     # Step cases:
     if nnf_op in Z3_OR_OPS:
         for c in nnf_formula.children():
@@ -330,8 +330,8 @@ def remove_or(nnf_formula, guiding_model):
         assert nnf_op in Z3_AND_OPS
         new_children = []
         for c in nnf_formula.children():
-            new_children.append(remove_or(c, guiding_model))
-        return And(new_children)
+            new_children = new_children + remove_or(c, guiding_model)
+        return new_children
 
 def patch_z3_context(context_pointer):
     print(context_pointer)

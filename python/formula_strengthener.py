@@ -197,12 +197,15 @@ class StrenghenedFormula():
                                                      lhs_arg0_val, op,
                                                      rhs_value, model)
                 else:
+                    print("Non-linear multiplication is not supported")
                     self.add_unsimplified_demand(
                         build_binary_expression(lhs, rhs_value, op))
             else:
+                print(f"Unsupported binary operator: {op_to_string(lhs_op)}")
                 self.add_unsimplified_demand(
                     build_binary_expression(lhs, rhs_value, op))
         else:
+            print(f"Unsupported non-binary operator: {op_to_string(get_op(lhs))}")
             self.add_unsimplified_demand(
                 build_binary_expression(lhs, rhs_value, op))
 

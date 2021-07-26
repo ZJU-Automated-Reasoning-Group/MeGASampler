@@ -156,6 +156,10 @@ def get_id(expr):
     return expr.get_id()
 
 
+class UnsupportedOperator(Exception):
+    pass
+
+
 def build_binary_expression(lhs, rhs, op):
     if op in Z3_LE_OPS:
         return lhs <= rhs
@@ -180,8 +184,7 @@ def build_binary_expression(lhs, rhs, op):
     elif op in Z3_REM_OPS or op in Z3_MOD_OPS:
         return lhs % rhs
     else:
-        print("warning Unssoported operator")
-        return None
+        raise UnsupportedOperator
 
 
 def op_to_string(op):
@@ -216,8 +219,7 @@ def op_to_string(op):
     elif op == Z3_OP_UMINUS:
         return "-"
     else:
-        print("warning Unssoported operator")
-        return None
+        raise UnsupportedOperator
 
 
 def reverse_boolean_operator(op):
@@ -242,8 +244,7 @@ def reverse_boolean_operator(op):
     elif op == Z3_OP_DISTINCT:
         return Z3_OP_DISTINCT
     else:
-        print("warning Unssoported operator")
-        return None
+        raise UnsupportedOperator
 
 
 # Further simplifies a bitvector constraint by making sure that the rhs contains only constants

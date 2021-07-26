@@ -17,9 +17,8 @@ class StrenghenedFormula():
         self.unsimplified_demands.append(demand)
 
     def __str__(self):
-        return "unsimplified demands: " + str(
-            self.unsimplified_demands) + " Interval set: " + str(
-                self.interval_set)
+        return "Interval set: " + str(self.interval_set) + \
+               "\nUnsimplified demands: " + str(self.unsimplified_demands)
 
     def __repr__(self):
         return str(self)

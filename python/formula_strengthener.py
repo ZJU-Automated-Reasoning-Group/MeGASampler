@@ -37,12 +37,21 @@ class StrenghenedFormula():
         elif is_binary_boolean(conjunct):
             lhs, rhs, lhs_value, rhs_value, op = evaluate_binary_expr(
                 conjunct, model)
-            self._strengthen_binary_boolean_conjunct(lhs, lhs_value, rhs_value,
-                                                     op, model)
+            nonstrict_op, new_rhs_value = self._strict_to_nonstrict(rhs_value, op)
+            self._strengthen_binary_boolean_conjunct(lhs, lhs_value, new_rhs_value,
+                                                     nonstrict_op, model)
         elif is_bool(conjunct) and is_const(conjunct):
             return  # ignore boolean literals
         else:
             self.add_unsimplified_demand(conjunct)
+
+    def _strict_to_nonstrict(self, rhs_value, op):
+        if op in Z3_LT_OPS:
+            return strict_to_nonstrict_bool_op(op), rhs_value - 1
+        elif op in Z3_GT_OPS:
+            return strict_to_nonstrict_bool_op(op), rhs_value + 1
+        else:
+            return op, rhs_value
 
     def _add_interval_for_binary_boolean(self, var, var_value, rhs_value, op):
         if op in Z3_LE_OPS:
@@ -90,10 +99,6 @@ class StrenghenedFormula():
                     lhs_children[i], value_i, value_i + minimal_addition, op,
                     model)
                 i += 1
-        elif op in Z3_LT_OPS:
-            nonstrict_op = strict_to_nonstrict_bool_op(op)
-            self._strengthen_add(lhs_children, lhs_children_values,
-                                 nonstrict_op, rhs_value - 1, model)
         elif op in Z3_GE_OPS:
             lhs_value = sum(lhs_children_values)
             diff = lhs_value - rhs_value
@@ -115,10 +120,6 @@ class StrenghenedFormula():
                     lhs_children[i], value_i, value_i - minimal_subtraction,
                     op, model)
                 i += 1
-        elif op in Z3_GT_OPS:
-            nonstrict_op = strict_to_nonstrict_bool_op(op)
-            self._strengthen_add(lhs_children, lhs_children_values,
-                                 nonstrict_op, rhs_value + 1, model)
         elif op in Z3_EQ_OPS:
             for i in range(0, num_children - 1):
                 self._strengthen_binary_boolean_conjunct(

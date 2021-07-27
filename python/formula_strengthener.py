@@ -1,3 +1,5 @@
+from functools import reduce
+
 from z3 import *
 from interval import Interval, IntervalSet, INF, MINF
 from z3_utils import *
@@ -77,7 +79,6 @@ class StrenghenedFormula():
 
     def _strengthen_mult(self, lhs_children, lhs_children_values, op, rhs_value,
                         model):
-        # todo: handle multiply by constant
         lhs_value = math.prod(lhs_children_values)
         num_children = len(lhs_children)
         ge_op = op
@@ -172,21 +173,23 @@ class StrenghenedFormula():
             f = And(interval_formula, self.get_unsimplified_formula())
             return print_all_models(f, limit)
 
-    def _strengthen_mul_by_constant(self, constant, var, var_value, op,
+    def _strengthen_mul_by_constant(self, constant, var_list, var_value_list, op,
                                     rhs_value, model):
         division_rounded_down = rhs_value // constant
+        var_prod = reduce((lambda x, y: x * y), var_list)
+        value_prod = math.prod(var_value_list)
         if constant > 0:
             should_round_up = (op in Z3_GE_OPS or op
                                in Z3_GT_OPS) and rhs_value % constant != 0
             self._strengthen_binary_boolean_conjunct(
-                var, var_value, division_rounded_down + should_round_up, op,
+                var_prod, value_prod, division_rounded_down + should_round_up, op,
                 model)
         elif constant < 0:
             reversed_op = reverse_boolean_operator(op)
             should_round_up = (reversed_op in Z3_GE_OPS or reversed_op
                                in Z3_GT_OPS) and rhs_value % constant != 0
             self._strengthen_binary_boolean_conjunct(
-                var, var_value, division_rounded_down + should_round_up,
+                var_prod, value_prod, division_rounded_down + should_round_up,
                 reversed_op, model)
 
     def _strengthen_binary_boolean_conjunct(self, lhs, lhs_value, rhs_value,
@@ -219,8 +222,20 @@ class StrenghenedFormula():
             self._strengthen_add(lhs.children(), children_values, op,
                                  rhs_value, model)
         elif get_op(lhs) in Z3_MUL_OPS:
-            # todo deal with multiplying by constant
             children_values = get_children_values(lhs, model)
+            i = 0
+            while i < len(lhs.children()):
+                child = lhs.children()[i]
+                if is_numeral_constant(child):
+                    const_value = model_evaluate_to_const(child, model)
+                    var_list = lhs.children()
+                    var_list.pop(i)
+                    children_values.pop(i)
+                    self._strengthen_mul_by_constant(const_value, var_list,
+                                                     children_values, op,
+                                                     rhs_value, model)
+                    return
+                i = i + 1
             self._strengthen_mult(lhs.children(), children_values, op,
                                  rhs_value, model)
         elif is_binary(lhs):
@@ -230,19 +245,6 @@ class StrenghenedFormula():
                 self._strengthen_add([lhs_arg0, -lhs_arg1],
                                      [lhs_arg0_val, -lhs_arg1_val], op,
                                      rhs_value, model)
-            elif lhs_op in Z3_MUL_OPS:
-                if is_numeral_constant(lhs_arg0):
-                    self._strengthen_mul_by_constant(lhs_arg0_val, lhs_arg1,
-                                                     lhs_arg1_val, op,
-                                                     rhs_value, model)
-                elif is_numeral_constant(lhs_arg1):
-                    self._strengthen_mul_by_constant(lhs_arg1_val, lhs_arg0,
-                                                     lhs_arg0_val, op,
-                                                     rhs_value, model)
-                else:
-                    print("Non-linear multiplication is not supported")
-                    self.add_unsimplified_demand(
-                        build_binary_expression(lhs, rhs_value, op))
             else:
                 print(f"Unsupported binary operator: {op_to_string(lhs_op)}")
                 self.add_unsimplified_demand(

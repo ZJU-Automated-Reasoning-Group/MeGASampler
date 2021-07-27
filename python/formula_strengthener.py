@@ -155,11 +155,8 @@ class StrenghenedFormula():
                     lhs_children[i], value_i, value_i - minimal_subtraction,
                     op, model)
                 i += 1
-        elif op in Z3_EQ_OPS:
-            for i in range(0, num_children - 1):
-                self._strengthen_binary_boolean_conjunct(
-                    lhs_children[i], lhs_children_values[i],
-                    lhs_children_values[i], op, model)
+        else:
+            pass #todo raise exception
 
     def get_unsimplified_formula(self):
         return And(self.unsimplified_demands)
@@ -206,6 +203,12 @@ class StrenghenedFormula():
         if is_const(lhs):
             self._add_interval_for_binary_boolean(lhs, lhs_value, rhs_value,
                                                   op)
+        elif op in Z3_EQ_OPS:
+            children_values = get_children_values(lhs, model)
+            for i in range(0, len(children_values) - 1):
+                self._strengthen_binary_boolean_conjunct(
+                    lhs.children()[i], children_values[i],
+                    children_values[i], op, model)
         elif is_app_of(lhs, Z3_OP_UMINUS):
             arg0 = lhs.arg(0)
             self._strengthen_binary_boolean_conjunct(

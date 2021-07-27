@@ -1,7 +1,6 @@
 from z3 import *
 from interval import Interval, IntervalSet, INF, MINF
 from z3_utils import *
-from math import prod
 
 import capnp
 

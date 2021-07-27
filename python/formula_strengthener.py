@@ -100,7 +100,7 @@ class StrenghenedFormula():
                     self._strengthen_binary_boolean_conjunct(lhs_children[i], lhs_children_values[i],
                                                              0, le_op, model)
                 i = i + 1
-        if (op in Z3_LE_OPS and lhs_value <= 0) or (op in Z3_GE_OPS and lhs_value >= 0):
+        elif (op in Z3_LE_OPS and lhs_value <= 0) or (op in Z3_GE_OPS and lhs_value >= 0):
             i = 0
             while i < num_children:
                 if lhs_children_values[i] >= 0:
@@ -110,6 +110,9 @@ class StrenghenedFormula():
                     self._strengthen_binary_boolean_conjunct(lhs_children[i], lhs_children_values[i],
                                                              lhs_children_values[i], le_op, model)
                 i = i + 1
+        else:
+            # todo raise exception
+            print("warning: unexpected multiplication")
 
     def _strengthen_add(self, lhs_children, lhs_children_values, op, rhs_value,
                         model):

@@ -1,6 +1,7 @@
 from z3 import *
 from interval import Interval, IntervalSet, INF, MINF
 from z3_utils import *
+from math import prod
 
 import capnp
 
@@ -74,6 +75,41 @@ class StrenghenedFormula():
         else:
             assert lhs_value < rhs_value
             return get_op(lhs < rhs_value)
+
+    def _strengthen_mult(self, lhs_children, lhs_children_values, op, rhs_value,
+                        model):
+        # todo: handle multiply by constant
+        lhs_value = math.prod(lhs_children_values)
+        num_children = len(lhs_children)
+        ge_op = op
+        le_op = reverse_boolean_operator(op)
+        if op in Z3_LE_OPS:
+            le_op = op
+            ge_op = reverse_boolean_operator(op)
+        if (op in Z3_LE_OPS and lhs_value >= 0) or (op in Z3_GE_OPS and lhs_value <= 0):
+            i = 0
+            while i < num_children:
+                if lhs_children_values[i] >= 0:
+                    self._strengthen_binary_boolean_conjunct(lhs_children[i], lhs_children_values[i],
+                                                             lhs_children_values[i], le_op, model)
+                    self._strengthen_binary_boolean_conjunct(lhs_children[i], lhs_children_values[i],
+                                                             0, ge_op, model)
+                else:
+                    self._strengthen_binary_boolean_conjunct(lhs_children[i], lhs_children_values[i],
+                                                             lhs_children_values[i], ge_op, model)
+                    self._strengthen_binary_boolean_conjunct(lhs_children[i], lhs_children_values[i],
+                                                             0, le_op, model)
+                i = i + 1
+        if (op in Z3_LE_OPS and lhs_value <= 0) or (op in Z3_GE_OPS and lhs_value >= 0):
+            i = 0
+            while i < num_children:
+                if lhs_children_values[i] >= 0:
+                    self._strengthen_binary_boolean_conjunct(lhs_children[i], lhs_children_values[i],
+                                                             lhs_children_values[i], ge_op, model)
+                else:
+                    self._strengthen_binary_boolean_conjunct(lhs_children[i], lhs_children_values[i],
+                                                             lhs_children_values[i], le_op, model)
+                i = i + 1
 
     def _strengthen_add(self, lhs_children, lhs_children_values, op, rhs_value,
                         model):
@@ -179,6 +215,11 @@ class StrenghenedFormula():
         elif get_op(lhs) in Z3_ADD_OPS:
             children_values = get_children_values(lhs, model)
             self._strengthen_add(lhs.children(), children_values, op,
+                                 rhs_value, model)
+        elif get_op(lhs) in Z3_MUL_OPS:
+            # todo deal with multiplying by constant
+            children_values = get_children_values(lhs, model)
+            self._strengthen_mult(lhs.children(), children_values, op,
                                  rhs_value, model)
         elif is_binary(lhs):
             lhs_arg0, lhs_arg1, lhs_arg0_val, lhs_arg1_val, lhs_op = evaluate_binary_expr(

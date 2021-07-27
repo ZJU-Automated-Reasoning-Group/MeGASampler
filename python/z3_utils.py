@@ -73,6 +73,8 @@ def get_vars_and_coefficients(f):
     return r
 
 
+# comparison operators are called explicitly to avoid Python mirroring expressions.
+# For more details, see https://github.com/Z3Prover/z3/issues/5434
 def negate_condition(cond):
     if cond.num_args() < 2:
         print("WARNING: could not negate condition "+str(cond))
@@ -80,18 +82,18 @@ def negate_condition(cond):
     else:
         arg0 = cond.arg(0)
         arg1 = cond.arg(1)
-        if is_le_or_sle(cond):
-            return arg0 > arg1
+        if is_le_or_sle(cond): # todo replace with cond in Z3_LE_OPS?
+            return arg0.__gt__(arg1)
         if is_lt_or_slt(cond):
-            return arg0 >= arg1
+            return arg0.__ge__(arg1)
         if is_ge_or_sge(cond):
-            return arg0 < arg1
+            return arg0.__lt__(arg1)
         if is_gt_or_sgt(cond):
-            return arg0 <= arg1
+            return arg0.__le__(arg1)
         if is_eq_or_seq(cond):
-            return arg0 != arg1
+            return arg0.__ne__(arg1)
         if is_distinct_or_sdistinct(cond):
-            return arg0 == arg1
+            return arg0.__eq__(arg1)
         else:
             print("WARNING: could not negate condition " + str(cond))
             return cond
@@ -160,19 +162,21 @@ class UnsupportedOperator(Exception):
     pass
 
 
+# comparison operators are called explicitly to avoid Python mirroring expressions.
+# For more details, see https://github.com/Z3Prover/z3/issues/5434
 def build_binary_expression(lhs, rhs, op):
     if op in Z3_LE_OPS:
-        return lhs <= rhs
+        return lhs.__le__(rhs)
     elif op in Z3_LT_OPS:
-        return lhs < rhs
+        return lhs.__lt__(rhs)
     elif op in Z3_GE_OPS:
-        return lhs >= rhs
+        return lhs.__ge__(rhs)
     elif op in Z3_GT_OPS:
-        return lhs > rhs
+        return lhs.__gt__(rhs)
     elif op in Z3_EQ_OPS:
-        return lhs == rhs
+        return lhs.__eq__(rhs)
     elif op in Z3_DISTINCT_OPS:
-        return lhs != rhs
+        return lhs.__ne__(rhs)
     elif op in Z3_ADD_OPS:
         return lhs + rhs
     elif op in Z3_SUB_OPS:

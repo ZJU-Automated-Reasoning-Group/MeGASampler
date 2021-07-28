@@ -99,6 +99,14 @@ def negate_condition(cond):
             return cond
 
 
+def distinct_to_ineq(cond, to_lt=True):
+    assert get_op(cond) in Z3_DISTINCT_OPS
+    if to_lt:
+        return cond.arg(0).__lt__(cond.arg(1))
+    else:
+        return cond.arg(0).__gt__(cond.arg(1))
+
+
 def is_slt(c):
     return is_app_of(c, Z3_OP_SLT)
 

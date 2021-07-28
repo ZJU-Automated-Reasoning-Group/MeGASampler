@@ -41,12 +41,15 @@ class StrenghenedFormula():
         elif is_binary_boolean(conjunct):  # case (e bool_op c)
             lhs, rhs, lhs_value, rhs_value, op = evaluate_binary_expr(
                 conjunct, model)
-            nonstrict_op, new_rhs_value = self._strict_to_nonstrict(rhs_value, op)
-            assert nonstrict_op in Z3_GE_OPS or nonstrict_op in Z3_LE_OPS or nonstrict_op in Z3_EQ_OPS or nonstrict_op in Z3_DISTINCT_OPS #{>=,<=,==,!=}
-            self._strengthen_binary_boolean_conjunct(lhs, lhs_value, new_rhs_value,
-                                                     nonstrict_op, model)
-        elif is_bool(conjunct) and is_const(conjunct):
-            return  # ignore boolean literals
+            # stren_binary_boolean expects op in >=,<=,==
+            if op in Z3_DISTINCT_OPS:
+                assert lhs_value != rhs_value
+                conjunct = distinct_to_ineq(conjunct, lhs_value < rhs_value)
+                op = get_op(conjunct)
+            if op in Z3_LT_OPS or op in Z3_GT_OPS:
+                op, rhs_value = self._strict_to_nonstrict(rhs_value, op)
+            self._strengthen_binary_boolean_conjunct(lhs, lhs_value, rhs_value,
+                                                     op, model)
         else:
             self.add_unsimplified_demand(conjunct)
 
@@ -200,15 +203,10 @@ class StrenghenedFormula():
 
     def _strengthen_binary_boolean_conjunct(self, lhs, lhs_value, rhs_value,
                                             op, model):
+        assert op in Z3_GE_OPS or op in Z3_LE_OPS or op in Z3_EQ_OPS
         if self.debug:
             print("Strengthening: " + str(lhs) + " " + op_to_string(op) + " " +
                   str(rhs_value))
-        if op in Z3_DISTINCT_OPS:
-            ineq_op = self._replace_distinct_with_ineq(lhs, lhs_value,
-                                                       rhs_value)
-            self._strengthen_binary_boolean_conjunct(lhs, lhs_value, rhs_value,
-                                                     ineq_op, model)
-            return
         if is_const(lhs):
             self._add_interval_for_binary_boolean(lhs, lhs_value, rhs_value,
                                                   op)

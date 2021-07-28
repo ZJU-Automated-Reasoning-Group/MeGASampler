@@ -122,6 +122,16 @@ class StrenghenedFormula():
 
     def _strengthen_add(self, lhs_children, lhs_children_values, op, rhs_value,
                         model):
+        constants = [c for c in lhs_children if is_numeral_constant(c)]
+        if len(constants) > 0:
+            non_constants = [c for c in lhs_children if not is_numeral_constant(c)]
+            non_constants_values = [lhs_children_values[i] for i in range(0, len(lhs_children_values))
+                                    if not is_numeral_constant(lhs_children[i])]
+            constants_values = [lhs_children_values[i] for i in range(0, len(lhs_children_values)-1)
+                                    if is_numeral_constant(lhs_children[i])]
+            diff = rhs_value - sum(constants_values)
+            self._strengthen_add(non_constants, non_constants_values, op, diff, model)
+            return
         num_children = len(lhs_children)
         if op in Z3_LE_OPS:
             lhs_value = sum(lhs_children_values)

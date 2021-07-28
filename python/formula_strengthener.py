@@ -34,8 +34,8 @@ class StrenghenedFormula():
             if is_const(argument):
                 return  # ignore boolean literals
             else:
-                self._strengthen_conjunct(negate_condition(conjunct.arg(0)),
-                                          model)
+                neg_cond = negate_condition(argument)
+                self._strengthen_conjunct(neg_cond, model)
         elif is_binary_boolean(conjunct):
             lhs, rhs, lhs_value, rhs_value, op = evaluate_binary_expr(
                 conjunct, model)

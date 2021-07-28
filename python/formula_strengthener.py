@@ -29,17 +29,20 @@ class StrenghenedFormula():
         self.interval_set.add_interval(var, interval)
 
     def _strengthen_conjunct(self, conjunct, model):
-        if is_not(conjunct):
+        if is_bool(conjunct) and is_const(conjunct): # case e=true/false/b/!b (where b is a boolean var)
+            return  # ignore boolean literals, they are not part of the intervals
+        elif is_not(conjunct):  # case Not(e)
             argument = conjunct.arg(0)
-            if is_const(argument):
-                return  # ignore boolean literals
+            if is_const(argument):  # case e=true/false/b/!b (where b is a boolean var)
+                return  # ignore boolean literals, they are not part of the intervals
             else:
                 neg_cond = negate_condition(argument)
                 self._strengthen_conjunct(neg_cond, model)
-        elif is_binary_boolean(conjunct):
+        elif is_binary_boolean(conjunct):  # case (e bool_op c)
             lhs, rhs, lhs_value, rhs_value, op = evaluate_binary_expr(
                 conjunct, model)
             nonstrict_op, new_rhs_value = self._strict_to_nonstrict(rhs_value, op)
+            assert nonstrict_op in Z3_GE_OPS or nonstrict_op in Z3_LE_OPS or nonstrict_op in Z3_EQ_OPS or nonstrict_op in Z3_DISTINCT_OPS #{>=,<=,==,!=}
             self._strengthen_binary_boolean_conjunct(lhs, lhs_value, new_rhs_value,
                                                      nonstrict_op, model)
         elif is_bool(conjunct) and is_const(conjunct):

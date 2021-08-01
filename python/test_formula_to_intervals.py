@@ -14,7 +14,7 @@ def timed(func):
     return func_wrapper
 
 
-def solve_and_strengthen_formula(f, debug = False):
+def solve_and_strengthen_formula(f, debug = True):
     print("f is: " + str(f))
     s = Solver()
     s.add(f)

@@ -4,9 +4,11 @@
 
 #include "sampler.h"
 #include "megasampler.h"
+#include "smtsampler.h"
 #include "pythonfuncs.h"
 
 int main(int argc, char *argv[]) {
+
   int max_epochs = 10;
   int max_samples = 1000000;
   double max_time = 3600.0;
@@ -22,6 +24,7 @@ int main(int argc, char *argv[]) {
   bool arg_epoch_samples = false;
   bool arg_epoch_time = false;
   bool arg_num_epochs = false;
+  bool use_smtsampler = false;
   for (int i = 1; i < argc; ++i) {
     if (strcmp(argv[i], "-n") == 0)
       arg_samples = true;
@@ -39,6 +42,8 @@ int main(int argc, char *argv[]) {
       strategy = STRAT_SMTBV;
     else if (strcmp(argv[i], "--sat") == 0)
       strategy = STRAT_SAT;
+    else if (strcmp(argv[i], "--smtsampler") == 0)
+      use_smtsampler = true;
     else if (arg_samples) {
       arg_samples = false;
       max_samples = atoi(argv[i]);
@@ -63,8 +68,13 @@ int main(int argc, char *argv[]) {
   }
 
   // initialize_python();
-  MEGASampler s(argv[argc - 1], max_samples, max_time, max_epoch_samples,
-                max_epoch_time, strategy);
+  Sampler * sp;
+  if (use_smtsampler){
+	  sp = new SMTSampler(argv[argc - 1], max_samples, max_time, max_epoch_samples, max_epoch_time, strategy);
+  } else {
+	  sp = new MEGASampler(argv[argc - 1], max_samples, max_time, max_epoch_samples, max_epoch_time, strategy);
+  }
+  Sampler & s = *sp;
   patch_global_context(s.c);
   s.set_timer_on("total");
   s.set_timer_on("initial_solving");
@@ -85,6 +95,7 @@ int main(int argc, char *argv[]) {
   }
   s.accumulate_time("total");
   s.finish();
+  delete sp;
   // finalize_python();
   return 0;
 

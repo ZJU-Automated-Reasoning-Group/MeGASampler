@@ -151,7 +151,7 @@ void Sampler::print_stats() {
 }
 
 z3::model Sampler::start_epoch() {
-  std::cout << "Starting an epoch (" << epochs << ")" << std::endl;
+  std::cout << "Sampler: Starting an epoch (" << epochs << ")" << std::endl;
 
   opt.push(); // because formula is constant, but other hard/soft constraints
               // change between epochs
@@ -230,7 +230,7 @@ void Sampler::choose_random_assignment() {
 }
 
 void Sampler::do_epoch(const z3::model &model) {
-  std::cout << "Epoch: keeping only original model" << std::endl;
+  std::cout << "Sampler: Epoch: keeping only original model" << std::endl;
 }
 
 void Sampler::compute_and_print_formula_stats() {
@@ -293,9 +293,9 @@ void Sampler::_compute_formula_stats_aux(z3::expr e, int depth) {
       ++num_uf;
     }
   }
-  //    if (e.is_bool() || e.is_bv()) {
-  //        sub.insert(e);
-  //    }
+//  if (e.is_bool() || e.is_bv()) { // todo figure out if we need sub for the smtsampler implementation
+//	  sub.insert(e);
+//  }
   sup.insert(e);
   if (depth > max_depth) {
     max_depth = depth;

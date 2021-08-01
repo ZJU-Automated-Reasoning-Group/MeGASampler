@@ -223,9 +223,10 @@ class StrenghenedFormula():
         elif op in Z3_EQ_OPS:
             children_values = get_children_values(lhs, model)
             for i in range(0, len(children_values)):
-                self._strengthen_binary_boolean_conjunct(
-                    lhs.children()[i], children_values[i],
-                    children_values[i], op, model)
+                if not is_numeral_constant(lhs.children()[i]):
+                    self._strengthen_binary_boolean_conjunct(
+                        lhs.children()[i], children_values[i],
+                        children_values[i], op, model)
         elif is_app_of(lhs, Z3_OP_UMINUS):
             arg0 = lhs.arg(0)
             self._strengthen_binary_boolean_conjunct(

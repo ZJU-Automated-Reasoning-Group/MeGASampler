@@ -30,8 +30,8 @@ public:
   z3::expr original_formula;
 private:
   z3::params params;
-  z3::model model;
 protected:
+  z3::model model;
   z3::optimize opt;
   z3::solver solver;
 

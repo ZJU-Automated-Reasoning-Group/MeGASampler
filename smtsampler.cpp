@@ -14,6 +14,7 @@ SMTSampler::SMTSampler(std::string input, int max_samples, double max_time,
 
 void SMTSampler::do_epoch(const z3::model &m) {
 	std::cout << "SMTSAMPLER: do epoch\n";
+	std::cout << "model is: " << m << "\n";
 
     std::unordered_set<std::string> mutations;
     std::string m_string = model_string(m, ind);
@@ -37,14 +38,92 @@ void SMTSampler::do_epoch(const z3::model &m) {
 //		}
 //	}
 
+    // STEP 1: calculate constraints
 	size_t pos = 0;
 	for (int count = 0; count < ind.size(); ++count) {
 		z3::func_decl &v = ind[count];
 		assert(v.is_const() and v.range().sort_kind() == Z3_INT_SORT);
         z3::expr a = value(m_string.c_str() + pos, v.range());
         pos = m_string.find(';', pos) + 1;
-//        add_constraints(v(), a, count);
+        add_constraints(v(), a, count);
 	}
+	std::cout << "Collected constraints: ";
+	for (auto c : constraints){
+		std::cout<< c << " ";
+	}
+	std::cout << "\n";
+
+    // STEP 2: mutate constraints to get Sigma_1 (mutations of distance 1)
+    struct timespec etime;
+    clock_gettime(CLOCK_REALTIME, &etime);
+    double start_epoch = duration(&start_time, &etime);
+
+	int calls = 0;
+	int progress = 0;
+	for (int count = 0; count < constraints.size(); ++count) {
+		//todo uncomment? is this necessary?
+//		auto u = unsat_ind.find(cons_to_ind[count].first);
+//		if (u != unsat_ind.end()
+//				&& u->second.find(cons_to_ind[count].second)
+//						!= u->second.end()) {
+//			continue;
+//		}
+		z3::expr &cond = constraints[count];
+		opt.push();
+		solver.push();
+		opt.add(!cond);
+		solver.add(!cond);
+		// probably redundent: soft seems to always be empty
+//		for (z3::expr &soft : soft_constraints[count]) {
+//			assert_soft(soft);
+//		}
+		struct timespec end;
+		clock_gettime(CLOCK_REALTIME, &end);
+		double elapsed = duration(&start_time, &end);
+
+		double cost = calls ? (elapsed - start_epoch) / calls : 0.0;
+		cost *= constraints.size() - count;
+		if (max_time / 3.0 + start_epoch > max_time
+				&& elapsed + cost > max_time) {
+			std::cout << "Stopping: slow\n";
+			finish();
+		}
+		z3::check_result result = z3::unknown;
+		if (cost * rand() <= (max_time / 3.0 + start_epoch - elapsed) * RAND_MAX) {
+			result = solve();
+			++calls;
+		}
+		if (result == z3::sat) {
+			std::string new_string = model_string(model, ind);
+			if (mutations.find(new_string) == mutations.end()) {
+				mutations.insert(new_string);
+				std::string sample_to_file = model_to_string(model);
+//				std::cout<< "mutation: " << sample_to_file << "\n";
+				save_and_output_sample_if_unique(sample_to_file); //todo: check format
+				flips += 1;
+			} else {
+				std::cout << "repeated\n";
+			}
+		} else if (result == z3::unsat) {
+			std::cout << "unsat\n";
+			if (cons_to_ind[count].first >= 0) {
+				unsat_ind[cons_to_ind[count].first].insert(
+						cons_to_ind[count].second);
+				++unsat_ind_count;
+			}
+		}
+		opt.pop();
+		solver.pop();
+
+		// print === as a progress bar (80 '=' to mark 100% of constraints flipped)
+		double new_progress = 80.0 * (double) (count + 1)
+				/ (double) constraints.size();
+		while (progress < new_progress) {
+			++progress;
+			std::cout << '=' << std::flush;
+		}
+    }
+    std::cout << '\n';
 }
 
 std::string SMTSampler::model_string(z3::model m, std::vector<z3::func_decl> ind) {
@@ -71,40 +150,14 @@ z3::expr SMTSampler::value(char const *n, z3::sort s) {
 	return c.int_val(value);
 }
 
-
+// (exp == val) is added as soft constraint (to opt)
 void SMTSampler::add_constraints(z3::expr exp, z3::expr val, int count) {
-  switch (val.get_sort().sort_kind()) {
-  case Z3_BV_SORT: {
-    std::vector<z3::expr> soft;
-    for (int i = 0; i < val.get_sort().bv_size(); ++i) {
-      all_ind_count += (count >= 0);
-      cons_to_ind.emplace_back(count, i);
-
-      z3::expr r = val.extract(i, i);
-      r = r.simplify();
-      constraints.push_back(exp.extract(i, i) == r);
-      // soft.push_back(exp.extract(i, i) == r);
-      if (strategy == STRAT_SMTBIT)
-        assert_soft(exp.extract(i, i) == r);
-    }
-    for (int i = 0; i < val.get_sort().bv_size(); ++i) {
-      soft_constraints.push_back(soft);
-    }
-    if (strategy == STRAT_SMTBV)
-      assert_soft(exp == val);
-    break;
-  }
-  case Z3_BOOL_SORT: {
+	assert(val.get_sort().sort_kind() == Z3_INT_SORT);
     all_ind_count += (count >= 0);
     cons_to_ind.emplace_back(count, 0);
     constraints.push_back(exp == val);
-    std::vector<z3::expr> soft;
-    soft_constraints.push_back(soft);
+//    std::vector<z3::expr> soft;
+//    soft_constraints.push_back(soft);
     assert_soft(exp == val);
-    break;
-  }
-  default:
-    std::cout << "Invalid sort\n";
-    exit(1);
-  }
 }
+

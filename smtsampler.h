@@ -2,14 +2,20 @@
 #define SMTSAMPLER_H_
 
 #include "sampler.h"
+#include <unordered_map>
+
 
 class SMTSampler : public Sampler {
-  std::vector<z3::func_decl> ind;
-  int all_ind_count = 0;
-  std::vector<std::pair<int, int>> cons_to_ind;
-  std::vector<z3::expr> constraints;
-  std::vector<std::vector<z3::expr>> soft_constraints;
-  int strategy;
+	std::vector<z3::func_decl> ind;
+	int all_ind_count = 0;
+	std::vector<std::pair<int, int>> cons_to_ind;
+	std::vector<z3::expr> constraints;
+	std::vector<std::vector<z3::expr>> soft_constraints;
+	int strategy;
+	int flips = 0;
+	std::unordered_map<int, std::unordered_set<int>> unsat_ind;
+	int unsat_ind_count = 0;
+
 //  std::unordered_set<Z3_ast> sub;
 
 public:

@@ -44,6 +44,8 @@ protected:
   std::string model_string(z3::model m, std::vector<z3::func_decl> ind);
   z3::expr value(char const *n, z3::sort s);
   void add_constraints(z3::expr exp, z3::expr val, int count);
+  void calculate_constraints(const std::string &m_string);
+  void find_neighboring_solutions(std::unordered_set<std::string> mutations);
 };
 
 #endif /* SMTSAMPLER_H_ */

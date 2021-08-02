@@ -31,6 +31,7 @@ public:
 private:
   z3::params params;
   z3::model model;
+protected:
   z3::optimize opt;
   z3::solver solver;
 

@@ -11,10 +11,10 @@
 #include <capnp/serialize-packed.h>
 
 Sampler::Sampler(std::string input, int max_samples, double max_time,
-                 int max_epoch_samples, double max_epoch_time, int strategy)
+                 int max_epoch_samples, double max_epoch_time, int strategy, bool json, std::string json_dir)
     : c(), original_formula(c), max_samples(max_samples), max_time(max_time),
       max_epoch_samples(max_epoch_samples), max_epoch_time(max_epoch_time),
-      params(c), opt(c), solver(c), model(c) {
+      params(c), opt(c), solver(c), model(c), json(json), json_dir(json_dir) {
   z3::set_param("rewriter.expand_select_store", "true");
   clock_gettime(CLOCK_REALTIME, &start_time);
 
@@ -130,9 +130,12 @@ bool Sampler::is_time_limit_reached() {
 }
 
 void Sampler::finish() { //todo: remove exit and add where calling
-  print_stats();
-  results_file.close();
-  exit(0);
+	if (json) {
+		std::cout << "json dir is: " << json_dir << std::endl;
+	}
+	print_stats();
+	results_file.close();
+	exit(0);
 }
 
 void Sampler::print_stats() {

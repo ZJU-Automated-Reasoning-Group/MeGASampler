@@ -2,9 +2,9 @@
 
 SMTSampler::SMTSampler(std::string input, int max_samples, double max_time,
                          int max_epoch_samples, double max_epoch_time,
-                         int strategy)
+                         int strategy, bool json, std::string json_dir)
     : Sampler(input, max_samples, max_time, max_epoch_samples, max_epoch_time,
-              strategy), strategy(strategy) {
+              strategy, json, json_dir), strategy(strategy) {
     initialize_solvers();
 //  if (!convert) {
     ind = variables;

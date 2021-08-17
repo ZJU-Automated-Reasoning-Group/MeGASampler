@@ -9,7 +9,7 @@ class MEGASampler : public Sampler {
 
 public:
   MEGASampler(std::string input, int max_samples, double max_time,
-              int max_epoch_samples, double max_epoch_time, int strategy);
+              int max_epoch_samples, double max_epoch_time, int strategy, bool json, std::string json_dir);
   /*
    * Finds additional valid models (samples) of the formula
    * (based on the given model, which is assumed valid).

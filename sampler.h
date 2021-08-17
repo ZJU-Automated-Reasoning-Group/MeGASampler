@@ -41,6 +41,8 @@ protected:
 
 protected:
   // Settings
+  bool json = false;
+  std::string json_dir;
   bool random_soft_bit = false; // TODO enable change from cmd line
 
   // Time management
@@ -112,7 +114,7 @@ public:
    * Creates output file (stored in results_file).
    */
   Sampler(std::string input, int max_samples, double max_time,
-          int max_epoch_samples, double max_epoch_time, int strategy);
+          int max_epoch_samples, double max_epoch_time, int strategy, bool json, std::string json_dir);
   /*
    * Initializes solvers (MAX-SMT and SMT) with formula.
    */

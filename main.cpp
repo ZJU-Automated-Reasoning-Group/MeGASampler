@@ -80,9 +80,9 @@ int main(int argc, char *argv[]) {
   // initialize_python();
   Sampler * sp;
   if (use_smtsampler){
-	  sp = new SMTSampler(argv[argc - 1], max_samples, max_time, max_epoch_samples, max_epoch_time, strategy, json, json_dir);
+	  sp = new SMTSampler(argv[argc - 1], max_samples, max_time, max_epoch_samples, max_epoch_time, strategy, json);
   } else {
-	  sp = new MEGASampler(argv[argc - 1], max_samples, max_time, max_epoch_samples, max_epoch_time, strategy, json, json_dir);
+	  sp = new MEGASampler(argv[argc - 1], max_samples, max_time, max_epoch_samples, max_epoch_time, strategy, json);
   }
   Sampler & s = *sp;
   patch_global_context(s.c);

@@ -40,9 +40,10 @@ protected:
   std::unordered_set<std::string> samples;
 
 protected:
+  std::string input_filename;
+
   // Settings
   bool json = false;
-  std::string json_dir;
   bool random_soft_bit = false; // TODO enable change from cmd line
 
   // Time management
@@ -104,6 +105,10 @@ protected:
    * number of samples and epochs and time spent on each phase.
    */
   void print_stats();
+  /*
+   * Writes statistics to a newly created json file in json_dir.
+   */
+  void write_json();
 
 public:
   /*
@@ -114,7 +119,7 @@ public:
    * Creates output file (stored in results_file).
    */
   Sampler(std::string input, int max_samples, double max_time,
-          int max_epoch_samples, double max_epoch_time, int strategy, bool json, std::string json_dir);
+          int max_epoch_samples, double max_epoch_time, int strategy, bool json);
   /*
    * Initializes solvers (MAX-SMT and SMT) with formula.
    */

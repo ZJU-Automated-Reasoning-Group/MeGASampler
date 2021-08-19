@@ -39,6 +39,7 @@ public:
   void print_valid_samples();
 
   void do_epoch(const z3::model &model);
+  void finish();
 
 protected:
   std::string model_string(z3::model m, std::vector<z3::func_decl> ind);

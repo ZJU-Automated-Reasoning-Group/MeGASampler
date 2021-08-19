@@ -252,3 +252,9 @@ int SMTSampler::int_value(char const *n){
 	}
 	return value;
 }
+
+void SMTSampler::finish() {
+	json_output["method name"] = "smtsampler";
+	Sampler::finish();
+}
+

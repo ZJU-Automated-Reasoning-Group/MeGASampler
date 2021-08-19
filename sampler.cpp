@@ -6,7 +6,6 @@
  */
 #include "sampler.h"
 #include "samples.capnp.h"
-#include <jsoncpp/json/json.h>
 #include <capnp/message.h>
 #include <capnp/serialize-packed.h>
 
@@ -149,7 +148,6 @@ void Sampler::write_json(){
 	// todo: error handling? if input_filename does not exist we should not have come this far... Also, if json_file exists- it runs it over
 	json_file.open(json_filename);
 
-	Json::Value json_output;
 	json_output["sat result"] = sat_result;
 	json_output["filename"] = input_filename;
 	json_output["epochs"] = epochs;

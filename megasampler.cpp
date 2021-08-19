@@ -33,3 +33,8 @@ void MEGASampler::do_epoch(const z3::model &model) {
         printf("\n");
     }
 }
+
+void MEGASampler::finish() {
+	json_output["method name"] = "megasampler";
+	Sampler::finish();
+}

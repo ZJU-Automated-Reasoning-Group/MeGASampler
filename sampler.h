@@ -14,6 +14,7 @@
 #include <unordered_set>
 #include <vector>
 #include <z3++.h>
+#include <jsoncpp/json/json.h>
 
 #include "samples.capnp.h"
 
@@ -69,6 +70,7 @@ protected:
   std::unordered_set<Z3_ast> sup; // bat: nodes (=leaves?)
 
   // Other statistics
+  Json::Value json_output; // json object collecting statistics to be printed with flag --json
   std::string sat_result = "unknown";
   std::string result = "unknown";
   int epochs = 0;
@@ -156,7 +158,7 @@ public:
   /*
    * Prints stats and closes results file.
    */
-  void finish();
+  virtual void finish();
   /*
    * Starts measuring time under the given category.
    */

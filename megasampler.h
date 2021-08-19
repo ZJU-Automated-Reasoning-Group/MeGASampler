@@ -31,6 +31,7 @@ public:
    * Override from sampler
    */
   void do_epoch(const z3::model &model);
+  void finish();
 };
 
 #endif /* MEGASAMPLER_H_ */

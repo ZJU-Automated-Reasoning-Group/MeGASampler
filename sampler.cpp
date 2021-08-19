@@ -61,7 +61,8 @@ void Sampler::parse_formula(std::string input) {
   Z3_ast ast = formula;
   if (ast == NULL) {
     std::cout << "Could not read input formula.\n";
-    exit(1);
+    failure_cause = "Could not read input formula.";
+    safe_exit(1);
   }
   original_formula = formula;
   std::cout << "Read formula: " << original_formula << std::endl;
@@ -73,13 +74,11 @@ void Sampler::check_if_satisfiable() {
   if (result == z3::unsat) {
 	sat_result = "unsat";
     std::cout << "Formula is unsat\n";
-    finish();
-    exit(0);
+    safe_exit(0);
   } else if (result == z3::unknown) {
 	sat_result = "unknown";
     std::cout << "Solver returned unknown\n";
-    finish();
-    exit(0);
+    safe_exit(0);
   } else {
 	sat_result = "sat";
     std::cout << "Formula is satisfiable\n";
@@ -97,7 +96,8 @@ z3::check_result Sampler::solve() {
   } catch (z3::exception except) {
     std::cout << "Exception: " << except << "\n";
     // TODO exception "canceled" can be thrown when Timeout is reached
-    exit(1);
+    failure_cause = "MAX-SMT exception";
+    safe_exit(1);
   }
   if (result == z3::sat) {
     model = opt.get_model();
@@ -109,7 +109,10 @@ z3::check_result Sampler::solve() {
                                // (without any soft constraints)
     } catch (z3::exception except) {
       std::cout << "Exception: " << except << "\n";
-      exit(1);
+      std::stringstream ss;
+      ss << except;
+      failure_cause = "SMT (z3) exception: " + ss.str();
+      safe_exit(1);
     }
     std::cout << "SMT result: " << result << "\n";
     if (result == z3::sat) {
@@ -137,7 +140,6 @@ void Sampler::finish() { //todo: remove exit and add where calling
 	}
 	print_stats();
 	results_file.close();
-	exit(0);
 }
 
 void Sampler::write_json(){
@@ -149,6 +151,8 @@ void Sampler::write_json(){
 	json_file.open(json_filename);
 
 	json_output["sat result"] = sat_result;
+	json_output["result"] = result;
+	json_output["failure cause"] = failure_cause;
 	json_output["filename"] = input_filename;
 	json_output["epochs"] = epochs;
 	json_output["total samples"] = total_samples;
@@ -253,7 +257,8 @@ void Sampler::choose_random_assignment() {
     default:
       // TODO add real
       std::cout << "Invalid sort\n";
-      exit(1);
+      failure_cause = "Invalid sort.";
+      safe_exit(1);
     }
   } // end for: random assignment chosen
 }
@@ -309,7 +314,8 @@ void Sampler::_compute_formula_stats_aux(z3::expr e, int depth) {
           break;
         default:
           std::cout << "Invalid sort\n";
-          exit(1);
+          failure_cause = "Invalid sort.";
+          safe_exit(1);
         }
       }
     }
@@ -433,7 +439,8 @@ std::string Sampler::model_to_string(const z3::model &m) {
       }
       default:
         std::cout << "Invalid sort\n";
-        exit(1);
+        failure_cause = "Invalid sort.";
+        safe_exit(1);
       }
     } else { // Uninterpreted function case
       z3::func_interp f = m.get_func_interp(v);
@@ -474,8 +481,8 @@ void Sampler::accumulate_time(const std::string &category) {
       is_timer_on[category] == false) { // timer never went on
     std::cout << "ERROR: cannot stop timer for category: " << category
               << ". Timer was never started." << std::endl;
-    finish();
-    exit(1); // TODO add exception handling
+    failure_cause = "Timer stopped before started.";
+    safe_exit(1); // TODO add exception handling
   }
 
   assert(timer_start_times.find(category) != timer_start_times.end());
@@ -487,4 +494,14 @@ void Sampler::accumulate_time(const std::string &category) {
   accumulated_times[category] += duration(&timer_start_times[category], &now);
 
   is_timer_on[category] = false;
+}
+
+void Sampler::safe_exit(int exitcode){
+	if (exitcode){
+		result = "failure";
+	} else {
+		result = "success";
+	}
+	finish();
+	exit(exitcode);
 }

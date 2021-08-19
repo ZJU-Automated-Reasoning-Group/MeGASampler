@@ -74,7 +74,7 @@ int main(int argc, char *argv[]) {
 
   if (strategy == STRAT_SAT) {
     std::cout << "Conversion to SAT is temporarily not supported" << std::endl;
-    exit(0);
+    return 0;
   }
 
   // initialize_python();
@@ -104,8 +104,8 @@ int main(int argc, char *argv[]) {
     std::cout << "Termination due to: " << except << "\n";
   }
   s.accumulate_time("total");
-  s.finish();
-  delete sp;
+  s.safe_exit(0);
+  delete sp; //todo: this is unreachable because we exit on safe_exit
   // finalize_python();
   return 0;
 

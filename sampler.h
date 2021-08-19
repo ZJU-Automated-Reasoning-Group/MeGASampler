@@ -72,7 +72,8 @@ protected:
   // Other statistics
   Json::Value json_output; // json object collecting statistics to be printed with flag --json
   std::string sat_result = "unknown";
-  std::string result = "unknown";
+  std::string result = "unknown"; // success/failure
+  std::string failure_cause; // explanation for failure if result==failure
   int epochs = 0;
   int total_samples = 0; // how many samples we stumbled upon (repetitions are
                          // counted multiple times)
@@ -159,6 +160,10 @@ public:
    * Prints stats and closes results file.
    */
   virtual void finish();
+  /*
+   * Document final result, clean up using finish(), then exit with exit code.
+   */
+  void safe_exit(int exitcode);
   /*
    * Starts measuring time under the given category.
    */

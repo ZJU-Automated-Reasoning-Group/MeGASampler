@@ -72,14 +72,17 @@ void Sampler::check_if_satisfiable() {
   z3::check_result result =
       solve(); // will try to solve the formula and put model in model variable
   if (result == z3::unsat) {
+	sat_result = "unsat";
     std::cout << "Formula is unsat\n";
     finish();
     exit(0);
   } else if (result == z3::unknown) {
+	sat_result = "unknown";
     std::cout << "Solver returned unknown\n";
     finish();
     exit(0);
   } else {
+	sat_result = "sat";
     std::cout << "Formula is satisfiable\n";
   }
 }
@@ -147,6 +150,7 @@ void Sampler::write_json(){
 	json_file.open(json_filename);
 
 	Json::Value json_output;
+	json_output["sat result"] = sat_result;
 	json_output["filename"] = input_filename;
 	json_output["epochs"] = epochs;
 	json_output["total samples"] = total_samples;

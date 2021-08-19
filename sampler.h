@@ -69,6 +69,8 @@ protected:
   std::unordered_set<Z3_ast> sup; // bat: nodes (=leaves?)
 
   // Other statistics
+  std::string sat_result = "unknown";
+  std::string result = "unknown";
   int epochs = 0;
   int total_samples = 0; // how many samples we stumbled upon (repetitions are
                          // counted multiple times)

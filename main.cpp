@@ -25,10 +25,7 @@ int main(int argc, char *argv[]) {
   bool arg_epoch_time = false;
   bool arg_num_epochs = false;
   bool use_smtsampler = false;
-  bool waits_for_json_dir = false;
   bool json = false;
-  std::string json_dir;
-
   for (int i = 1; i < argc; ++i) {
     if (strcmp(argv[i], "-n") == 0)
       arg_samples = true;
@@ -49,17 +46,13 @@ int main(int argc, char *argv[]) {
     else if (strcmp(argv[i], "--smtsampler") == 0)
       use_smtsampler = true;
     else if (strcmp(argv[i], "--json") == 0){
-    	waits_for_json_dir = true;
-    	json = true;
+      json = true;
     } else if (arg_samples) {
       arg_samples = false;
       max_samples = atoi(argv[i]);
     } else if (arg_time) {
       arg_time = false;
       max_time = atof(argv[i]);
-    } else if (waits_for_json_dir) {
-    	waits_for_json_dir = false;
-        json_dir = argv[i];
     } else if (arg_epoch_samples) {
       arg_epoch_samples = false;
       max_epoch_samples = atoi(argv[i]);

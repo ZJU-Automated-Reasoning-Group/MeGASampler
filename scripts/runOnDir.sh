@@ -1,4 +1,5 @@
 #!/bin/bash
+#set -x
 
 original_dir=$(pwd)
 sampler_dir=$(realpath ..)
@@ -27,17 +28,13 @@ fi
 
 newdir="$output_dir/$(basename "$input_dir")_$(date '+%d-%m-%Y-%H-%M-%S')_json"
 mkdir "$newdir"
-for arg in "$@"; do
-  echo "$arg"
-done
-# echo "${@:3}" > "$newdir/arguments.txt"
 # run sampler and collect json files
 shopt -s globstar nullglob
 for file in "$input_dir"/**/*.smt2
 do
   echo "$file"
   cd "$sampler_dir" || ( echo "couldn't find directory $sampler_dir" && exit 1 )
-  ./smtsampler --json "$@" "$file"
+  ./smtsampler --json "${@:3}" "$file"
 #  move json files to new_dir while keeping original dir structure as in input_dir
   new_json_file=$newdir${file#$input_dir}.json
   echo "Creating file $new_json_file"

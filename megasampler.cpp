@@ -1,6 +1,6 @@
 #include "megasampler.h"
 #include "pythonfuncs.h"
-#include "samples.capnp.h"
+#include "strengthen.capnp.h"
 #include <iostream>
 #include <capnp/serialize.h>
 #include <cinttypes>
@@ -22,16 +22,24 @@ void MEGASampler::do_epoch(const z3::model &model) {
                                    reinterpret_cast<const capnp::word*>(ret.buf),
                                    ret.len / sizeof(capnp::word));
     capnp::FlatArrayMessageReader message(view);
-    auto container = message.getRoot<SampleContainer>();
+    auto container = message.getRoot<StrengthenResult>();
 
-    for (auto sample : container.getSamples()) {
-        for (const auto variable : sample.getVariables()) {
-            const auto symbol(variable.getSymbol().cStr());
-            int64_t value = variable.getValue();
-            printf("%s: %" PRIi64 ", ", symbol, value);
-        }
-        printf("\n");
-    }
+    auto res = container.getRes();
+    auto failureDescription = container.getFailuredecription();
+    std::cout << "res: " << res << "\n";
+    std::cout << "failute description: " << failureDescription.cStr() << "\n";
+
+//    int64_t limit = container.getLimit();
+//    std::cout << "limit: " << limit << "\n";
+//
+//    for (auto sample : container.getSamples()) {
+//        for (const auto variable : sample.getVariables()) {
+//            const auto symbol(variable.getSymbol().cStr());
+//            int64_t value = variable.getValue();
+////            printf("%s: %" PRIi64 ", ", symbol, value);
+//        }
+////        printf("\n");
+//    }
 }
 
 void MEGASampler::finish() {

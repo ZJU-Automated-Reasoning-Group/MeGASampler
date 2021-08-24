@@ -6,7 +6,7 @@ from z3_utils import *
 
 import capnp
 
-samples_capnp = capnp.load("./samples.capnp")
+strengthen_capnp = capnp.load("strengthen.capnp")
 
 
 class StrenghenedFormula():
@@ -409,21 +409,13 @@ def strengthen_wrapper(f, model):
     model = ModelRef(modelobj, z3.main_ctx())
     print(f"Calling strengthen with expr: {f}, model: {model}")
     res = strengthen(f, model)
-    b = samples_capnp.SampleContainer.new_message()
+    # print(f"intervals: {res.interval_set}")
+    # print(f"unsimplified: {res.get_unsimplified_formula()}")
 
-    k = 24
-
-    b.init('samples', k)
-    for i, value in enumerate(res.interval_set.random_values(k)):
-        sample = b.samples[i]
-        sample.id = i
-        sample.init('variables', len(value))
-        for j, symbol in enumerate(value):
-            var = sample.variables[j]
-            var.symbol = str(symbol)
-            var.value = value[symbol]
-
+    b = strengthen_capnp.StrengthenResult.new_message()
+    b.res = True
+    b.failuredecription = "Very bad"
     out = b.to_bytes()
     print(f"Result binary length: {len(out)}")
-    print(b)
+    # print(b)
     return out

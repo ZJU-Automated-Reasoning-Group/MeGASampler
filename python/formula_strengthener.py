@@ -9,8 +9,17 @@ import capnp
 strengthen_capnp = capnp.load("strengthen.capnp")
 
 
+class NoRuleForOp(Exception):
+    def __init__(self, op_number, op_string, op_arity):
+        self.op_arity = op_arity
+        self.op_string = op_string
+        self.op_number = op_number
+
+
 class StrenghenedFormula():
-    def __init__(self, debug=False):
+
+    def __init__(self, debug=False, collect_unsimplified=False):
+        self.collect_unsimplified = collect_unsimplified
         self.unsimplified_demands = []
         self.interval_set = IntervalSet.get_top()
         self.debug = debug
@@ -51,7 +60,10 @@ class StrenghenedFormula():
             self._strengthen_binary_boolean_conjunct(lhs, lhs_value, rhs_value,
                                                      op, model)
         else:
-            self.add_unsimplified_demand(conjunct)
+            if self.collect_unsimplified:
+                self.add_unsimplified_demand(conjunct)
+            else:
+                assert False, f"unexpected conjunct: {conjunct}"
 
     def _strict_to_nonstrict(self, rhs_value, op):
         if op in Z3_LT_OPS:
@@ -261,13 +273,20 @@ class StrenghenedFormula():
                                      [lhs_arg0_val, -lhs_arg1_val], op,
                                      rhs_value, model)
             else:
-                print(f"Unsupported binary operator: {op_to_string(lhs_op)}")
+                if self.collect_unsimplified:
+                    print(f"Unsupported binary operator: {op_to_string(lhs_op)}")
+                    self.add_unsimplified_demand(
+                       build_binary_expression(lhs, rhs_value, op))
+                else:
+                    raise NoRuleForOp(lhs_op, op_to_string(lhs_op), 2)
+        else:
+            lhs_op = get_op(lhs)
+            if self.collect_unsimplified:
+                print(f"Unsupported non-binary operator: {op_to_string(lhs_op)}")
                 self.add_unsimplified_demand(
                     build_binary_expression(lhs, rhs_value, op))
-        else:
-            print(f"Unsupported non-binary operator: {op_to_string(get_op(lhs))}")
-            self.add_unsimplified_demand(
-                build_binary_expression(lhs, rhs_value, op))
+            else:
+                raise NoRuleForOp(lhs_op, op_to_string(lhs_op), len(lhs.children))
 
     # A Strengthened formula is bottom iff its interval set is bottom
     # (i.e., contains an illegal interval like [3,2])

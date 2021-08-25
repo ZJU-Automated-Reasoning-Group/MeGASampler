@@ -426,33 +426,35 @@ def strengthen_wrapper(f, model):
     modelobj = ModelObj(model)
     modelobj.value = model
     model = ModelRef(modelobj, z3.main_ctx())
-    print(f"Calling strengthen with expr: {f}, model: {model}")
-    res = strengthen(f, model)
-    # print(f"intervals: {res.interval_set}")
-    # print(f"unsimplified: {res.get_unsimplified_formula()}")
 
     b = strengthen_capnp.StrengthenResult.new_message()
-    # todo: add try catch to strengthen and parse errors correctly
-    b.res = True
-    b.failuredecription = "Very bad"
-    b.unsimplified = str(res.unsimplified_demands)
-    b.init('intervalmap', len(res.interval_set.dict))
-    for i, var in enumerate(res.interval_set.dict):
-        capnpVarInterval = b.intervalmap[i]
-        capnpVarInterval.variable = str(var)
-        pythonInterval = res.interval_set.dict[var]
-        capnpVarInterval.interval.islowminf = pythonInterval.is_low_minf()
-        capnpVarInterval.interval.ishighinf = pythonInterval.is_high_inf()
-        if pythonInterval.is_low_minf():
-            capnpVarInterval.interval.low = MININT
-        else:
-            assert (isinstance(pythonInterval.low.n, int))
-            capnpVarInterval.interval.low = pythonInterval.low.n
-        if pythonInterval.is_high_inf():
-            capnpVarInterval.interval.high = MAXINT
-        else:
-            assert (isinstance(pythonInterval.high.n, int))
-            capnpVarInterval.interval.high = pythonInterval.high.n
+    try:
+        print(f"Calling strengthen with expr: {f}, model: {model}")
+        res = strengthen(f, model)
+    except NoRuleForOp as e:
+        b.res = False
+        b.failuredecription = f"Operator {e.op_string} ({e.op_number}) with arity {e.op_arity} found, " \
+                              f" but there is no rule to handle it "
+    else:
+        b.res = True
+        b.unsimplified = str(res.unsimplified_demands)
+        b.init('intervalmap', len(res.interval_set.dict))
+        for i, var in enumerate(res.interval_set.dict):
+            capnpVarInterval = b.intervalmap[i]
+            capnpVarInterval.variable = str(var)
+            pythonInterval = res.interval_set.dict[var]
+            capnpVarInterval.interval.islowminf = pythonInterval.is_low_minf()
+            capnpVarInterval.interval.ishighinf = pythonInterval.is_high_inf()
+            if pythonInterval.is_low_minf():
+                capnpVarInterval.interval.low = MININT
+            else:
+                assert (isinstance(pythonInterval.low.n, int))
+                capnpVarInterval.interval.low = pythonInterval.low.n
+            if pythonInterval.is_high_inf():
+                capnpVarInterval.interval.high = MAXINT
+            else:
+                assert (isinstance(pythonInterval.high.n, int))
+                capnpVarInterval.interval.high = pythonInterval.high.n
     out = b.to_bytes()
     print(f"Result binary length: {len(out)}")
     # print(b)

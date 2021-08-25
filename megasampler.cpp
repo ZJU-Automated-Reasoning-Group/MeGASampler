@@ -28,18 +28,19 @@ void MEGASampler::do_epoch(const z3::model &model) {
     auto failureDescription = container.getFailuredecription();
     std::cout << "res: " << res << "\n";
     std::cout << "failute description: " << failureDescription.cStr() << "\n";
+    std::cout << "unsimplified: " << container.getUnsimplified().cStr() << "\n";
+    std::cout << "intervals: \n";
+    for (auto varinterval : container.getIntervalmap()) {
+    	std::string varname = varinterval.getVariable().cStr();
+    	auto interval = varinterval.getInterval();
+    	bool isLowMinf = interval.getIslowminf();
+    	bool isHighInf = interval.getIshighinf();
+    	auto low = isLowMinf ? "MINF" : std::to_string(interval.getLow());
+    	auto high = isHighInf ? "INF" : std::to_string(interval.getHigh());
+    	std::cout << varname << ": " << "[" << low << "," << high << "] ";
+    }
+    std::cout << "\n";
 
-//    int64_t limit = container.getLimit();
-//    std::cout << "limit: " << limit << "\n";
-//
-//    for (auto sample : container.getSamples()) {
-//        for (const auto variable : sample.getVariables()) {
-//            const auto symbol(variable.getSymbol().cStr());
-//            int64_t value = variable.getValue();
-////            printf("%s: %" PRIi64 ", ", symbol, value);
-//        }
-////        printf("\n");
-//    }
 }
 
 void MEGASampler::finish() {

@@ -1,7 +1,7 @@
 from functools import reduce
 
 from z3 import *
-from interval import Interval, IntervalSet, INF, MINF
+from interval import Interval, IntervalSet, INF, MINF, MININT, MAXINT
 from z3_utils import *
 
 import capnp
@@ -413,8 +413,27 @@ def strengthen_wrapper(f, model):
     # print(f"unsimplified: {res.get_unsimplified_formula()}")
 
     b = strengthen_capnp.StrengthenResult.new_message()
+    # todo: add try catch to strengthen and parse errors correctly
     b.res = True
     b.failuredecription = "Very bad"
+    b.unsimplified = str(res.unsimplified_demands)
+    b.init('intervalmap', len(res.interval_set.dict))
+    for i, var in enumerate(res.interval_set.dict):
+        capnpVarInterval = b.intervalmap[i]
+        capnpVarInterval.variable = str(var)
+        pythonInterval = res.interval_set.dict[var]
+        capnpVarInterval.interval.islowminf = pythonInterval.is_low_minf()
+        capnpVarInterval.interval.ishighinf = pythonInterval.is_high_inf()
+        if pythonInterval.is_low_minf():
+            capnpVarInterval.interval.low = MININT
+        else:
+            assert (isinstance(pythonInterval.low.n, int))
+            capnpVarInterval.interval.low = pythonInterval.low.n
+        if pythonInterval.is_high_inf():
+            capnpVarInterval.interval.high = MAXINT
+        else:
+            assert (isinstance(pythonInterval.high.n, int))
+            capnpVarInterval.interval.high = pythonInterval.high.n
     out = b.to_bytes()
     print(f"Result binary length: {len(out)}")
     # print(b)

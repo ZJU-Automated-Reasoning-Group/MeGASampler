@@ -26,8 +26,11 @@ void MEGASampler::do_epoch(const z3::model &model) {
 
     auto res = container.getRes();
     auto failureDescription = container.getFailuredecription();
-    std::cout << "res: " << res << "\n";
-    std::cout << "failute description: " << failureDescription.cStr() << "\n";
+    if (!res){
+        std::cout << "An error has occurred during epoch: " << failureDescription.cStr() << "\n";
+        failure_cause = failureDescription.cStr();
+        safe_exit(1);
+    }
     std::cout << "unsimplified: " << container.getUnsimplified().cStr() << "\n";
     std::cout << "intervals: \n";
     for (auto varinterval : container.getIntervalmap()) {

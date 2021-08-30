@@ -81,7 +81,7 @@ int main(int argc, char *argv[]) {
   patch_global_context(s.c);
   s.set_timer_on("total");
   s.set_timer_on("initial_solving");
-  s.check_if_satisfiable();
+  s.check_if_satisfiable(); // todo: save model from initial solving?
   s.accumulate_time("initial_solving");
   try {
     for (int epochs = 0; epochs < max_epochs; epochs++) {

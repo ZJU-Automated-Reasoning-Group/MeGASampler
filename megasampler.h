@@ -32,6 +32,10 @@ public:
    */
   void do_epoch(const z3::model &model);
   void finish();
+
+private:
+  void sample_intervals_in_rounds(const auto& intervalmap);
+  std::string get_random_sample_from_intervals(const auto& intervalmap);
 };
 
 #endif /* MEGASAMPLER_H_ */

@@ -4,6 +4,7 @@
 #include <iostream>
 #include <capnp/serialize.h>
 #include <cinttypes>
+#include <random>
 
 MEGASampler::MEGASampler(std::string input, int max_samples, double max_time,
                          int max_epoch_samples, double max_epoch_time,
@@ -44,9 +45,51 @@ void MEGASampler::do_epoch(const z3::model &model) {
     }
     std::cout << "\n";
 
+    sample_intervals_in_rounds(container.getIntervalmap());
 }
 
 void MEGASampler::finish() {
 	json_output["method name"] = "megasampler";
 	Sampler::finish();
+}
+
+void MEGASampler::sample_intervals_in_rounds(const auto& intervalmap) {
+	int MAX_ROUNDS= 6;
+	float rate = 1.0;
+	for (int round = 0; round < MAX_ROUNDS && rate > 0.2; round++){
+		std::cout << "Starting round: " << round << "\n";
+		int new_samples = 0;
+		int MAX_SAMPLES = 100;
+		int round_samples = 0;
+		while (round_samples < MAX_SAMPLES) {
+			std::string sample = get_random_sample_from_intervals(intervalmap);
+			bool is_unique = save_and_output_sample_if_unique(sample);
+			if (is_unique){
+				new_samples++;
+				std::cout << "Found a unique sample. new count is: " << new_samples << "\n";
+			}
+			round_samples++;
+		}
+		rate = new_samples / round_samples;
+		std::cout << "new rate is: " << rate << "\n";
+	}
+}
+
+std::string MEGASampler::get_random_sample_from_intervals(const auto& intervalmap){
+	std::string sample_string;
+	for (auto varinterval : intervalmap) {
+		std::string varname = varinterval.getVariable().cStr();
+		auto interval = varinterval.getInterval();
+		sample_string += varname;
+		sample_string += ":";
+		int64_t low = interval.getLow();
+		int64_t high = interval.getHigh();
+		std::mt19937 rng(std::random_device{}());
+		std::uniform_int_distribution<int64_t> gen(low, high); // uniform, unbiased
+		int64_t randNum = gen(rng);
+		sample_string += std::to_string(randNum);
+		sample_string += ";";
+	}
+	std::cout << "generated sample: " << sample_string << "\n";
+	return sample_string;
 }

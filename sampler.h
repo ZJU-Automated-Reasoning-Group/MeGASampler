@@ -45,7 +45,7 @@ protected:
 
   // Settings
   bool json = false;
-  bool random_soft_bit = false; // TODO enable change from cmd line
+  bool random_soft_bit = false; // TODO enable change from cmd line or remove
 
   // Time management
   struct timespec start_time;

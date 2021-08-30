@@ -342,12 +342,13 @@ void Sampler::_compute_formula_stats_aux(z3::expr e, int depth) {
 
 void Sampler::assert_soft(z3::expr const &e) { opt.add(e, 1); }
 
-void Sampler::save_and_output_sample_if_unique(const std::string &sample) {
+bool Sampler::save_and_output_sample_if_unique(const std::string &sample) {
   auto res = samples.insert(sample);
   if (res.second) {
     unique_valid_samples++;
     results_file << unique_valid_samples << ": " << sample << std::endl;
   }
+  return res.second;
 }
 
 SampleContainer::Sample::Builder Sampler::model_to_capnp(const z3::model &model) {

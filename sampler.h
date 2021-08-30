@@ -90,7 +90,8 @@ protected:
   void compute_and_print_formula_stats();
   void _compute_formula_stats_aux(z3::expr e, int depth = 0);
   void assert_soft(z3::expr const &e);
-  void save_and_output_sample_if_unique(const std::string &sample);
+  // returns true iff the sample is unique (i.e., not seen before)
+  bool save_and_output_sample_if_unique(const std::string &sample);
   std::string model_to_string(const z3::model &model);
   SampleContainer::Sample::Builder model_to_capnp(const z3::model &m);
   /*

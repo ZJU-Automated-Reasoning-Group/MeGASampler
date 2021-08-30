@@ -63,6 +63,7 @@ void MEGASampler::sample_intervals_in_rounds(const auto& intervalmap) {
 		int round_samples = 0;
 		while (round_samples < MAX_SAMPLES) {
 			std::string sample = get_random_sample_from_intervals(intervalmap);
+			total_samples++;
 			bool is_unique = save_and_output_sample_if_unique(sample);
 			if (is_unique){
 				new_samples++;

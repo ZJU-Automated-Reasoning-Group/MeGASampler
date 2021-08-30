@@ -80,6 +80,7 @@ void SMTSampler::find_neighboring_solutions
 		}
 		if (result == z3::sat) {
 			std::string new_string = model_string(model, ind);
+			total_samples++;
 			if (mutations.find(new_string) == mutations.end()) {
 				mutations.insert(new_string);
 				std::string sample_to_file = model_to_string(model);
@@ -139,6 +140,7 @@ void SMTSampler::find_combined_solutions(std::unordered_set<std::string> &mutati
 					candidate += std::to_string(num) + ';';
 				}
 				std::cout << "candidate: " << candidate << "\n";
+				total_samples++;
 				if (mutations.find(candidate) == mutations.end() && strcmp(candidate.c_str(),a_string.c_str()) != 0) {
 					mutations.insert(candidate);
 				    z3::model m = gen_model(candidate, variables);

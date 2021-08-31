@@ -37,8 +37,8 @@ do
   ./smtsampler --json "${@:3}" "$file"
 #  move json files to new_dir while keeping original dir structure as in input_dir
   new_json_file=$newdir${file#$input_dir}.json
-  echo "Creating file $new_json_file"
+  echo "Attempting to move json file to $new_json_file"
   mkdir -p "$(dirname "$new_json_file")"
-  mv "$file.json" "$new_json_file"
+  mv "$file.json" "$new_json_file" || ( echo "could not find file $file.json" && echo "$file" >> "$newdir/missing_jsons.txt" )
   cd "$original_dir" || ( echo "couldn't find directory $original_dir" && exit 1 )
 done

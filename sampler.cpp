@@ -92,6 +92,7 @@ z3::check_result Sampler::solve() {
   //   std::cout<<opt.objectives()<<std::endl;
   z3::check_result result = z3::unknown;
   try {
+	max_smt_calls++;
     result = opt.check(); // bat: first, solve a MAX-SMT instance
   } catch (z3::exception except) {
     std::cout << "Exception: " << except << "\n";
@@ -105,6 +106,7 @@ z3::check_result Sampler::solve() {
     std::cout << "MAX-SMT timed out"
               << "\n";
     try {
+      smt_calls++;
       result = solver.check(); // bat: if too long, solve a regular SMT instance
                                // (without any soft constraints)
     } catch (z3::exception except) {
@@ -155,6 +157,8 @@ void Sampler::write_json(){
 	json_output["failure cause"] = failure_cause;
 	json_output["filename"] = input_filename;
 	json_output["epochs"] = epochs;
+	json_output["maxsmt calls"] = max_smt_calls;
+	json_output["smt calls"] = smt_calls;
 	json_output["total samples"] = total_samples;
 	json_output["valid samples"] = valid_samples;
 	json_output["unique valid samples"] = unique_valid_samples;
@@ -175,6 +179,8 @@ void Sampler::print_stats() {
     std::cout << it->first << " time: " << it->second << std::endl;
   }
   std::cout << "Epochs: " << epochs << std::endl;
+  std::cout << "MAX-SMT calls: " << max_smt_calls  << std::endl;
+  std::cout << "SMT calls: " << smt_calls  << std::endl;
   std::cout << "Assignments considered (with repetitions): " << total_samples
             << std::endl;
   std::cout << "Models (with repetitions): " << valid_samples << std::endl;

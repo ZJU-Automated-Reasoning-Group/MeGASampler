@@ -9,7 +9,7 @@
 
 int main(int argc, char *argv[]) {
 
-  int max_epochs = 10;
+  int max_epochs = 1000000;
   int max_samples = 1000000;
   double max_time = 3600.0;
   int max_epoch_samples = 10000;

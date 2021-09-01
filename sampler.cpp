@@ -28,6 +28,18 @@ Sampler::Sampler(std::string input, int max_samples, double max_time,
   compute_and_print_formula_stats();
 
   results_file.open(input + ".samples");
+
+  if (num_arrays > 0 || num_bv > 0 || num_uf > 0 || num_reals > 0){
+	  std::cout << "Unsupported sort in formula. Exiting.\n";
+	  failure_cause = "Unsupported sort in formula.";
+	  safe_exit(1);
+  }
+
+  if (num_bools > 0){
+	  std::cout << "Currently not supporting boolean vars in formula.\n";
+	  failure_cause = "Bool vars in formula.";
+	  safe_exit(1);
+  }
 }
 
 void Sampler::initialize_solvers() {

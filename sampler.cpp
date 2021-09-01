@@ -143,7 +143,8 @@ bool Sampler::is_time_limit_reached() {
   double elapsed = duration(&start_time, &now);
   if (elapsed >= max_time) {
     std::cout << "Stopping: timeout\n";
-    finish();
+    failure_cause = "Timeout.";
+    safe_exit(0);
   }
   return false;
 }
@@ -202,6 +203,8 @@ void Sampler::print_stats() {
 }
 
 z3::model Sampler::start_epoch() {
+  is_time_limit_reached();
+
   std::cout << "Sampler: Starting an epoch (" << epochs << ")" << std::endl;
 
   opt.push(); // because formula is constant, but other hard/soft constraints

@@ -18,6 +18,7 @@ MEGASampler::MEGASampler(std::string input, int max_samples, double max_time,
 
 void MEGASampler::do_epoch(const z3::model &model) {
 	printf("MEGA: do_epoch\n");
+	is_time_limit_reached();
     struct buflen ret = call_strengthen(original_formula, model);
     const auto view = kj::arrayPtr(
                                    reinterpret_cast<const capnp::word*>(ret.buf),
@@ -34,6 +35,7 @@ void MEGASampler::do_epoch(const z3::model &model) {
     }
     std::cout << "unsimplified: " << container.getUnsimplified().cStr() << "\n";
     std::cout << "intervals: \n";
+	is_time_limit_reached();
     for (auto varinterval : container.getIntervalmap()) {
     	std::string varname = varinterval.getVariable().cStr();
     	auto interval = varinterval.getInterval();
@@ -57,6 +59,7 @@ void MEGASampler::sample_intervals_in_rounds(const auto& intervalmap) {
 	int MAX_ROUNDS= 6;
 	float rate = 1.0;
 	for (int round = 0; round < MAX_ROUNDS && rate > 0.2; round++){
+		is_time_limit_reached();
 		std::cout << "Starting round: " << round << "\n";
 		int new_samples = 0;
 		int MAX_SAMPLES = 100;

@@ -16,8 +16,7 @@ class NoRuleForOp(Exception):
         self.op_number = op_number
 
 
-class StrenghenedFormula():
-
+class StrengthenedFormula():
     def __init__(self, debug=False, collect_unsimplified=False):
         self.collect_unsimplified = collect_unsimplified
         self.unsimplified_demands = []
@@ -38,11 +37,13 @@ class StrenghenedFormula():
         self.interval_set.add_interval(var, interval)
 
     def _strengthen_conjunct(self, conjunct, model):
-        if is_bool(conjunct) and is_const(conjunct): # case e=true/false/b/!b (where b is a boolean var)
+        if is_bool(conjunct) and is_const(
+                conjunct):  # case e=true/false/b/!b (where b is a boolean var)
             return  # ignore boolean literals, they are not part of the intervals
         elif is_not(conjunct):  # case Not(e)
             argument = conjunct.arg(0)
-            if is_const(argument):  # case e=true/false/b/!b (where b is a boolean var)
+            if is_const(argument
+                        ):  # case e=true/false/b/!b (where b is a boolean var)
                 return  # ignore boolean literals, they are not part of the intervals
             else:
                 neg_cond = negate_condition(argument)
@@ -95,8 +96,8 @@ class StrenghenedFormula():
             assert lhs_value < rhs_value
             return get_op(lhs < rhs_value)
 
-    def _strengthen_mult(self, lhs_children, lhs_children_values, op, rhs_value,
-                        model):
+    def _strengthen_mult(self, lhs_children, lhs_children_values, op,
+                         rhs_value, model):
         lhs_value = math.prod(lhs_children_values)
         num_children = len(lhs_children)
         ge_op = op
@@ -104,29 +105,37 @@ class StrenghenedFormula():
         if op in Z3_LE_OPS:
             le_op = op
             ge_op = reverse_boolean_operator(op)
-        if (op in Z3_LE_OPS and lhs_value >= 0) or (op in Z3_GE_OPS and lhs_value <= 0):
+        if (op in Z3_LE_OPS and lhs_value >= 0) or (op in Z3_GE_OPS
+                                                    and lhs_value <= 0):
             i = 0
             while i < num_children:
                 if lhs_children_values[i] >= 0:
-                    self._strengthen_binary_boolean_conjunct(lhs_children[i], lhs_children_values[i],
-                                                             lhs_children_values[i], le_op, model)
-                    self._strengthen_binary_boolean_conjunct(lhs_children[i], lhs_children_values[i],
-                                                             0, ge_op, model)
+                    self._strengthen_binary_boolean_conjunct(
+                        lhs_children[i], lhs_children_values[i],
+                        lhs_children_values[i], le_op, model)
+                    self._strengthen_binary_boolean_conjunct(
+                        lhs_children[i], lhs_children_values[i], 0, ge_op,
+                        model)
                 else:
-                    self._strengthen_binary_boolean_conjunct(lhs_children[i], lhs_children_values[i],
-                                                             lhs_children_values[i], ge_op, model)
-                    self._strengthen_binary_boolean_conjunct(lhs_children[i], lhs_children_values[i],
-                                                             0, le_op, model)
+                    self._strengthen_binary_boolean_conjunct(
+                        lhs_children[i], lhs_children_values[i],
+                        lhs_children_values[i], ge_op, model)
+                    self._strengthen_binary_boolean_conjunct(
+                        lhs_children[i], lhs_children_values[i], 0, le_op,
+                        model)
                 i = i + 1
-        elif (op in Z3_LE_OPS and lhs_value <= 0) or (op in Z3_GE_OPS and lhs_value >= 0):
+        elif (op in Z3_LE_OPS and lhs_value <= 0) or (op in Z3_GE_OPS
+                                                      and lhs_value >= 0):
             i = 0
             while i < num_children:
                 if lhs_children_values[i] >= 0:
-                    self._strengthen_binary_boolean_conjunct(lhs_children[i], lhs_children_values[i],
-                                                             lhs_children_values[i], ge_op, model)
+                    self._strengthen_binary_boolean_conjunct(
+                        lhs_children[i], lhs_children_values[i],
+                        lhs_children_values[i], ge_op, model)
                 else:
-                    self._strengthen_binary_boolean_conjunct(lhs_children[i], lhs_children_values[i],
-                                                             lhs_children_values[i], le_op, model)
+                    self._strengthen_binary_boolean_conjunct(
+                        lhs_children[i], lhs_children_values[i],
+                        lhs_children_values[i], le_op, model)
                 i = i + 1
         else:
             # todo raise exception
@@ -136,13 +145,23 @@ class StrenghenedFormula():
                         model):
         constants = [c for c in lhs_children if is_numeral_constant(c)]
         if len(constants) > 0:
-            non_constants = [c for c in lhs_children if not is_numeral_constant(c)]
-            non_constants_values = [lhs_children_values[i] for i in range(0, len(lhs_children_values))
-                                    if not is_numeral_constant(lhs_children[i])]
-            constants_values = [lhs_children_values[i] for i in range(0, len(lhs_children_values)-1)
-                                    if is_numeral_constant(lhs_children[i])]
+            non_constants = [
+                c for c in lhs_children if not is_numeral_constant(c)
+            ]
+            non_constants_values = [
+                lhs_children_values[i]
+                for i in range(0, len(lhs_children_values))
+                if not is_numeral_constant(lhs_children[i])
+            ]
+            constants_values = [
+                lhs_children_values[i]
+                for i in range(0,
+                               len(lhs_children_values) - 1)
+                if is_numeral_constant(lhs_children[i])
+            ]
             diff = rhs_value - sum(constants_values)
-            self._strengthen_add(non_constants, non_constants_values, op, diff, model)
+            self._strengthen_add(non_constants, non_constants_values, op, diff,
+                                 model)
             return
         num_children = len(lhs_children)
         if op in Z3_LE_OPS:
@@ -188,7 +207,7 @@ class StrenghenedFormula():
                     op, model)
                 i += 1
         else:
-            pass #todo raise exception
+            pass  #todo raise exception
 
     def get_unsimplified_formula(self):
         return And(self.unsimplified_demands)
@@ -204,8 +223,8 @@ class StrenghenedFormula():
             f = And(interval_formula, self.get_unsimplified_formula())
             return print_all_models(f, limit)
 
-    def _strengthen_mul_by_constant(self, constant, var_list, var_value_list, op,
-                                    rhs_value, model):
+    def _strengthen_mul_by_constant(self, constant, var_list, var_value_list,
+                                    op, rhs_value, model):
         division_rounded_down = rhs_value // constant
         var_prod = reduce((lambda x, y: x * y), var_list)
         value_prod = math.prod(var_value_list)
@@ -213,8 +232,8 @@ class StrenghenedFormula():
             should_round_up = (op in Z3_GE_OPS or op
                                in Z3_GT_OPS) and rhs_value % constant != 0
             self._strengthen_binary_boolean_conjunct(
-                var_prod, value_prod, division_rounded_down + should_round_up, op,
-                model)
+                var_prod, value_prod, division_rounded_down + should_round_up,
+                op, model)
         elif constant < 0:
             reversed_op = reverse_boolean_operator(op)
             should_round_up = (reversed_op in Z3_GE_OPS or reversed_op
@@ -264,7 +283,7 @@ class StrenghenedFormula():
                     return
                 i = i + 1
             self._strengthen_mult(lhs.children(), children_values, op,
-                                 rhs_value, model)
+                                  rhs_value, model)
         elif is_binary(lhs):
             lhs_arg0, lhs_arg1, lhs_arg0_val, lhs_arg1_val, lhs_op = evaluate_binary_expr(
                 lhs, model)
@@ -274,19 +293,22 @@ class StrenghenedFormula():
                                      rhs_value, model)
             else:
                 if self.collect_unsimplified:
-                    print(f"Unsupported binary operator: {op_to_string(lhs_op)}")
+                    print(
+                        f"Unsupported binary operator: {op_to_string(lhs_op)}")
                     self.add_unsimplified_demand(
-                       build_binary_expression(lhs, rhs_value, op))
+                        build_binary_expression(lhs, rhs_value, op))
                 else:
                     raise NoRuleForOp(lhs_op, op_to_string(lhs_op), 2)
         else:
             lhs_op = get_op(lhs)
             if self.collect_unsimplified:
-                print(f"Unsupported non-binary operator: {op_to_string(lhs_op)}")
+                print(
+                    f"Unsupported non-binary operator: {op_to_string(lhs_op)}")
                 self.add_unsimplified_demand(
                     build_binary_expression(lhs, rhs_value, op))
             else:
-                raise NoRuleForOp(lhs_op, op_to_string(lhs_op), len(lhs.children))
+                raise NoRuleForOp(lhs_op, op_to_string(lhs_op),
+                                  len(lhs.children))
 
     # A Strengthened formula is bottom iff its interval set is bottom
     # (i.e., contains an illegal interval like [3,2])
@@ -303,7 +325,7 @@ class StrenghenedFormula():
     # (i.e., contains an illegal interval like [3,2])
     @staticmethod
     def get_bottom(debug=False):
-        res = StrenghenedFormula(debug)
+        res = StrengthenedFormula(debug)
         res.interval_set = IntervalSet.get_bottom()
         return res
 
@@ -312,7 +334,7 @@ class StrenghenedFormula():
     # This method is essentially the same as __init__, since init returns top
     @staticmethod
     def get_top(debug=False):
-        return StrenghenedFormula(debug)
+        return StrengthenedFormula(debug)
 
     # Modifies self to be the intersection of self and other.
     # Other is not modified
@@ -324,7 +346,7 @@ class StrenghenedFormula():
     # Self and other are not modified
     @staticmethod
     def intersection(strengthened_formulas):
-        res = StrenghenedFormula.get_top()
+        res = StrengthenedFormula.get_top()
         for f in strengthened_formulas:
             res.intersect(f)
         return res
@@ -357,12 +379,12 @@ class StrenghenedFormula():
         self.unsimplified_demands = new_demands
 
     def __deepcopy__(self):
-        return StrenghenedFormula.intersection(
-            [self, StrenghenedFormula.get_top()])
+        return StrengthenedFormula.intersection(
+            [self, StrengthenedFormula.get_top()])
 
 
 def strengthen(f, model, debug=True):
-    res = StrenghenedFormula(debug)
+    res = StrengthenedFormula(debug)
     f_as_and = nnf_simplify_and_remove_or(f, model)
     if debug:
         print("f_as_and: " + str(f_as_and))
@@ -373,6 +395,7 @@ def strengthen(f, model, debug=True):
     else:  # f_is_and is an atomic boolean constraint
         res._strengthen_conjunct(f_as_and, model)
     return res
+
 
 def nnf_simplify_and_remove_or(f, guiding_model):
     goal = Goal()
@@ -412,12 +435,16 @@ def remove_or(nnf_formula, guiding_model):
             new_children = new_children + remove_or(c, guiding_model)
         return new_children
 
+
 def patch_z3_context(context_pointer):
     print(context_pointer)
     ctxobj = ContextObj(context_pointer)
-    ctxobj.value = context_pointer # why?!
+    ctxobj.value = context_pointer  # why?!
     z3.main_ctx().ctx = ctxobj
-    print(f"Patching the z3 global context, got {hex(context_pointer)}, {ctxobj}, {z3.main_ctx().ref()}")
+    print(
+        f"Patching the z3 global context, got {hex(context_pointer)}, {ctxobj}, {z3.main_ctx().ref()}"
+    )
+
 
 def strengthen_wrapper(f, model):
     ast = Ast(f)

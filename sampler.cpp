@@ -28,6 +28,18 @@ Sampler::Sampler(std::string input, int max_samples, double max_time,
   compute_and_print_formula_stats();
 
   results_file.open(input + ".samples");
+
+  if (num_arrays > 0 || num_bv > 0 || num_uf > 0 || num_reals > 0){
+	  std::cout << "Unsupported sort in formula. Exiting.\n";
+	  failure_cause = "Unsupported sort in formula.";
+	  safe_exit(1);
+  }
+
+  if (num_bools > 0){
+	  std::cout << "Currently not supporting boolean vars in formula.\n";
+	  failure_cause = "Bool vars in formula.";
+	  safe_exit(1);
+  }
 }
 
 void Sampler::initialize_solvers() {
@@ -92,6 +104,7 @@ z3::check_result Sampler::solve() {
   //   std::cout<<opt.objectives()<<std::endl;
   z3::check_result result = z3::unknown;
   try {
+	max_smt_calls++;
     result = opt.check(); // bat: first, solve a MAX-SMT instance
   } catch (z3::exception except) {
     std::cout << "Exception: " << except << "\n";
@@ -105,6 +118,7 @@ z3::check_result Sampler::solve() {
     std::cout << "MAX-SMT timed out"
               << "\n";
     try {
+      smt_calls++;
       result = solver.check(); // bat: if too long, solve a regular SMT instance
                                // (without any soft constraints)
     } catch (z3::exception except) {
@@ -129,7 +143,8 @@ bool Sampler::is_time_limit_reached() {
   double elapsed = duration(&start_time, &now);
   if (elapsed >= max_time) {
     std::cout << "Stopping: timeout\n";
-    finish();
+    failure_cause = "Timeout.";
+    safe_exit(0);
   }
   return false;
 }
@@ -155,6 +170,8 @@ void Sampler::write_json(){
 	json_output["failure cause"] = failure_cause;
 	json_output["filename"] = input_filename;
 	json_output["epochs"] = epochs;
+	json_output["maxsmt calls"] = max_smt_calls;
+	json_output["smt calls"] = smt_calls;
 	json_output["total samples"] = total_samples;
 	json_output["valid samples"] = valid_samples;
 	json_output["unique valid samples"] = unique_valid_samples;
@@ -175,6 +192,8 @@ void Sampler::print_stats() {
     std::cout << it->first << " time: " << it->second << std::endl;
   }
   std::cout << "Epochs: " << epochs << std::endl;
+  std::cout << "MAX-SMT calls: " << max_smt_calls  << std::endl;
+  std::cout << "SMT calls: " << smt_calls  << std::endl;
   std::cout << "Assignments considered (with repetitions): " << total_samples
             << std::endl;
   std::cout << "Models (with repetitions): " << valid_samples << std::endl;
@@ -184,6 +203,8 @@ void Sampler::print_stats() {
 }
 
 z3::model Sampler::start_epoch() {
+  is_time_limit_reached();
+
   std::cout << "Sampler: Starting an epoch (" << epochs << ")" << std::endl;
 
   opt.push(); // because formula is constant, but other hard/soft constraints
@@ -196,7 +217,6 @@ z3::model Sampler::start_epoch() {
 
   epochs++;
   total_samples++;
-  valid_samples++;
 
   //    save_and_output_sample_if_unique(Z3_model_to_string(c,model));
   save_and_output_sample_if_unique(model_to_string(model));
@@ -343,6 +363,7 @@ void Sampler::_compute_formula_stats_aux(z3::expr e, int depth) {
 void Sampler::assert_soft(z3::expr const &e) { opt.add(e, 1); }
 
 bool Sampler::save_and_output_sample_if_unique(const std::string &sample) {
+  valid_samples++;
   auto res = samples.insert(sample);
   if (res.second) {
     unique_valid_samples++;

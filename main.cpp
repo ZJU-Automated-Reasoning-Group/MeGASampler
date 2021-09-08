@@ -9,7 +9,7 @@
 
 int main(int argc, char *argv[]) {
 
-  int max_epochs = 10;
+  int max_epochs = 1000000;
   int max_samples = 1000000;
   double max_time = 3600.0;
   int max_epoch_samples = 10000;
@@ -81,7 +81,7 @@ int main(int argc, char *argv[]) {
   patch_global_context(s.c);
   s.set_timer_on("total");
   s.set_timer_on("initial_solving");
-  s.check_if_satisfiable();
+  s.check_if_satisfiable(); // todo: save model from initial solving?
   s.accumulate_time("initial_solving");
   try {
     for (int epochs = 0; epochs < max_epochs; epochs++) {

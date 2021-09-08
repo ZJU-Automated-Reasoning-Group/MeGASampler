@@ -45,7 +45,7 @@ protected:
 
   // Settings
   bool json = false;
-  bool random_soft_bit = false; // TODO enable change from cmd line
+  bool random_soft_bit = false; // TODO enable change from cmd line or remove
 
   // Time management
   struct timespec start_time;
@@ -75,6 +75,8 @@ protected:
   std::string result = "unknown"; // success/failure
   std::string failure_cause; // explanation for failure if result==failure
   int epochs = 0;
+  int max_smt_calls = 0;
+  int smt_calls = 0;
   int total_samples = 0; // how many samples we stumbled upon (repetitions are
                          // counted multiple times)
   int valid_samples =

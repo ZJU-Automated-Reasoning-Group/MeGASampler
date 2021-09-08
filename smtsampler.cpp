@@ -47,6 +47,7 @@ void SMTSampler::find_neighboring_solutions
 	int calls = 0;
 	int progress = 0;
 	for (int count = 0; count < constraints.size(); ++count) {
+		is_time_limit_reached();
 		//todo uncomment? is this necessary?
 		//		auto u = unsat_ind.find(cons_to_ind[count].first);
 		//		if (u != unsat_ind.end()
@@ -80,6 +81,7 @@ void SMTSampler::find_neighboring_solutions
 		}
 		if (result == z3::sat) {
 			std::string new_string = model_string(model, ind);
+			total_samples++;
 			if (mutations.find(new_string) == mutations.end()) {
 				mutations.insert(new_string);
 				std::string sample_to_file = model_to_string(model);
@@ -116,12 +118,14 @@ void SMTSampler::find_combined_solutions(std::unordered_set<std::string> &mutati
 	std::vector<std::string> initial(mutations.begin(), mutations.end());
 	std::vector<std::string> sigma = initial;
 	for (int k = 2; k <= 6; ++k) {
+		is_time_limit_reached();
 		std::cout << "Combining " << k << " mutations\n";
 		std::vector<std::string> new_sigma;
 		int all_new = 0;
 		int good = 0;
 		for (std::string b_string : sigma) {
 			for (std::string c_string : initial) {
+				is_time_limit_reached();
 				std::cout << "combining: " << b_string << " and " << c_string << " (orig is:" << a_string << ")\n";
 				size_t pos_a = 0;
 				size_t pos_b = 0;
@@ -139,6 +143,7 @@ void SMTSampler::find_combined_solutions(std::unordered_set<std::string> &mutati
 					candidate += std::to_string(num) + ';';
 				}
 				std::cout << "candidate: " << candidate << "\n";
+				total_samples++;
 				if (mutations.find(candidate) == mutations.end() && strcmp(candidate.c_str(),a_string.c_str()) != 0) {
 					mutations.insert(candidate);
 				    z3::model m = gen_model(candidate, variables);
@@ -167,6 +172,8 @@ void SMTSampler::find_combined_solutions(std::unordered_set<std::string> &mutati
 }
 
 void SMTSampler::do_epoch(const z3::model &m) {
+	is_time_limit_reached();
+
 	std::cout << "SMTSAMPLER: do epoch\n";
 	std::cout << "model is: " << m << "\n";
 
@@ -183,10 +190,13 @@ void SMTSampler::do_epoch(const z3::model &m) {
 
     // STEP 1: calculate constraints based on model
 	calculate_constraints(m_string);
+	is_time_limit_reached();
     // STEP 2: mutate constraints to get Sigma_1 (solutions of distance 1)
 	find_neighboring_solutions(mutations);
+	is_time_limit_reached();
 	// STEP 3: combine mutations to get Sigma_2...Sigma_6 (solutions of distance 2-6)
 	find_combined_solutions(mutations, m_string);
+	is_time_limit_reached();
 
     opt.pop();
     solver.pop();

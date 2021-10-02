@@ -5,15 +5,27 @@
  *      Author: batchen
  */
 #include "sampler.h"
-#include "samples.capnp.h"
+
 #include <capnp/message.h>
 #include <capnp/serialize-packed.h>
 
-Sampler::Sampler(std::string input, int max_samples, double max_time,
-                 int max_epoch_samples, double max_epoch_time, int strategy, bool json)
-    : c(), original_formula(c), max_samples(max_samples), max_time(max_time),
-      max_epoch_samples(max_epoch_samples), max_epoch_time(max_epoch_time),
-      params(c), opt(c), solver(c), model(c), json(json), input_filename(input) {
+#include "samples.capnp.h"
+
+Sampler::Sampler(std::string _input, int _max_samples, double _max_time,
+                 int _max_epoch_samples, double _max_epoch_time,
+                 int __attribute__((unused)) _strategy, bool _json)
+    : c(),
+      original_formula(c),
+      params(c),
+      model(c),
+      opt(c),
+      solver(c),
+      input_filename(_input),
+      json(_json),
+      max_samples(_max_samples),
+      max_time(_max_time),
+      max_epoch_samples(_max_epoch_samples),
+      max_epoch_time(_max_epoch_time) {
   z3::set_param("rewriter.expand_select_store", "true");
   clock_gettime(CLOCK_REALTIME, &start_time);
 
@@ -23,29 +35,29 @@ Sampler::Sampler(std::string input, int max_samples, double max_time,
   opt.set(params);
   solver.set(params);
 
-  parse_formula(input);
+  parse_formula(_input);
 
   compute_and_print_formula_stats();
 
-  results_file.open(input + ".samples");
+  results_file.open(_input + ".samples");
 
-  if (num_arrays > 0 || num_bv > 0 || num_uf > 0 || num_reals > 0){
-	  std::cout << "Unsupported sort in formula. Exiting.\n";
-	  failure_cause = "Unsupported sort in formula.";
-	  safe_exit(1);
+  if (num_arrays > 0 || num_bv > 0 || num_uf > 0 || num_reals > 0) {
+    std::cout << "Unsupported sort in formula. Exiting.\n";
+    failure_cause = "Unsupported sort in formula.";
+    safe_exit(1);
   }
 
-  if (num_bools > 0){
-	  std::cout << "Currently not supporting boolean vars in formula.\n";
-	  failure_cause = "Bool vars in formula.";
-	  safe_exit(1);
+  if (num_bools > 0) {
+    std::cout << "Currently not supporting boolean vars in formula.\n";
+    failure_cause = "Bool vars in formula.";
+    safe_exit(1);
   }
 }
 
 void Sampler::initialize_solvers() {
-  opt.add(original_formula); // adds formula as hard constraint to optimization
-                             // solver (no weight specified for it)
-  solver.add(original_formula); // adds formula as constraint to normal solver
+  opt.add(original_formula);  // adds formula as hard constraint to optimization
+                              // solver (no weight specified for it)
+  solver.add(original_formula);  // adds formula as constraint to normal solver
 }
 
 double Sampler::duration(struct timespec *a, struct timespec *b) {
@@ -67,7 +79,7 @@ double Sampler::elapsed_time_from(struct timespec start) {
 void Sampler::parse_formula(std::string input) {
   std::cout << "Parsing input file: " << input << std::endl;
   z3::expr_vector formulas =
-      c.parse_file(input.c_str()); // bat: reads smt2 file
+      c.parse_file(input.c_str());  // bat: reads smt2 file
   std::cout << "Number of formulas in file: " << formulas.size() << std::endl;
   z3::expr formula = mk_and(formulas);
   Z3_ast ast = formula;
@@ -81,18 +93,18 @@ void Sampler::parse_formula(std::string input) {
 }
 
 void Sampler::check_if_satisfiable() {
-  z3::check_result result =
-      solve(); // will try to solve the formula and put model in model variable
-  if (result == z3::unsat) {
-	sat_result = "unsat";
+  z3::check_result res =
+      solve();  // will try to solve the formula and put model in model variable
+  if (res == z3::unsat) {
+    sat_result = "unsat";
     std::cout << "Formula is unsat\n";
     safe_exit(0);
-  } else if (result == z3::unknown) {
-	sat_result = "unknown";
+  } else if (res == z3::unknown) {
+    sat_result = "unknown";
     std::cout << "Solver returned unknown\n";
     safe_exit(0);
   } else {
-	sat_result = "sat";
+    sat_result = "sat";
     std::cout << "Formula is satisfiable\n";
   }
 }
@@ -102,26 +114,26 @@ z3::check_result Sampler::solve() {
   //   std::cout<<opt.assertions()<<std::endl;
   //   std::cout<<"Opt objectives:"<<std::endl;
   //   std::cout<<opt.objectives()<<std::endl;
-  z3::check_result result = z3::unknown;
+  z3::check_result res = z3::unknown;
   try {
-	max_smt_calls++;
-    result = opt.check(); // bat: first, solve a MAX-SMT instance
-  } catch (z3::exception except) {
+    max_smt_calls++;
+    result = opt.check();  // bat: first, solve a MAX-SMT instance
+  } catch (const z3::exception &except) {
     std::cout << "Exception: " << except << "\n";
     // TODO exception "canceled" can be thrown when Timeout is reached
     failure_cause = "MAX-SMT exception";
     safe_exit(1);
   }
-  if (result == z3::sat) {
+  if (res == z3::sat) {
     model = opt.get_model();
-  } else if (result == z3::unknown) {
+  } else if (res == z3::unknown) {
     std::cout << "MAX-SMT timed out"
               << "\n";
     try {
       smt_calls++;
-      result = solver.check(); // bat: if too long, solve a regular SMT instance
-                               // (without any soft constraints)
-    } catch (z3::exception except) {
+      res = solver.check();  // bat: if too long, solve a regular SMT instance
+                             // (without any soft constraints)
+    } catch (const z3::exception &except) {
       std::cout << "Exception: " << except << "\n";
       std::stringstream ss;
       ss << except;
@@ -129,11 +141,11 @@ z3::check_result Sampler::solve() {
       safe_exit(1);
     }
     std::cout << "SMT result: " << result << "\n";
-    if (result == z3::sat) {
+    if (res == z3::sat) {
       model = solver.get_model();
     }
   }
-  return result;
+  return res;
 }
 
 // TODO: This function doesn't really return bool?
@@ -149,40 +161,44 @@ bool Sampler::is_time_limit_reached() {
   return false;
 }
 
-void Sampler::finish() { //todo: remove exit and add where calling
-	if (json){
-		write_json();
-	}
-	print_stats();
-	results_file.close();
+void Sampler::finish() {  // todo: remove exit and add where calling
+  if (json) {
+    write_json();
+  }
+  print_stats();
+  results_file.close();
 }
 
-void Sampler::write_json(){
-	std::string json_filename = input_filename + ".json";
-	std::ofstream json_file;
+void Sampler::write_json() {
+  std::string json_filename = input_filename + ".json";
+  std::ofstream json_file;
 
-	std::cout<< "Writing to json file: " << json_filename << "\n";
-	// todo: error handling? if input_filename does not exist we should not have come this far... Also, if json_file exists- it runs it over
-	json_file.open(json_filename);
+  std::cout << "Writing to json file: " << json_filename << "\n";
+  // todo: error handling? if input_filename does not exist we should not have
+  // come this far... Also, if json_file exists- it runs it over
+  json_file.open(json_filename);
 
-	json_output["sat result"] = sat_result;
-	json_output["result"] = result;
-	json_output["failure cause"] = failure_cause;
-	json_output["filename"] = input_filename;
-	json_output["epochs"] = epochs;
-	json_output["maxsmt calls"] = max_smt_calls;
-	json_output["smt calls"] = smt_calls;
-	json_output["total samples"] = total_samples;
-	json_output["valid samples"] = valid_samples;
-	json_output["unique valid samples"] = unique_valid_samples;
-	for (auto it = accumulated_times.cbegin(); it != accumulated_times.cend();
-	       ++it) {
-		json_output["time stats"][it->first] = it->second;
-	}
-	Json::StyledWriter styledWriter;
-	json_file << styledWriter.write(json_output);
+  json_output["sat result"] = sat_result;
+  json_output["result"] = result;
+  json_output["failure cause"] = failure_cause;
+  json_output["filename"] = input_filename;
+  json_output["epochs"] = epochs;
+  json_output["maxsmt calls"] = max_smt_calls;
+  json_output["smt calls"] = smt_calls;
+  json_output["total samples"] = total_samples;
+  json_output["valid samples"] = valid_samples;
+  json_output["unique valid samples"] = unique_valid_samples;
+  for (auto it = accumulated_times.cbegin(); it != accumulated_times.cend();
+       ++it) {
+    json_output["time stats"][it->first] = it->second;
+  }
 
-	json_file.close();
+  Json::StreamWriterBuilder builder;
+  builder["indentation"] = " ";
+  std::unique_ptr<Json::StreamWriter> streamWriter(builder.newStreamWriter());
+  streamWriter->write(json_output, &json_file);
+
+  json_file.close();
 }
 
 void Sampler::print_stats() {
@@ -192,8 +208,8 @@ void Sampler::print_stats() {
     std::cout << it->first << " time: " << it->second << std::endl;
   }
   std::cout << "Epochs: " << epochs << std::endl;
-  std::cout << "MAX-SMT calls: " << max_smt_calls  << std::endl;
-  std::cout << "SMT calls: " << smt_calls  << std::endl;
+  std::cout << "MAX-SMT calls: " << max_smt_calls << std::endl;
+  std::cout << "SMT calls: " << smt_calls << std::endl;
   std::cout << "Assignments considered (with repetitions): " << total_samples
             << std::endl;
   std::cout << "Models (with repetitions): " << valid_samples << std::endl;
@@ -207,12 +223,12 @@ z3::model Sampler::start_epoch() {
 
   std::cout << "Sampler: Starting an epoch (" << epochs << ")" << std::endl;
 
-  opt.push(); // because formula is constant, but other hard/soft constraints
-              // change between epochs
+  opt.push();  // because formula is constant, but other hard/soft constraints
+               // change between epochs
   choose_random_assignment();
-  z3::check_result result = solve(); // bat: find closest solution to random
-                                     // assignment (or some solution)
-  assert(result != z3::unsat);
+  z3::check_result res = solve();  // bat: find closest solution to random
+                                   // assignment (or some solution)
+  assert(res != z3::unsat);
   opt.pop();
 
   epochs++;
@@ -226,64 +242,63 @@ z3::model Sampler::start_epoch() {
 
 void Sampler::choose_random_assignment() {
   for (z3::func_decl &v :
-       variables) { // bat: Choose a random assignment: for variable-> if bv or
-                    // bool, randomly choose a value to it.
-    if (v.arity() > 0 || v.range().is_array())
-      continue;
+       variables) {  // bat: Choose a random assignment: for variable-> if bv or
+                     // bool, randomly choose a value to it.
+    if (v.arity() > 0 || v.range().is_array()) continue;
     switch (v.range().sort_kind()) {
-    case Z3_BV_SORT: // random assignment to bv
-    {
-      if (random_soft_bit) {
-        for (int i = 0; i < v.range().bv_size(); ++i) {
-          if (rand() % 2)
-            assert_soft(v().extract(i, i) == c.bv_val(0, 1));
-          else
-            assert_soft(v().extract(i, i) != c.bv_val(0, 1));
+      case Z3_BV_SORT:  // random assignment to bv
+      {
+        if (random_soft_bit) {
+          for (size_t i = 0; i < v.range().bv_size(); ++i) {
+            if (rand() % 2)
+              assert_soft(v().extract(i, i) == c.bv_val(0, 1));
+            else
+              assert_soft(v().extract(i, i) != c.bv_val(0, 1));
+          }
+        } else {
+          std::string n;
+          char num[10];
+          int i = v.range().bv_size();
+          if (i % 4) {
+            snprintf(num, 10, "%x", rand() & ((1 << (i % 4)) - 1));
+            n += num;
+            i -= (i % 4);
+          }
+          while (i) {
+            snprintf(num, 10, "%x", rand() & 15);
+            n += num;
+            i -= 4;
+          }
+          Z3_ast ast = parse_bv(n.c_str(), v.range(), c);
+          z3::expr exp(c, ast);
+          assert_soft(v() == exp);
         }
-      } else {
-        std::string n;
-        char num[10];
-        int i = v.range().bv_size();
-        if (i % 4) {
-          snprintf(num, 10, "%x", rand() & ((1 << (i % 4)) - 1));
-          n += num;
-          i -= (i % 4);
-        }
-        while (i) {
-          snprintf(num, 10, "%x", rand() & 15);
-          n += num;
-          i -= 4;
-        }
-        Z3_ast ast = parse_bv(n.c_str(), v.range(), c);
-        z3::expr exp(c, ast);
-        assert_soft(v() == exp);
+        break;  // from switch, bv case
       }
-      break; // from switch, bv case
+      case Z3_BOOL_SORT:  // random assignment to bool var
+        if (rand() % 2)
+          assert_soft(v());
+        else
+          assert_soft(!v());
+        break;           // from switch, bool case
+      case Z3_INT_SORT:  // random assignment to bool var
+      {
+        int random = rand();
+        if (rand() % 2)
+          assert_soft(v() == c.int_val(random));
+        else
+          assert_soft(v() == c.int_val(-random));
+      } break;  // from switch, int case
+      default:
+        // TODO add real
+        std::cout << "Invalid sort\n";
+        failure_cause = "Invalid sort.";
+        safe_exit(1);
     }
-    case Z3_BOOL_SORT: // random assignment to bool var
-      if (rand() % 2)
-        assert_soft(v());
-      else
-        assert_soft(!v());
-      break;          // from switch, bool case
-    case Z3_INT_SORT: // random assignment to bool var
-    {
-      int random = rand();
-      if (rand() % 2)
-        assert_soft(v() == c.int_val(random));
-      else
-        assert_soft(v() == c.int_val(-random));
-    } break; // from switch, int case
-    default:
-      // TODO add real
-      std::cout << "Invalid sort\n";
-      failure_cause = "Invalid sort.";
-      safe_exit(1);
-    }
-  } // end for: random assignment chosen
+  }  // end for: random assignment chosen
 }
 
-void Sampler::do_epoch(const z3::model &model) {
+void Sampler::do_epoch(__attribute__((unused)) const z3::model &m) {
   std::cout << "Sampler: Epoch: keeping only original model" << std::endl;
 }
 
@@ -305,8 +320,7 @@ void Sampler::compute_and_print_formula_stats() {
 }
 
 void Sampler::_compute_formula_stats_aux(z3::expr e, int depth) {
-  if (sup.find(e) != sup.end())
-    return;
+  if (sup.find(e) != sup.end()) return;
   assert(e.is_app());
   z3::func_decl fd = e.decl();
   if (e.is_const()) {
@@ -318,24 +332,24 @@ void Sampler::_compute_formula_stats_aux(z3::expr e, int depth) {
         ++num_arrays;
       } else if (fd.is_const()) {
         switch (fd.range().sort_kind()) {
-        case Z3_BV_SORT:
-          ++num_bv;
-          num_bits += fd.range().bv_size();
-          break;
-        case Z3_BOOL_SORT:
-          ++num_bools;
-          ++num_bits;
-          break;
-        case Z3_INT_SORT:
-          ++num_ints;
-          break;
-        case Z3_REAL_SORT:
-          ++num_reals;
-          break;
-        default:
-          std::cout << "Invalid sort\n";
-          failure_cause = "Invalid sort.";
-          safe_exit(1);
+          case Z3_BV_SORT:
+            ++num_bv;
+            num_bits += fd.range().bv_size();
+            break;
+          case Z3_BOOL_SORT:
+            ++num_bools;
+            ++num_bits;
+            break;
+          case Z3_INT_SORT:
+            ++num_ints;
+            break;
+          case Z3_REAL_SORT:
+            ++num_reals;
+            break;
+          default:
+            std::cout << "Invalid sort\n";
+            failure_cause = "Invalid sort.";
+            safe_exit(1);
         }
       }
     }
@@ -348,14 +362,15 @@ void Sampler::_compute_formula_stats_aux(z3::expr e, int depth) {
       ++num_uf;
     }
   }
-//  if (e.is_bool() || e.is_bv()) { // todo figure out if we need sub for the smtsampler implementation
-//	  sub.insert(e);
-//  }
+  //  if (e.is_bool() || e.is_bv()) { // todo figure out if we need sub for the
+  //  smtsampler implementation
+  //	  sub.insert(e);
+  //  }
   sup.insert(e);
   if (depth > max_depth) {
     max_depth = depth;
   }
-  for (int i = 0; i < e.num_args(); ++i) {
+  for (size_t i = 0; i < e.num_args(); ++i) {
     _compute_formula_stats_aux(e.arg(i), depth + 1);
   }
 }
@@ -372,25 +387,11 @@ bool Sampler::save_and_output_sample_if_unique(const std::string &sample) {
   return res.second;
 }
 
-SampleContainer::Sample::Builder Sampler::model_to_capnp(const z3::model &model) {
-    ::capnp::MallocMessageBuilder m;
-
-    SampleContainer::Sample::Builder builder = m.initRoot<SampleContainer::Sample>();
-    ::capnp::List<SampleContainer::Sample::Variable>::Builder vs = builder.initVariables(variables.size());
-
-    for (size_t i; i < variables.size(); ++i) {
-        SampleContainer::Sample::Variable::Builder v = vs[i];
-        v.setSymbol(variables[i].name().str());
-        v.setValue(42);
-    }
-    return builder;
-}
-
 std::string Sampler::model_to_string(const z3::model &m) {
   std::string s;
   for (z3::func_decl &v : variables) {
     s += v.name().str() + ':';
-    if (v.range().is_array()) { // array case
+    if (v.range().is_array()) {  // array case
       z3::expr e = m.get_const_interp(v);
       Z3_func_decl as_array = Z3_get_as_array_func_decl(c, e);
       if (as_array) {
@@ -400,7 +401,7 @@ std::string Sampler::model_to_string(const z3::model &m) {
         s += num + ';';
         std::string def = bv_string(f.else_value(), c);
         s += def + ';';
-        for (int j = 0; j < f.num_entries(); ++j) {
+        for (size_t j = 0; j < f.num_entries(); ++j) {
           std::string arg = bv_string(f.entry(j).arg(0), c);
           std::string val = bv_string(f.entry(j).value(), c);
           s += arg + ';';
@@ -412,8 +413,7 @@ std::string Sampler::model_to_string(const z3::model &m) {
         std::vector<std::string> values;
         while (e.decl().name().str() == "store") {
           std::string arg = bv_string(e.arg(1), c);
-          if (std::find(args.begin(), args.end(), arg) != args.end())
-            continue;
+          if (std::find(args.begin(), args.end(), arg) != args.end()) continue;
           args.push_back(arg);
           values.push_back(bv_string(e.arg(2), c));
           e = e.arg(0);
@@ -431,48 +431,48 @@ std::string Sampler::model_to_string(const z3::model &m) {
         }
         s += "]";
       }
-    } else if (v.is_const()) { // BV, Int case
+    } else if (v.is_const()) {  // BV, Int case
       z3::expr b = m.get_const_interp(v);
       Z3_ast ast = b;
       switch (v.range().sort_kind()) {
-      case Z3_BV_SORT: {
-        if (!ast) {
-          s += bv_string(c.bv_val(0, v.range().bv_size()), c) + ';';
-        } else {
-          s += bv_string(b, c) + ';';
+        case Z3_BV_SORT: {
+          if (!ast) {
+            s += bv_string(c.bv_val(0, v.range().bv_size()), c) + ';';
+          } else {
+            s += bv_string(b, c) + ';';
+          }
+          break;
         }
-        break;
-      }
-      case Z3_BOOL_SORT: {
-        if (!ast) {
-          s += std::to_string(false) + ';';
-        } else {
-          s += std::to_string(b.bool_value() == Z3_L_TRUE) + ';';
+        case Z3_BOOL_SORT: {
+          if (!ast) {
+            s += std::to_string(false) + ';';
+          } else {
+            s += std::to_string(b.bool_value() == Z3_L_TRUE) + ';';
+          }
+          break;
         }
-        break;
-      }
-      case Z3_INT_SORT: {
-        if (!ast) {
-          s += std::to_string(0) + ";";
-        } else {
-          s += b.to_string() + ";";
+        case Z3_INT_SORT: {
+          if (!ast) {
+            s += std::to_string(0) + ";";
+          } else {
+            s += b.to_string() + ";";
+          }
+          break;
         }
-        break;
+        default:
+          std::cout << "Invalid sort\n";
+          failure_cause = "Invalid sort.";
+          safe_exit(1);
       }
-      default:
-        std::cout << "Invalid sort\n";
-        failure_cause = "Invalid sort.";
-        safe_exit(1);
-      }
-    } else { // Uninterpreted function case
+    } else {  // Uninterpreted function case
       z3::func_interp f = m.get_func_interp(v);
       std::string num = "(";
       num += std::to_string(f.num_entries());
       s += num + ';';
       std::string def = bv_string(f.else_value(), c);
       s += def + ';';
-      for (int j = 0; j < f.num_entries(); ++j) {
-        for (int k = 0; k < f.entry(j).num_args(); ++k) {
+      for (size_t j = 0; j < f.num_entries(); ++j) {
+        for (size_t k = 0; k < f.entry(j).num_args(); ++k) {
           std::string arg = bv_string(f.entry(j).arg(k), c);
           s += arg + ';';
         }
@@ -487,8 +487,8 @@ std::string Sampler::model_to_string(const z3::model &m) {
 
 void Sampler::set_timer_on(const std::string &category) {
   if (is_timer_on.find(category) != is_timer_on.end() &&
-      is_timer_on[category]) { // category was inserted to map and its value was
-                               // set to true
+      is_timer_on[category]) {  // category was inserted to map and its value
+                                // was set to true
     std::cout << "WARNING: starting timer twice for category " << category
               << std::endl;
   }
@@ -500,11 +500,11 @@ void Sampler::set_timer_on(const std::string &category) {
 
 void Sampler::accumulate_time(const std::string &category) {
   if (is_timer_on.find(category) == is_timer_on.end() ||
-      is_timer_on[category] == false) { // timer never went on
+      is_timer_on[category] == false) {  // timer never went on
     std::cout << "ERROR: cannot stop timer for category: " << category
               << ". Timer was never started." << std::endl;
     failure_cause = "Timer stopped before started.";
-    safe_exit(1); // TODO add exception handling
+    safe_exit(1);  // TODO add exception handling
   }
 
   assert(timer_start_times.find(category) != timer_start_times.end());
@@ -518,12 +518,12 @@ void Sampler::accumulate_time(const std::string &category) {
   is_timer_on[category] = false;
 }
 
-void Sampler::safe_exit(int exitcode){
-	if (exitcode){
-		result = "failure";
-	} else {
-		result = "success";
-	}
-	finish();
-	exit(exitcode);
+void Sampler::safe_exit(int exitcode) {
+  if (exitcode) {
+    result = "failure";
+  } else {
+    result = "success";
+  }
+  finish();
+  exit(exitcode);
 }

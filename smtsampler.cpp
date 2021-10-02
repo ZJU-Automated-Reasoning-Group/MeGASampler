@@ -1,270 +1,272 @@
 #include "smtsampler.h"
 
-SMTSampler::SMTSampler(std::string input, int max_samples, double max_time,
-                         int max_epoch_samples, double max_epoch_time,
-                         int strategy, bool json)
-    : Sampler(input, max_samples, max_time, max_epoch_samples, max_epoch_time,
-              strategy, json), strategy(strategy) {
-    initialize_solvers();
-//  if (!convert) {
-    ind = variables;
-//  }
-    std::cout << "starting SMTSampler" << std::endl;
+SMTSampler::SMTSampler(std::string _input, int _max_samples, double _max_time,
+                       int _max_epoch_samples, double _max_epoch_time,
+                       int _strategy, bool _json)
+    : Sampler(_input, _max_samples, _max_time, _max_epoch_samples,
+              _max_epoch_time, _strategy, _json),
+      strategy(_strategy) {
+  initialize_solvers();
+  //  if (!convert) {
+  ind = variables;
+  //  }
+  std::cout << "starting SMTSampler" << std::endl;
 }
 
 void SMTSampler::calculate_constraints(const std::string &m_string) {
-	//todo uncomment? is this necessary?
-	//	if (flip_internal) {
-	//		for (z3::expr &v : internal) {
-	//			z3::expr b = m.eval(v, true);
-	//			cons_to_ind.emplace_back(-1, -1);
-	//			constraints.push_back(v == b);
-	//			std::vector<z3::expr> soft;
-	//			soft_constraints.push_back(soft);
-	//		}
-	//	}
-	size_t pos = 0;
-	for (int count = 0; count < ind.size(); ++count) {
-		z3::func_decl &v = ind[count];
-		assert_is_int_var(v);
-		z3::expr a = value(m_string.c_str() + pos);
-		pos = m_string.find(';', pos) + 1;
-		add_constraints(v(), a, count);
-	}
-	std::cout << "Collected constraints: ";
-	for (auto c : constraints) {
-		std::cout << c << " ";
-	}
-	std::cout << "\n";
+  // todo uncomment? is this necessary?
+  //	if (flip_internal) {
+  //		for (z3::expr &v : internal) {
+  //			z3::expr b = m.eval(v, true);
+  //			cons_to_ind.emplace_back(-1, -1);
+  //			constraints.push_back(v == b);
+  //			std::vector<z3::expr> soft;
+  //			soft_constraints.push_back(soft);
+  //		}
+  //	}
+  size_t pos = 0;
+  for (size_t count = 0; count < ind.size(); ++count) {
+    z3::func_decl &v = ind[count];
+    assert_is_int_var(v);
+    z3::expr a = value(m_string.c_str() + pos);
+    pos = m_string.find(';', pos) + 1;
+    add_constraints(v(), a, count);
+  }
+  std::cout << "Collected constraints: ";
+  for (auto constraint : constraints) {
+    std::cout << constraint << " ";
+  }
+  std::cout << "\n";
 }
 
-void SMTSampler::find_neighboring_solutions
-		(std::unordered_set<std::string> &mutations) {
-	// STEP 2: mutate constraints to get Sigma_1 (solutions of distance 1)
-	struct timespec etime;
-	clock_gettime(CLOCK_REALTIME, &etime);
-	double start_epoch = duration(&start_time, &etime);
-	int calls = 0;
-	int progress = 0;
-	for (int count = 0; count < constraints.size(); ++count) {
-		is_time_limit_reached();
-		//todo uncomment? is this necessary?
-		//		auto u = unsat_ind.find(cons_to_ind[count].first);
-		//		if (u != unsat_ind.end()
-		//				&& u->second.find(cons_to_ind[count].second)
-		//						!= u->second.end()) {
-		//			continue;
-		//		}
-		z3::expr &cond = constraints[count];
-		opt.push();
-		solver.push();
-		opt.add(!cond);
-		solver.add(!cond);
-		// probably redundent: soft seems to always be empty
-		//		for (z3::expr &soft : soft_constraints[count]) {
-		//			assert_soft(soft);
-		//		}
-		struct timespec end;
-		clock_gettime(CLOCK_REALTIME, &end);
-		double elapsed = duration(&start_time, &end);
-		double cost = calls ? (elapsed - start_epoch) / calls : 0.0;
-		cost *= constraints.size() - count;
-		if (max_time / 3.0 + start_epoch > max_time
-				&& elapsed + cost > max_time) {
-			std::cout << "Stopping: slow\n";
-			finish();
-		}
-		z3::check_result result = z3::unknown;
-		if (cost * rand() <= (max_time / 3.0 + start_epoch - elapsed) * RAND_MAX) {
-			result = solve();
-			++calls;
-		}
-		if (result == z3::sat) {
-			std::string new_string = model_string(model, ind);
-			total_samples++;
-			if (mutations.find(new_string) == mutations.end()) {
-				mutations.insert(new_string);
-				std::string sample_to_file = model_to_string(model);
-				std::cout << "mutation: " << sample_to_file << "\n";
-				save_and_output_sample_if_unique(sample_to_file); //todo: check format
-				flips += 1;
-			} else {
-				std::cout << "repeated\n";
-			}
-		} else if (result == z3::unsat) {
-			std::cout << "unsat\n";
-			if (cons_to_ind[count].first >= 0) {
-				unsat_ind[cons_to_ind[count].first].insert(
-						cons_to_ind[count].second);
-				++unsat_ind_count;
-			}
-		}
-
-		opt.pop();
-		solver.pop();
-		// print === as a progress bar (80 '=' to mark 100% of constraints flipped)
-		double new_progress = 80.0 * (double) ((count + 1))
-				/ (double) (constraints.size());
-		while (progress < new_progress) {
-			++progress;
-			std::cout << '=' << std::flush;
-		}
-	}
-	std::cout << '\n';
-}
-
-void SMTSampler::find_combined_solutions(std::unordered_set<std::string> &mutations,
-		const std::string &a_string) {
-	std::vector<std::string> initial(mutations.begin(), mutations.end());
-	std::vector<std::string> sigma = initial;
-	for (int k = 2; k <= 6; ++k) {
-		is_time_limit_reached();
-		std::cout << "Combining " << k << " mutations\n";
-		std::vector<std::string> new_sigma;
-		int all_new = 0;
-		int good = 0;
-		for (std::string b_string : sigma) {
-			for (std::string c_string : initial) {
-				is_time_limit_reached();
-				std::cout << "combining: " << b_string << " and " << c_string << " (orig is:" << a_string << ")\n";
-				size_t pos_a = 0;
-				size_t pos_b = 0;
-				size_t pos_c = 0;
-				std::string candidate;
-				for (z3::func_decl &w : ind) {
-					assert_is_int_var(w);
-					int val_a = int_value(a_string.c_str() + pos_a);
-					int val_b = int_value(b_string.c_str() + pos_b);
-					int val_c = int_value(c_string.c_str() + pos_c);
-					int num = combine_mutations(val_a, val_b, val_c);
-					pos_a = a_string.find(';', pos_a) + 1;
-					pos_b = b_string.find(';', pos_b) + 1;
-					pos_c = c_string.find(';', pos_c) + 1;
-					candidate += std::to_string(num) + ';';
-				}
-				std::cout << "candidate: " << candidate << "\n";
-				total_samples++;
-				if (mutations.find(candidate) == mutations.end() && strcmp(candidate.c_str(),a_string.c_str()) != 0) {
-					mutations.insert(candidate);
-				    z3::model m = gen_model(candidate, variables);
-				    z3::expr b = m.eval(original_formula, true);
-				    bool valid = b.bool_value() == Z3_L_TRUE;
-					++all_new;
-					if (valid) {
-						save_and_output_sample_if_unique(candidate);
-						++good;
-						new_sigma.push_back(candidate);
-					}
-				} else {
-					std::cout << "repeated candidate\n";
-				}
-			}
-		}
-		double accuracy = (double) (good) / (double) (all_new);
-		std::cout << "Valid: " << good << " / " << all_new << " = " << accuracy
-				<< '\n';
-//		print_stats();
-		if (all_new == 0 || accuracy < 0.1)
-			break;
-
-		sigma = new_sigma;
-	}
-}
-
-void SMTSampler::do_epoch(const z3::model &m) {
-	is_time_limit_reached();
-
-	std::cout << "SMTSAMPLER: do epoch\n";
-	std::cout << "model is: " << m << "\n";
-
-    std::unordered_set<std::string> mutations;
-    std::string m_string = model_string(m, ind);
-
+void SMTSampler::find_neighboring_solutions(
+    std::unordered_set<std::string> &mutations) {
+  // STEP 2: mutate constraints to get Sigma_1 (solutions of distance 1)
+  struct timespec etime;
+  clock_gettime(CLOCK_REALTIME, &etime);
+  double start_epoch = duration(&start_time, &etime);
+  int calls = 0;
+  int progress = 0;
+  for (size_t count = 0; count < constraints.size(); ++count) {
+    is_time_limit_reached();
+    // todo uncomment? is this necessary?
+    //		auto u = unsat_ind.find(cons_to_ind[count].first);
+    //		if (u != unsat_ind.end()
+    //				&& u->second.find(cons_to_ind[count].second)
+    //						!= u->second.end()) {
+    //			continue;
+    //		}
+    z3::expr &cond = constraints[count];
     opt.push();
     solver.push();
-
-    constraints.clear();
-    soft_constraints.clear();
-    cons_to_ind.clear();
-    all_ind_count = 0;
-
-    // STEP 1: calculate constraints based on model
-	calculate_constraints(m_string);
-	is_time_limit_reached();
-    // STEP 2: mutate constraints to get Sigma_1 (solutions of distance 1)
-	find_neighboring_solutions(mutations);
-	is_time_limit_reached();
-	// STEP 3: combine mutations to get Sigma_2...Sigma_6 (solutions of distance 2-6)
-	find_combined_solutions(mutations, m_string);
-	is_time_limit_reached();
+    opt.add(!cond);
+    solver.add(!cond);
+    // probably redundent: soft seems to always be empty
+    //		for (z3::expr &soft : soft_constraints[count]) {
+    //			assert_soft(soft);
+    //		}
+    struct timespec end;
+    clock_gettime(CLOCK_REALTIME, &end);
+    double elapsed = duration(&start_time, &end);
+    double cost = calls ? (elapsed - start_epoch) / calls : 0.0;
+    cost *= constraints.size() - count;
+    if (max_time / 3.0 + start_epoch > max_time && elapsed + cost > max_time) {
+      std::cout << "Stopping: slow\n";
+      finish();
+    }
+    z3::check_result res = z3::unknown;
+    if (cost * rand() <= (max_time / 3.0 + start_epoch - elapsed) * RAND_MAX) {
+      res = solve();
+      ++calls;
+    }
+    if (res == z3::sat) {
+      std::string new_string = model_string(model, ind);
+      total_samples++;
+      if (mutations.find(new_string) == mutations.end()) {
+        mutations.insert(new_string);
+        std::string sample_to_file = model_to_string(model);
+        std::cout << "mutation: " << sample_to_file << "\n";
+        save_and_output_sample_if_unique(sample_to_file);  // todo: check format
+        flips += 1;
+      } else {
+        std::cout << "repeated\n";
+      }
+    } else if (res == z3::unsat) {
+      std::cout << "unsat\n";
+      if (cons_to_ind[count].first >= 0) {
+        unsat_ind[cons_to_ind[count].first].insert(cons_to_ind[count].second);
+        ++unsat_ind_count;
+      }
+    }
 
     opt.pop();
     solver.pop();
+    // print === as a progress bar (80 '=' to mark 100% of constraints flipped)
+    double new_progress =
+        80.0 * (double)((count + 1)) / (double)(constraints.size());
+    while (progress < new_progress) {
+      ++progress;
+      std::cout << '=' << std::flush;
+    }
+  }
+  std::cout << '\n';
 }
 
-std::string SMTSampler::model_string(z3::model m, std::vector<z3::func_decl> ind) {
+void SMTSampler::find_combined_solutions(
+    std::unordered_set<std::string> &mutations, const std::string &a_string) {
+  std::vector<std::string> initial(mutations.begin(), mutations.end());
+  std::vector<std::string> sigma = initial;
+  for (int k = 2; k <= 6; ++k) {
+    is_time_limit_reached();
+    std::cout << "Combining " << k << " mutations\n";
+    std::vector<std::string> new_sigma;
+    int all_new = 0;
+    int good = 0;
+    for (std::string b_string : sigma) {
+      for (std::string c_string : initial) {
+        is_time_limit_reached();
+        std::cout << "combining: " << b_string << " and " << c_string
+                  << " (orig is:" << a_string << ")\n";
+        size_t pos_a = 0;
+        size_t pos_b = 0;
+        size_t pos_c = 0;
+        std::string candidate;
+        for (z3::func_decl &w : ind) {
+          assert_is_int_var(w);
+          int val_a = int_value(a_string.c_str() + pos_a);
+          int val_b = int_value(b_string.c_str() + pos_b);
+          int val_c = int_value(c_string.c_str() + pos_c);
+          int num = combine_mutations(val_a, val_b, val_c);
+          pos_a = a_string.find(';', pos_a) + 1;
+          pos_b = b_string.find(';', pos_b) + 1;
+          pos_c = c_string.find(';', pos_c) + 1;
+          candidate += std::to_string(num) + ';';
+        }
+        std::cout << "candidate: " << candidate << "\n";
+        total_samples++;
+        if (mutations.find(candidate) == mutations.end() &&
+            strcmp(candidate.c_str(), a_string.c_str()) != 0) {
+          mutations.insert(candidate);
+          z3::model m = gen_model(candidate, variables);
+          z3::expr b = m.eval(original_formula, true);
+          bool valid = b.bool_value() == Z3_L_TRUE;
+          ++all_new;
+          if (valid) {
+            save_and_output_sample_if_unique(candidate);
+            ++good;
+            new_sigma.push_back(candidate);
+          }
+        } else {
+          std::cout << "repeated candidate\n";
+        }
+      }
+    }
+    double accuracy = (double)(good) / (double)(all_new);
+    std::cout << "Valid: " << good << " / " << all_new << " = " << accuracy
+              << '\n';
+    //		print_stats();
+    if (all_new == 0 || accuracy < 0.1) break;
+
+    sigma = new_sigma;
+  }
+}
+
+void SMTSampler::do_epoch(const z3::model &m) {
+  is_time_limit_reached();
+
+  std::cout << "SMTSAMPLER: do epoch\n";
+  std::cout << "model is: " << m << "\n";
+
+  std::unordered_set<std::string> mutations;
+  std::string m_string = model_string(m, ind);
+
+  opt.push();
+  solver.push();
+
+  constraints.clear();
+  soft_constraints.clear();
+  cons_to_ind.clear();
+  all_ind_count = 0;
+
+  // STEP 1: calculate constraints based on model
+  calculate_constraints(m_string);
+  is_time_limit_reached();
+  // STEP 2: mutate constraints to get Sigma_1 (solutions of distance 1)
+  find_neighboring_solutions(mutations);
+  is_time_limit_reached();
+  // STEP 3: combine mutations to get Sigma_2...Sigma_6 (solutions of distance
+  // 2-6)
+  find_combined_solutions(mutations, m_string);
+  is_time_limit_reached();
+
+  opt.pop();
+  solver.pop();
+}
+
+std::string SMTSampler::model_string(z3::model m,
+                                     std::vector<z3::func_decl> _ind) {
   std::string s;
-  for (z3::func_decl &v : ind) {
-		assert_is_int_var(v);
-		z3::expr b = m.get_const_interp(v);
-		Z3_ast ast = b;
-		assert(ast); // model should have an interpretation for all variables
-		std::stringstream ss;
-		ss << b;
-		s += ss.str() + ';';
+  for (z3::func_decl &v : _ind) {
+    assert_is_int_var(v);
+    z3::expr b = m.get_const_interp(v);
+    Z3_ast ast = b;
+    assert(ast);  // model should have an interpretation for all variables
+    std::stringstream ss;
+    ss << b;
+    s += ss.str() + ';';
   }
   return s;
 }
 
 z3::expr SMTSampler::value(char const *n) {
-	int i_val = int_value(n);
-	return c.int_val(i_val);
+  int i_val = int_value(n);
+  return c.int_val(i_val);
 }
 
 // (exp == val) is added as soft constraint (to opt)
 void SMTSampler::add_constraints(z3::expr exp, z3::expr val, int count) {
-	assert(val.get_sort().sort_kind() == Z3_INT_SORT);
-    all_ind_count += (count >= 0);
-    cons_to_ind.emplace_back(count, 0);
-    constraints.push_back(exp == val);
-//    std::vector<z3::expr> soft;
-//    soft_constraints.push_back(soft);
-    assert_soft(exp == val);
+  assert(val.get_sort().sort_kind() == Z3_INT_SORT);
+  all_ind_count += (count >= 0);
+  cons_to_ind.emplace_back(count, 0);
+  constraints.push_back(exp == val);
+  //    std::vector<z3::expr> soft;
+  //    soft_constraints.push_back(soft);
+  assert_soft(exp == val);
 }
 
-int SMTSampler::combine_mutations(int val_orig, int val_b, int val_c){
-	int diff_average = ((val_b-val_orig) + (val_c-val_orig)) / 2;
-	return val_orig + diff_average;
+int SMTSampler::combine_mutations(int val_orig, int val_b, int val_c) {
+  int diff_average = ((val_b - val_orig) + (val_c - val_orig)) / 2;
+  return val_orig + diff_average;
 }
 
-z3::model SMTSampler::gen_model(const std::string &candidate, std::vector<z3::func_decl> &ind) {
+z3::model SMTSampler::gen_model(const std::string &candidate,
+                                std::vector<z3::func_decl> &_ind) {
   z3::model m(c);
   size_t pos = 0;
-  for (z3::func_decl &v : ind) {
-	  assert_is_int_var(v);
-      z3::expr a = value(candidate.c_str() + pos);
-      pos = candidate.find(';', pos) + 1;
-      m.add_const_interp(v, a);
+  for (z3::func_decl &v : _ind) {
+    assert_is_int_var(v);
+    z3::expr a = value(candidate.c_str() + pos);
+    pos = candidate.find(';', pos) + 1;
+    m.add_const_interp(v, a);
   }
   return m;
 }
 
-void SMTSampler::assert_is_int_var(const z3::func_decl &v){
-	assert(v.is_const() and v.range().sort_kind() == Z3_INT_SORT);
+void SMTSampler::assert_is_int_var(const z3::func_decl &v) {
+  assert(v.is_const() and v.range().sort_kind() == Z3_INT_SORT);
 }
 
-int SMTSampler::int_value(char const *n){
-	assert(n);
-	int value = atoi(n);
-	if (n[0] == '('){ // if n is negative we need to remove the brackets
-		assert(n[1] == '-' && n[2] == ' ');
-		value = -atoi(n + 3);
-	}
-	return value;
+int SMTSampler::int_value(char const *n) {
+  assert(n);
+  int value = atoi(n);
+  if (n[0] == '(') {  // if n is negative we need to remove the brackets
+    assert(n[1] == '-' && n[2] == ' ');
+    value = -atoi(n + 3);
+  }
+  return value;
 }
 
 void SMTSampler::finish() {
-	json_output["method name"] = "smtsampler";
-	Sampler::finish();
+  json_output["method name"] = "smtsampler";
+  Sampler::finish();
 }
-

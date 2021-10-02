@@ -1,9 +1,9 @@
 #define PY_SSIZE_T_CLEAN
 
-#include <iostream>
-
 #include <Python.h>
 #include <z3++.h>
+
+#include <iostream>
 
 void initialize_python() {
   Py_Initialize();
@@ -28,21 +28,18 @@ void patch_global_context(Z3_context ctx) {
   PyObject *patch_func = PyObject_GetAttrString(m, "patch_z3_context");
   assert(patch_func);
   // It doesn't look like it but it's a pointer, thanks Microsoft
-  PyObject *res = PyObject_CallOneArg(patch_func,
-                                      PyLong_FromVoidPtr(ctx));
+  PyObject *res = PyObject_CallOneArg(patch_func, PyLong_FromVoidPtr(ctx));
   assert(res);
   Py_DECREF(res);
 }
 
 void call_strengthen(Z3_app f, Z3_model model) {
-    PyObject *m = get_formula_strengthener_module();
-    PyObject *func = PyObject_GetAttrString(m, "strengthen_wrapper");
-    assert(func);
-    PyObject *res = PyObject_CallFunctionObjArgs(func,
-                                                 PyLong_FromVoidPtr(f),
-                                                 PyLong_FromVoidPtr(model),
-                                                 NULL);
-    PyErr_Print();
-    assert(res);
-    Py_DECREF(res);
+  PyObject *m = get_formula_strengthener_module();
+  PyObject *func = PyObject_GetAttrString(m, "strengthen_wrapper");
+  assert(func);
+  PyObject *res = PyObject_CallFunctionObjArgs(func, PyLong_FromVoidPtr(f),
+                                               PyLong_FromVoidPtr(model), NULL);
+  PyErr_Print();
+  assert(res);
+  Py_DECREF(res);
 }

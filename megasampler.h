@@ -2,24 +2,26 @@
 #define MEGASAMPLER_H_
 
 #include "sampler.h"
+#include "strengthen.capnp.h"
 
 class MEGASampler : public Sampler {
-
   z3::expr simpl_formula;
 
-public:
+ public:
   MEGASampler(std::string input, int max_samples, double max_time,
-              int max_epoch_samples, double max_epoch_time, int strategy, bool json);
-
+              int max_epoch_samples, double max_epoch_time, int strategy,
+              bool json);
   /*
    * Override from sampler
    */
-  void do_epoch(const z3::model &model);
+  void do_epoch(const z3::model& model);
   void finish();
 
-private:
-  void sample_intervals_in_rounds(const auto& intervalmap);
-  std::string get_random_sample_from_intervals(const auto& intervalmap);
+ private:
+  void sample_intervals_in_rounds(
+      const capnp::List<StrengthenResult::VarInterval>::Reader& intervalmap);
+  std::string get_random_sample_from_intervals(
+      const capnp::List<StrengthenResult::VarInterval>::Reader& intervalmap);
 };
 
 #endif /* MEGASAMPLER_H_ */

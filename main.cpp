@@ -2,13 +2,12 @@
 //#include "sampler.h"
 #include <cstring>
 
-#include "sampler.h"
 #include "megasampler.h"
-#include "smtsampler.h"
 #include "pythonfuncs.h"
+#include "sampler.h"
+#include "smtsampler.h"
 
 int main(int argc, char *argv[]) {
-
   int max_epochs = 1000000;
   int max_samples = 1000000;
   double max_time = 3600.0;
@@ -45,7 +44,7 @@ int main(int argc, char *argv[]) {
       strategy = STRAT_SAT;
     else if (strcmp(argv[i], "--smtsampler") == 0)
       use_smtsampler = true;
-    else if (strcmp(argv[i], "--json") == 0){
+    else if (strcmp(argv[i], "--json") == 0) {
       json = true;
     } else if (arg_samples) {
       arg_samples = false;
@@ -71,17 +70,19 @@ int main(int argc, char *argv[]) {
   }
 
   // initialize_python();
-  Sampler * sp;
-  if (use_smtsampler){
-	  sp = new SMTSampler(argv[argc - 1], max_samples, max_time, max_epoch_samples, max_epoch_time, strategy, json);
+  Sampler *sp;
+  if (use_smtsampler) {
+    sp = new SMTSampler(argv[argc - 1], max_samples, max_time,
+                        max_epoch_samples, max_epoch_time, strategy, json);
   } else {
-	  sp = new MEGASampler(argv[argc - 1], max_samples, max_time, max_epoch_samples, max_epoch_time, strategy, json);
+    sp = new MEGASampler(argv[argc - 1], max_samples, max_time,
+                         max_epoch_samples, max_epoch_time, strategy, json);
   }
-  Sampler & s = *sp;
+  Sampler &s = *sp;
   patch_global_context(s.c);
   s.set_timer_on("total");
   s.set_timer_on("initial_solving");
-  s.check_if_satisfiable(); // todo: save model from initial solving?
+  s.check_if_satisfiable();  // todo: save model from initial solving?
   s.accumulate_time("initial_solving");
   try {
     for (int epochs = 0; epochs < max_epochs; epochs++) {
@@ -98,7 +99,7 @@ int main(int argc, char *argv[]) {
   }
   s.accumulate_time("total");
   s.safe_exit(0);
-  delete sp; //todo: this is unreachable because we exit on safe_exit
+  delete sp;  // todo: this is unreachable because we exit on safe_exit
   // finalize_python();
   return 0;
 

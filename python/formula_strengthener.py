@@ -1,4 +1,6 @@
 from functools import reduce
+import cProfile
+import pstats
 
 from z3 import *
 from interval import Interval, IntervalSet, INF, MINF, MININT, MAXINT
@@ -207,7 +209,7 @@ class StrengthenedFormula():
                     op, model)
                 i += 1
         else:
-            pass  #todo raise exception
+            pass  # todo raise exception
 
     def get_unsimplified_formula(self):
         return And(self.unsimplified_demands)
@@ -383,7 +385,7 @@ class StrengthenedFormula():
             [self, StrengthenedFormula.get_top()])
 
 
-def strengthen(f, model, debug=True):
+def strengthen(f, model, debug=False):
     res = StrengthenedFormula(debug)
     f_as_and = nnf_simplify_and_remove_or(f, model)
     if debug:
@@ -441,22 +443,12 @@ def patch_z3_context(context_pointer):
     ctxobj = ContextObj(context_pointer)
     ctxobj.value = context_pointer  # why?!
     z3.main_ctx().ctx = ctxobj
-    print(
-        f"Patching the z3 global context, got {hex(context_pointer)}, {ctxobj}, {z3.main_ctx().ref()}"
-    )
 
 
-def strengthen_wrapper(f, model):
-    ast = Ast(f)
-    ast.value = f
-    f = ExprRef(ast, z3.main_ctx())
-    modelobj = ModelObj(model)
-    modelobj.value = model
-    model = ModelRef(modelobj, z3.main_ctx())
-
+def strengthen_create_message(f, model):
     b = strengthen_capnp.StrengthenResult.new_message()
     try:
-        print(f"Calling strengthen with expr: {f}, model: {model}")
+        #print(f"Calling strengthen with expr: {f}, model: {model}")
         res = strengthen(f, model)
     except NoRuleForOp as e:
         b.res = False
@@ -486,3 +478,14 @@ def strengthen_wrapper(f, model):
     print(f"Result binary length: {len(out)}")
     # print(b)
     return out
+
+
+def strengthen_wrapper(f, model):
+    ast = Ast(f)
+    ast.value = f
+    f = ExprRef(ast, z3.main_ctx())
+    modelobj = ModelObj(model)
+    modelobj.value = model
+    model = ModelRef(modelobj, z3.main_ctx())
+
+    return strengthen_create_message(f, model)

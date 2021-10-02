@@ -1,11 +1,12 @@
+#include <string.h>
+#include <z3++.h>
+
 #include <algorithm>
 #include <fstream>
 #include <map>
-#include <string.h>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
-#include <z3++.h>
 
 enum { STRAT_SMTBIT, STRAT_SMTBV, STRAT_SAT };
 
@@ -64,10 +65,16 @@ class SMTSampler {
 
   std::ofstream results_file;
 
-public:
+ public:
   SMTSampler(std::string input, int max_samples, double max_time, int strategy)
-      : opt(c), params(c), solver(c), model(c), smt_formula(c),
-        input_file(input), max_samples(max_samples), max_time(max_time),
+      : opt(c),
+        params(c),
+        solver(c),
+        model(c),
+        smt_formula(c),
+        input_file(input),
+        max_samples(max_samples),
+        max_time(max_time),
         strategy(strategy) {
     z3::set_param("rewriter.expand_select_store", "true");
     params.set("timeout", 5000u);
@@ -86,46 +93,45 @@ public:
       opt.push();
       solver.push();
       for (z3::func_decl &v : ind) {
-        if (v.arity() > 0 || v.range().is_array())
-          continue;
+        if (v.arity() > 0 || v.range().is_array()) continue;
         switch (v.range().sort_kind()) {
-        case Z3_BV_SORT: {
-          if (random_soft_bit) {
-            for (int i = 0; i < v.range().bv_size(); ++i) {
-              if (rand() % 2)
-                assert_soft(v().extract(i, i) == c.bv_val(0, 1));
-              else
-                assert_soft(v().extract(i, i) != c.bv_val(0, 1));
+          case Z3_BV_SORT: {
+            if (random_soft_bit) {
+              for (int i = 0; i < v.range().bv_size(); ++i) {
+                if (rand() % 2)
+                  assert_soft(v().extract(i, i) == c.bv_val(0, 1));
+                else
+                  assert_soft(v().extract(i, i) != c.bv_val(0, 1));
+              }
+            } else {
+              std::string n;
+              char num[10];
+              int i = v.range().bv_size();
+              if (i % 4) {
+                snprintf(num, 10, "%x", rand() & ((1 << (i % 4)) - 1));
+                n += num;
+                i -= (i % 4);
+              }
+              while (i) {
+                snprintf(num, 10, "%x", rand() & 15);
+                n += num;
+                i -= 4;
+              }
+              Z3_ast ast = parse_bv(n.c_str(), v.range(), c);
+              z3::expr exp(c, ast);
+              assert_soft(v() == exp);
             }
-          } else {
-            std::string n;
-            char num[10];
-            int i = v.range().bv_size();
-            if (i % 4) {
-              snprintf(num, 10, "%x", rand() & ((1 << (i % 4)) - 1));
-              n += num;
-              i -= (i % 4);
-            }
-            while (i) {
-              snprintf(num, 10, "%x", rand() & 15);
-              n += num;
-              i -= 4;
-            }
-            Z3_ast ast = parse_bv(n.c_str(), v.range(), c);
-            z3::expr exp(c, ast);
-            assert_soft(v() == exp);
+            break;
           }
-          break;
-        }
-        case Z3_BOOL_SORT:
-          if (rand() % 2)
-            assert_soft(v());
-          else
-            assert_soft(!v());
-          break;
-        default:
-          std::cout << "Invalid sort\n";
-          exit(1);
+          case Z3_BOOL_SORT:
+            if (rand() % 2)
+              assert_soft(v());
+            else
+              assert_soft(!v());
+            break;
+          default:
+            std::cout << "Invalid sort\n";
+            exit(1);
         }
       }
       z3::check_result result = solve();
@@ -176,8 +182,7 @@ public:
   int maxdepth = 0;
 
   void visit(z3::expr e, int depth = 0) {
-    if (sup.find(e) != sup.end())
-      return;
+    if (sup.find(e) != sup.end()) return;
     assert(e.is_app());
     z3::func_decl fd = e.decl();
     if (e.is_const()) {
@@ -190,17 +195,17 @@ public:
           ++num_arrays;
         } else if (fd.is_const()) {
           switch (fd.range().sort_kind()) {
-          case Z3_BV_SORT:
-            ++num_bv;
-            num_bits += fd.range().bv_size();
-            break;
-          case Z3_BOOL_SORT:
-            ++num_bools;
-            ++num_bits;
-            break;
-          default:
-            std::cout << "Invalid sort\n";
-            exit(1);
+            case Z3_BV_SORT:
+              ++num_bv;
+              num_bits += fd.range().bv_size();
+              break;
+            case Z3_BOOL_SORT:
+              ++num_bools;
+              ++num_bits;
+              break;
+            default:
+              std::cout << "Invalid sort\n";
+              exit(1);
           }
         }
       }
@@ -217,10 +222,8 @@ public:
       sub.insert(e);
     }
     sup.insert(e);
-    if (depth > maxdepth)
-      maxdepth = depth;
-    for (int i = 0; i < e.num_args(); ++i)
-      visit(e.arg(i), depth + 1);
+    if (depth > maxdepth) maxdepth = depth;
+    for (int i = 0; i < e.num_args(); ++i) visit(e.arg(i), depth + 1);
   }
 
   void parse_smt() {
@@ -344,8 +347,7 @@ public:
         int v;
         while (!iss.eof()) {
           iss >> v;
-          if (v)
-            ind.push_back(literal(v).decl());
+          if (v) ind.push_back(literal(v).decl());
         }
       } else if (line[0] != 'c' && line[0] != 'p') {
         z3::expr_vector clause(c);
@@ -368,16 +370,16 @@ public:
 
   z3::expr value(char const *n, z3::sort s) {
     switch (s.sort_kind()) {
-    case Z3_BV_SORT: {
-      Z3_ast ast = parse_bv(n, s, c);
-      z3::expr exp(c, ast);
-      return exp;
-    }
-    case Z3_BOOL_SORT:
-      return c.bool_val(atoi(n) == 1);
-    default:
-      std::cout << "Invalid sort\n";
-      exit(1);
+      case Z3_BV_SORT: {
+        Z3_ast ast = parse_bv(n, s, c);
+        z3::expr exp(c, ast);
+        return exp;
+      }
+      case Z3_BOOL_SORT:
+        return c.bool_val(atoi(n) == 1);
+      default:
+        std::cout << "Invalid sort\n";
+        exit(1);
     }
   }
 
@@ -581,8 +583,7 @@ public:
       std::cout << "Valid: " << good << " / " << all << " = " << accuracy
                 << '\n';
       print_stats();
-      if (all == 0 || accuracy < 0.1)
-        break;
+      if (all == 0 || accuracy < 0.1) break;
       sigma = new_sigma;
     }
 
@@ -593,38 +594,36 @@ public:
 
   void add_constraints(z3::expr exp, z3::expr val, int count) {
     switch (val.get_sort().sort_kind()) {
-    case Z3_BV_SORT: {
-      std::vector<z3::expr> soft;
-      for (int i = 0; i < val.get_sort().bv_size(); ++i) {
-        all_ind_count += (count >= 0);
-        cons_to_ind.emplace_back(count, i);
+      case Z3_BV_SORT: {
+        std::vector<z3::expr> soft;
+        for (int i = 0; i < val.get_sort().bv_size(); ++i) {
+          all_ind_count += (count >= 0);
+          cons_to_ind.emplace_back(count, i);
 
-        z3::expr r = val.extract(i, i);
-        r = r.simplify();
-        constraints.push_back(exp.extract(i, i) == r);
-        // soft.push_back(exp.extract(i, i) == r);
-        if (strategy == STRAT_SMTBIT)
-          assert_soft(exp.extract(i, i) == r);
+          z3::expr r = val.extract(i, i);
+          r = r.simplify();
+          constraints.push_back(exp.extract(i, i) == r);
+          // soft.push_back(exp.extract(i, i) == r);
+          if (strategy == STRAT_SMTBIT) assert_soft(exp.extract(i, i) == r);
+        }
+        for (int i = 0; i < val.get_sort().bv_size(); ++i) {
+          soft_constraints.push_back(soft);
+        }
+        if (strategy == STRAT_SMTBV) assert_soft(exp == val);
+        break;
       }
-      for (int i = 0; i < val.get_sort().bv_size(); ++i) {
+      case Z3_BOOL_SORT: {
+        all_ind_count += (count >= 0);
+        cons_to_ind.emplace_back(count, 0);
+        constraints.push_back(exp == val);
+        std::vector<z3::expr> soft;
         soft_constraints.push_back(soft);
-      }
-      if (strategy == STRAT_SMTBV)
         assert_soft(exp == val);
-      break;
-    }
-    case Z3_BOOL_SORT: {
-      all_ind_count += (count >= 0);
-      cons_to_ind.emplace_back(count, 0);
-      constraints.push_back(exp == val);
-      std::vector<z3::expr> soft;
-      soft_constraints.push_back(soft);
-      assert_soft(exp == val);
-      break;
-    }
-    default:
-      std::cout << "Invalid sort\n";
-      exit(1);
+        break;
+      }
+      default:
+        std::cout << "Invalid sort\n";
+        exit(1);
     }
   }
 
@@ -693,7 +692,6 @@ public:
                         std::string const &str_c, size_t &pos_a, size_t &pos_b,
                         size_t &pos_c, int arity, z3::sort s,
                         std::string &candidate) {
-
     std::unordered_map<std::string, triple> values;
     char const *def_a = parse_function(str_a, pos_a, arity, values, 0);
     char const *def_b = parse_function(str_b, pos_b, arity, values, 1);
@@ -705,14 +703,11 @@ public:
     candidate += def + '\0';
     for (auto value : values) {
       char const *val_a = value.second.a[0];
-      if (!val_a)
-        val_a = def_a;
+      if (!val_a) val_a = def_a;
       char const *val_b = value.second.a[1];
-      if (!val_b)
-        val_b = def_b;
+      if (!val_b) val_b = def_b;
       char const *val_c = value.second.a[2];
-      if (!val_c)
-        val_c = def_c;
+      if (!val_c) val_c = def_c;
       std::string val = combine(val_a, val_b, val_c, s);
       candidate += value.first;
       candidate += val + '\0';
@@ -943,25 +938,25 @@ public:
         z3::expr b = m.get_const_interp(v);
         Z3_ast ast = b;
         switch (v.range().sort_kind()) {
-        case Z3_BV_SORT: {
-          if (!ast) {
-            s += bv_string(c.bv_val(0, v.range().bv_size()), c) + '\0';
-          } else {
-            s += bv_string(b, c) + '\0';
+          case Z3_BV_SORT: {
+            if (!ast) {
+              s += bv_string(c.bv_val(0, v.range().bv_size()), c) + '\0';
+            } else {
+              s += bv_string(b, c) + '\0';
+            }
+            break;
           }
-          break;
-        }
-        case Z3_BOOL_SORT: {
-          if (!ast) {
-            s += std::to_string(false) + '\0';
-          } else {
-            s += std::to_string(b.bool_value() == Z3_L_TRUE) + '\0';
+          case Z3_BOOL_SORT: {
+            if (!ast) {
+              s += std::to_string(false) + '\0';
+            } else {
+              s += std::to_string(b.bool_value() == Z3_L_TRUE) + '\0';
+            }
+            break;
           }
-          break;
-        }
-        default:
-          std::cout << "Invalid sort\n";
-          exit(1);
+          default:
+            std::cout << "Invalid sort\n";
+            exit(1);
         }
       } else {
         z3::func_interp f = m.get_func_interp(v);

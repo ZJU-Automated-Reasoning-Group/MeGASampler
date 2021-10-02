@@ -1154,7 +1154,7 @@ static struct _cffi_pypy_init_s {
     const char *code;
 } _cffi_pypy_init = {
     _CFFI_MODULE_NAME,
-    _CFFI_PYTHON_STARTUP_FUNC,
+    (void *) _CFFI_PYTHON_STARTUP_FUNC,
     _CFFI_PYTHON_STARTUP_CODE,
 };
 

@@ -1,20 +1,14 @@
-/*
- * sampler.h
- *
- *  Created on: 21 Mar 2021
- *      Author: batchen
- */
-
 #ifndef SAMPLER_H_
 #define SAMPLER_H_
 
-#include <algorithm> // for std::find
-#include <fstream>   //for results_file
+#include <jsoncpp/json/json.h>
+#include <z3++.h>
+
+#include <algorithm>  // for std::find
+#include <fstream>    //for results_file
 #include <map>
 #include <unordered_set>
 #include <vector>
-#include <z3++.h>
-#include <jsoncpp/json/json.h>
 
 #include "samples.capnp.h"
 
@@ -24,14 +18,15 @@ Z3_ast parse_bv(char const *n, Z3_sort s, Z3_context ctx);
 std::string bv_string(Z3_ast ast, Z3_context ctx);
 
 class Sampler {
-
   // Z3 objects
-public:
-  z3::context c; // must come before other z3 objects!
+ public:
+  z3::context c;  // must come before other z3 objects!
   z3::expr original_formula;
-private:
+
+ private:
   z3::params params;
-protected:
+
+ protected:
   z3::model model;
   z3::optimize opt;
   z3::solver solver;
@@ -40,12 +35,12 @@ protected:
   std::ofstream results_file;
   std::unordered_set<std::string> samples;
 
-protected:
+ protected:
   std::string input_filename;
 
   // Settings
   bool json = false;
-  bool random_soft_bit = false; // TODO enable change from cmd line or remove
+  bool random_soft_bit = false;  // TODO enable change from cmd line or remove
 
   // Time management
   struct timespec start_time;
@@ -64,26 +59,29 @@ protected:
       num_ints = 0, num_reals = 0;
   std::vector<z3::func_decl> variables;
   std::unordered_set<std::string> var_names = {
-      "bv", "Int", "true", "false"}; // initialize with constant names so that
-                                     // constants are not mistaken for variables
+      "bv", "Int", "true",
+      "false"};  // initialize with constant names so that
+                 // constants are not mistaken for variables
   int max_depth = 0;
-  std::unordered_set<Z3_ast> sup; // bat: nodes (=leaves?)
+  std::unordered_set<Z3_ast> sup;  // bat: nodes (=leaves?)
 
   // Other statistics
-  Json::Value json_output; // json object collecting statistics to be printed with flag --json
+  Json::Value json_output;  // json object collecting statistics to be printed
+                            // with flag --json
   std::string sat_result = "unknown";
-  std::string result = "unknown"; // success/failure
-  std::string failure_cause; // explanation for failure if result==failure
+  std::string result = "unknown";  // success/failure
+  std::string failure_cause;       // explanation for failure if result==failure
   int epochs = 0;
   int max_smt_calls = 0;
   int smt_calls = 0;
-  int total_samples = 0; // how many samples we stumbled upon (repetitions are
-                         // counted multiple times)
-  int valid_samples =
-      0; // how many samples were valid (repetitions are counted multiple times)
+  int total_samples = 0;  // how many samples we stumbled upon (repetitions are
+                          // counted multiple times)
+  int valid_samples = 0;  // how many samples were valid (repetitions are
+                          // counted multiple times)
   int unique_valid_samples =
-      0; // how many different valid samples were found (should always equal the
-         // size of the samples set and the number of lines in the results file)
+      0;  // how many different valid samples were found (should always equal
+          // the size of the samples set and the number of lines in the results
+          // file)
 
   // Methods
   double duration(struct timespec *a, struct timespec *b);
@@ -95,7 +93,6 @@ protected:
   // returns true iff the sample is unique (i.e., not seen before)
   bool save_and_output_sample_if_unique(const std::string &sample);
   std::string model_to_string(const z3::model &model);
-  SampleContainer::Sample::Builder model_to_capnp(const z3::model &m);
   /*
    * Assigns a random value to all variables and
    * adds equivalence constraints as soft constraints to opt.
@@ -118,7 +115,7 @@ protected:
    */
   void write_json();
 
-public:
+ public:
   /*
    * Initializes limits and parameters.
    * Seeds random number generator.
@@ -127,7 +124,8 @@ public:
    * Creates output file (stored in results_file).
    */
   Sampler(std::string input, int max_samples, double max_time,
-          int max_epoch_samples, double max_epoch_time, int strategy, bool json);
+          int max_epoch_samples, double max_epoch_time, int strategy,
+          bool json);
   /*
    * Initializes solvers (MAX-SMT and SMT) with formula.
    */
@@ -185,7 +183,7 @@ public:
   bool is_time_limit_reached();
   // TODO handle timeouts
 
-  virtual ~Sampler() {};
+  virtual ~Sampler(){};
 };
 
 #endif /* SAMPLER_H_ */

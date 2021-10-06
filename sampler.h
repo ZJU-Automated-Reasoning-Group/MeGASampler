@@ -42,9 +42,6 @@ class Sampler {
   bool json = false;
   bool random_soft_bit = false;  // TODO enable change from cmd line or remove
 
-  // Time management
-  struct timespec start_time;
-  struct timespec epoch_start_time;
   // TODO take these max values into account during computation
   int max_samples;
   double max_time;
@@ -53,6 +50,7 @@ class Sampler {
   std::map<std::string, struct timespec> timer_start_times;
   std::map<std::string, bool> is_timer_on;
   std::map<std::string, double> accumulated_times;
+  std::map<std::string, double> max_times;
 
   // Formula statistics
   int num_arrays = 0, num_bv = 0, num_bools = 0, num_bits = 0, num_uf = 0,
@@ -86,6 +84,7 @@ class Sampler {
   // Methods
   double duration(struct timespec *a, struct timespec *b);
   double elapsed_time_from(struct timespec start);
+  double get_time_left(const std::string& category);
   void parse_formula(std::string input);
   void compute_and_print_formula_stats();
   void _compute_formula_stats_aux(z3::expr e, int depth = 0);
@@ -104,7 +103,7 @@ class Sampler {
    * Check result (sat/unsat/unknown) is returned.
    * If sat - model is put in model variable.
    */
-  z3::check_result solve();
+    z3::check_result solve(const std::string& timer_category);
   /*
    * Prints statistic information about the sampling procedure:
    * number of samples and epochs and time spent on each phase.
@@ -181,8 +180,16 @@ class Sampler {
    * If so, calls finish.
    */
   bool is_time_limit_reached();
-  // TODO handle timeouts
+  /*
+   * Checks if specific timeout is reached, returns true/false.
+   */
+  bool is_time_limit_reached(const std::string &category);
 
+  /*
+   * Set max time for timer (helps with timeout)
+   */
+  void set_timer_max(const std::string &category, double limit);
+    
   virtual ~Sampler(){};
 };
 

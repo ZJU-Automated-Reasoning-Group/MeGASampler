@@ -27,11 +27,8 @@ Sampler::Sampler(std::string _input, int _max_samples, double _max_time,
       max_epoch_samples(_max_epoch_samples),
       max_epoch_time(_max_epoch_time) {
   z3::set_param("rewriter.expand_select_store", "true");
-  clock_gettime(CLOCK_REALTIME, &start_time);
 
-  srand(start_time.tv_sec);
-
-  params.set("timeout", 50000u);
+  params.set(":timeout", 50000u);
   opt.set(params);
   solver.set(params);
 
@@ -64,10 +61,15 @@ double Sampler::duration(struct timespec *a, struct timespec *b) {
   return (b->tv_sec - a->tv_sec) + 1.0e-9 * (b->tv_nsec - a->tv_nsec);
 }
 
-double Sampler::get_elapsed_time() { return elapsed_time_from(start_time); }
+double Sampler::get_elapsed_time() { return elapsed_time_from(timer_start_times["total"]); }
 
 double Sampler::get_epoch_elapsed_time() {
-  return elapsed_time_from(epoch_start_time);
+    return elapsed_time_from(timer_start_times["epoch"]);
+}
+
+double Sampler::get_time_left(const std::string& t) {
+    double ret = max_times[t] - elapsed_time_from(timer_start_times[t]);
+    return (ret >= 0.0) ? ret : 0.0;
 }
 
 double Sampler::elapsed_time_from(struct timespec start) {
@@ -94,7 +96,7 @@ void Sampler::parse_formula(std::string input) {
 
 void Sampler::check_if_satisfiable() {
   z3::check_result res =
-      solve();  // will try to solve the formula and put model in model variable
+      solve("total");  // will try to solve the formula and put model in model variable
   if (res == z3::unsat) {
     sat_result = "unsat";
     std::cout << "Formula is unsat\n";
@@ -109,14 +111,12 @@ void Sampler::check_if_satisfiable() {
   }
 }
 
-z3::check_result Sampler::solve() {
-  //   std::cout<<"Opt assertions:"<<std::endl;
-  //   std::cout<<opt.assertions()<<std::endl;
-  //   std::cout<<"Opt objectives:"<<std::endl;
-  //   std::cout<<opt.objectives()<<std::endl;
+z3::check_result Sampler::solve(const std::string& timer_category) {
   z3::check_result res = z3::unknown;
   try {
     max_smt_calls++;
+    params.set(":timeout", static_cast<unsigned>(1000*get_time_left(timer_category)));
+    opt.set(params);
     result = opt.check();  // bat: first, solve a MAX-SMT instance
   } catch (const z3::exception &except) {
     std::cout << "Exception: " << except << "\n";
@@ -125,12 +125,15 @@ z3::check_result Sampler::solve() {
     safe_exit(1);
   }
   if (res == z3::sat) {
+      
     model = opt.get_model();
   } else if (res == z3::unknown) {
     std::cout << "MAX-SMT timed out"
               << "\n";
     try {
       smt_calls++;
+      params.set(":timeout", static_cast<unsigned>(1000*get_time_left(timer_category)));
+      solver.set(params);
       res = solver.check();  // bat: if too long, solve a regular SMT instance
                              // (without any soft constraints)
     } catch (const z3::exception &except) {
@@ -149,11 +152,18 @@ z3::check_result Sampler::solve() {
 }
 
 // TODO: This function doesn't really return bool?
-bool Sampler::is_time_limit_reached() {
+bool Sampler::is_time_limit_reached(const std::string& category) {
   struct timespec now;
   clock_gettime(CLOCK_REALTIME, &now);
-  double elapsed = duration(&start_time, &now);
-  if (elapsed >= max_time) {
+  double elapsed = duration(&timer_start_times[category], &now);
+  if (elapsed >= max_times[category]) {
+      return true;
+  }
+  return false;
+}
+
+bool Sampler::is_time_limit_reached() {
+  if (is_time_limit_reached("total")) {
     std::cout << "Stopping: timeout\n";
     failure_cause = "Timeout.";
     safe_exit(0);
@@ -226,15 +236,14 @@ z3::model Sampler::start_epoch() {
   opt.push();  // because formula is constant, but other hard/soft constraints
                // change between epochs
   choose_random_assignment();
-  z3::check_result res = solve();  // bat: find closest solution to random
-                                   // assignment (or some solution)
+  z3::check_result res = solve("epoch");
+  
   assert(res != z3::unsat);
   opt.pop();
 
   epochs++;
   total_samples++;
 
-  //    save_and_output_sample_if_unique(Z3_model_to_string(c,model));
   save_and_output_sample_if_unique(model_to_string(model));
 
   return model;
@@ -242,8 +251,8 @@ z3::model Sampler::start_epoch() {
 
 void Sampler::choose_random_assignment() {
   for (z3::func_decl &v :
-       variables) {  // bat: Choose a random assignment: for variable-> if bv or
-                     // bool, randomly choose a value to it.
+       variables) {
+      
     if (v.arity() > 0 || v.range().is_array()) continue;
     switch (v.range().sort_kind()) {
       case Z3_BV_SORT:  // random assignment to bv
@@ -517,6 +526,11 @@ void Sampler::accumulate_time(const std::string &category) {
 
   is_timer_on[category] = false;
 }
+
+void Sampler::set_timer_max(const std::string &category, double limit) {
+  max_times[category] = limit;
+}
+
 
 void Sampler::safe_exit(int exitcode) {
   if (exitcode) {

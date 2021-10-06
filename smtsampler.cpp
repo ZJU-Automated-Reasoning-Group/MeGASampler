@@ -14,16 +14,6 @@ SMTSampler::SMTSampler(std::string _input, int _max_samples, double _max_time,
 }
 
 void SMTSampler::calculate_constraints(const std::string &m_string) {
-  // todo uncomment? is this necessary?
-  //	if (flip_internal) {
-  //		for (z3::expr &v : internal) {
-  //			z3::expr b = m.eval(v, true);
-  //			cons_to_ind.emplace_back(-1, -1);
-  //			constraints.push_back(v == b);
-  //			std::vector<z3::expr> soft;
-  //			soft_constraints.push_back(soft);
-  //		}
-  //	}
   size_t pos = 0;
   for (size_t count = 0; count < ind.size(); ++count) {
     z3::func_decl &v = ind[count];
@@ -44,7 +34,7 @@ void SMTSampler::find_neighboring_solutions(
   // STEP 2: mutate constraints to get Sigma_1 (solutions of distance 1)
   struct timespec etime;
   clock_gettime(CLOCK_REALTIME, &etime);
-  double start_epoch = duration(&start_time, &etime);
+  double start_epoch = duration(&timer_start_times["total"], &etime);
   int calls = 0;
   int progress = 0;
   for (size_t count = 0; count < constraints.size(); ++count) {
@@ -61,13 +51,13 @@ void SMTSampler::find_neighboring_solutions(
     solver.push();
     opt.add(!cond);
     solver.add(!cond);
-    // probably redundent: soft seems to always be empty
+    // probably redundant: soft seems to always be empty
     //		for (z3::expr &soft : soft_constraints[count]) {
     //			assert_soft(soft);
     //		}
     struct timespec end;
     clock_gettime(CLOCK_REALTIME, &end);
-    double elapsed = duration(&start_time, &end);
+    double elapsed = duration(&timer_start_times["total"], &end);
     double cost = calls ? (elapsed - start_epoch) / calls : 0.0;
     cost *= constraints.size() - count;
     if (max_time / 3.0 + start_epoch > max_time && elapsed + cost > max_time) {
@@ -76,7 +66,7 @@ void SMTSampler::find_neighboring_solutions(
     }
     z3::check_result res = z3::unknown;
     if (cost * rand() <= (max_time / 3.0 + start_epoch - elapsed) * RAND_MAX) {
-      res = solve();
+      res = solve("epoch");
       ++calls;
     }
     if (res == z3::sat) {

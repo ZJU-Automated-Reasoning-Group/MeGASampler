@@ -31,7 +31,7 @@ Sampler::Sampler(std::string _input, std::string _output_dir, int _max_samples,
       max_epoch_samples(_max_epoch_samples),
       max_epoch_time(_max_epoch_time) {
   z3::set_param("rewriter.expand_select_store", "true");
-
+  z3::set_param("parallel.enable", "true");
   params.set(":timeout", 50000u);
   opt.set(params);
   solver.set(params);
@@ -88,7 +88,12 @@ double Sampler::get_epoch_elapsed_time() {
 
 double Sampler::get_time_left(const std::string &t) {
   double ret = max_times[t] - elapsed_time_from(timer_start_times[t]);
-  return (ret >= 0.0) ? ret : 0.0;
+  ret = (ret >= 0.0) ? ret : 0.0;
+  if ("total" == t) {
+    return ret;
+  }
+  // Never return more than the total time left
+  return std::min(ret, get_time_left("total"));
 }
 
 double Sampler::elapsed_time_from(struct timespec start) {
@@ -147,8 +152,7 @@ z3::check_result Sampler::solve(const std::string &timer_category) {
   if (res == z3::sat) {
     model = opt.get_model();
   } else if (res == z3::unknown) {
-    std::cout << "MAX-SMT timed out"
-              << "\n";
+    std::cout << "MAX-SMT returned 'unknown' (timeout?)\n";
     try {
       smt_calls++;
       params.set(":timeout",

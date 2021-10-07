@@ -31,7 +31,8 @@ Sampler::Sampler(std::string _input, std::string _output_dir, int _max_samples,
       max_epoch_samples(_max_epoch_samples),
       max_epoch_time(_max_epoch_time) {
   z3::set_param("rewriter.expand_select_store", "true");
-  z3::set_param("parallel.enable", "true");
+  // Parallel makes it ignore the timeout :(
+  // z3::set_param("parallel.enable", "true");
   params.set(":timeout", 50000u);
   opt.set(params);
   solver.set(params);
@@ -88,7 +89,7 @@ double Sampler::get_epoch_elapsed_time() {
 
 double Sampler::get_time_left(const std::string &t) {
   double ret = max_times[t] - elapsed_time_from(timer_start_times[t]);
-  ret = (ret >= 0.0) ? ret : 0.0;
+  ret = (ret >= 0.0) ? ret : 1.0;
   if ("total" == t) {
     return ret;
   }
@@ -141,6 +142,9 @@ z3::check_result Sampler::solve(const std::string &timer_category) {
     max_smt_calls++;
     params.set(":timeout",
                static_cast<unsigned>(1000 * get_time_left(timer_category)));
+    params.set("timeout",
+               static_cast<unsigned>(1000 * get_time_left(timer_category)));
+
     opt.set(params);
     result = opt.check();  // bat: first, solve a MAX-SMT instance
   } catch (const z3::exception &except) {
@@ -157,6 +161,9 @@ z3::check_result Sampler::solve(const std::string &timer_category) {
       smt_calls++;
       params.set(":timeout",
                  static_cast<unsigned>(1000 * get_time_left(timer_category)));
+      params.set("timeout",
+                 static_cast<unsigned>(1000 * get_time_left(timer_category)));
+
       solver.set(params);
       res = solver.check();  // bat: if too long, solve a regular SMT instance
                              // (without any soft constraints)

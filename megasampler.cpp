@@ -21,7 +21,6 @@ MEGASampler::MEGASampler(std::string _input, std::string _output_dir,
 }
 
 void MEGASampler::do_epoch(const z3::model& m) {
-  std::cerr << "MEGA: do_epoch\n";
   is_time_limit_reached();
   struct buflen ret = call_strengthen(original_formula, m);
   const auto view = kj::arrayPtr(reinterpret_cast<const capnp::word*>(ret.buf),

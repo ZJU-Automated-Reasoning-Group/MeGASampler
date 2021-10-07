@@ -9,11 +9,14 @@
 #include <capnp/message.h>
 #include <capnp/serialize-packed.h>
 
+#include <filesystem>
+
 #include "samples.capnp.h"
 
-Sampler::Sampler(std::string _input, int _max_samples, double _max_time,
-                 int _max_epoch_samples, double _max_epoch_time,
-                 int __attribute__((unused)) _strategy, bool _json)
+Sampler::Sampler(std::string _input, std::string _output_dir, int _max_samples,
+                 double _max_time, int _max_epoch_samples,
+                 double _max_epoch_time, int __attribute__((unused)) _strategy,
+                 bool _json)
     : c(),
       original_formula(c),
       params(c),
@@ -21,6 +24,7 @@ Sampler::Sampler(std::string _input, int _max_samples, double _max_time,
       opt(c),
       solver(c),
       input_filename(_input),
+      output_dir(_output_dir),
       json(_json),
       max_samples(_max_samples),
       max_time(_max_time),
@@ -36,7 +40,20 @@ Sampler::Sampler(std::string _input, int _max_samples, double _max_time,
 
   compute_and_print_formula_stats();
 
-  results_file.open(_input + ".samples");
+  const std::filesystem::path input_path = _input;
+  const std::filesystem::path output_path = _output_dir;
+  if (!std::filesystem::exists(output_path)) {
+    std::filesystem::create_directories(output_path);
+  }
+  if (!std::filesystem::is_directory(output_path)) {
+    std::cout << "Output directory is not a directory. Exiting.\n";
+    failure_cause = "Output directory exists and is not a directory.";
+    safe_exit(1);
+  }
+  const std::string output_base =
+      (output_path / input_path.filename()).string();
+  json_filename = output_base + ".json";
+  results_file.open(output_base + ".samples");
 
   if (num_arrays > 0 || num_bv > 0 || num_uf > 0 || num_reals > 0) {
     std::cout << "Unsupported sort in formula. Exiting.\n";
@@ -61,15 +78,17 @@ double Sampler::duration(struct timespec *a, struct timespec *b) {
   return (b->tv_sec - a->tv_sec) + 1.0e-9 * (b->tv_nsec - a->tv_nsec);
 }
 
-double Sampler::get_elapsed_time() { return elapsed_time_from(timer_start_times["total"]); }
-
-double Sampler::get_epoch_elapsed_time() {
-    return elapsed_time_from(timer_start_times["epoch"]);
+double Sampler::get_elapsed_time() {
+  return elapsed_time_from(timer_start_times["total"]);
 }
 
-double Sampler::get_time_left(const std::string& t) {
-    double ret = max_times[t] - elapsed_time_from(timer_start_times[t]);
-    return (ret >= 0.0) ? ret : 0.0;
+double Sampler::get_epoch_elapsed_time() {
+  return elapsed_time_from(timer_start_times["epoch"]);
+}
+
+double Sampler::get_time_left(const std::string &t) {
+  double ret = max_times[t] - elapsed_time_from(timer_start_times[t]);
+  return (ret >= 0.0) ? ret : 0.0;
 }
 
 double Sampler::elapsed_time_from(struct timespec start) {
@@ -95,8 +114,8 @@ void Sampler::parse_formula(std::string input) {
 }
 
 void Sampler::check_if_satisfiable() {
-  z3::check_result res =
-      solve("total");  // will try to solve the formula and put model in model variable
+  z3::check_result res = solve("total");  // will try to solve the formula and
+                                          // put model in model variable
   if (res == z3::unsat) {
     sat_result = "unsat";
     std::cout << "Formula is unsat\n";
@@ -111,11 +130,12 @@ void Sampler::check_if_satisfiable() {
   }
 }
 
-z3::check_result Sampler::solve(const std::string& timer_category) {
+z3::check_result Sampler::solve(const std::string &timer_category) {
   z3::check_result res = z3::unknown;
   try {
     max_smt_calls++;
-    params.set(":timeout", static_cast<unsigned>(1000*get_time_left(timer_category)));
+    params.set(":timeout",
+               static_cast<unsigned>(1000 * get_time_left(timer_category)));
     opt.set(params);
     result = opt.check();  // bat: first, solve a MAX-SMT instance
   } catch (const z3::exception &except) {
@@ -125,14 +145,14 @@ z3::check_result Sampler::solve(const std::string& timer_category) {
     safe_exit(1);
   }
   if (res == z3::sat) {
-      
     model = opt.get_model();
   } else if (res == z3::unknown) {
     std::cout << "MAX-SMT timed out"
               << "\n";
     try {
       smt_calls++;
-      params.set(":timeout", static_cast<unsigned>(1000*get_time_left(timer_category)));
+      params.set(":timeout",
+                 static_cast<unsigned>(1000 * get_time_left(timer_category)));
       solver.set(params);
       res = solver.check();  // bat: if too long, solve a regular SMT instance
                              // (without any soft constraints)
@@ -152,12 +172,12 @@ z3::check_result Sampler::solve(const std::string& timer_category) {
 }
 
 // TODO: This function doesn't really return bool?
-bool Sampler::is_time_limit_reached(const std::string& category) {
+bool Sampler::is_time_limit_reached(const std::string &category) {
   struct timespec now;
   clock_gettime(CLOCK_REALTIME, &now);
   double elapsed = duration(&timer_start_times[category], &now);
   if (elapsed >= max_times[category]) {
-      return true;
+    return true;
   }
   return false;
 }
@@ -180,7 +200,6 @@ void Sampler::finish() {  // todo: remove exit and add where calling
 }
 
 void Sampler::write_json() {
-  std::string json_filename = input_filename + ".json";
   std::ofstream json_file;
 
   std::cout << "Writing to json file: " << json_filename << "\n";
@@ -237,7 +256,7 @@ z3::model Sampler::start_epoch() {
                // change between epochs
   choose_random_assignment();
   z3::check_result res = solve("epoch");
-  
+
   assert(res != z3::unsat);
   opt.pop();
 
@@ -250,9 +269,7 @@ z3::model Sampler::start_epoch() {
 }
 
 void Sampler::choose_random_assignment() {
-  for (z3::func_decl &v :
-       variables) {
-      
+  for (z3::func_decl &v : variables) {
     if (v.arity() > 0 || v.range().is_array()) continue;
     switch (v.range().sort_kind()) {
       case Z3_BV_SORT:  // random assignment to bv
@@ -530,7 +547,6 @@ void Sampler::accumulate_time(const std::string &category) {
 void Sampler::set_timer_max(const std::string &category, double limit) {
   max_times[category] = limit;
 }
-
 
 void Sampler::safe_exit(int exitcode) {
   if (exitcode) {

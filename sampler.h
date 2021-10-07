@@ -37,6 +37,8 @@ class Sampler {
 
  protected:
   std::string input_filename;
+  std::string output_dir;
+  std::string json_filename;
 
   // Settings
   bool json = false;
@@ -84,7 +86,7 @@ class Sampler {
   // Methods
   double duration(struct timespec *a, struct timespec *b);
   double elapsed_time_from(struct timespec start);
-  double get_time_left(const std::string& category);
+  double get_time_left(const std::string &category);
   void parse_formula(std::string input);
   void compute_and_print_formula_stats();
   void _compute_formula_stats_aux(z3::expr e, int depth = 0);
@@ -103,7 +105,7 @@ class Sampler {
    * Check result (sat/unsat/unknown) is returned.
    * If sat - model is put in model variable.
    */
-    z3::check_result solve(const std::string& timer_category);
+  z3::check_result solve(const std::string &timer_category);
   /*
    * Prints statistic information about the sampling procedure:
    * number of samples and epochs and time spent on each phase.
@@ -122,9 +124,9 @@ class Sampler {
    * Computes formula statistics.
    * Creates output file (stored in results_file).
    */
-  Sampler(std::string input, int max_samples, double max_time,
-          int max_epoch_samples, double max_epoch_time, int strategy,
-          bool json);
+  Sampler(std::string input, std::string output_dir, int max_samples,
+          double max_time, int max_epoch_samples, double max_epoch_time,
+          int strategy, bool json);
   /*
    * Initializes solvers (MAX-SMT and SMT) with formula.
    */
@@ -189,7 +191,7 @@ class Sampler {
    * Set max time for timer (helps with timeout)
    */
   void set_timer_max(const std::string &category, double limit);
-    
+
   virtual ~Sampler(){};
 };
 

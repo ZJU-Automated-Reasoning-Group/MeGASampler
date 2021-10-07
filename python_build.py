@@ -12,14 +12,16 @@ ffi_builder.set_source("pythonfuncs", r"""
 ffi_builder.embedding_init_code(r"""
 import z3
 import sys
+import os
+from pythonfuncs import ffi, lib
+import pythonfuncs
 sys.path.append('./python/')
 import formula_strengthener
-from pythonfuncs import ffi, lib
 
 def intptr(ptr):
     return int(ffi.cast("intptr_t", ptr))
 
-keep_in_memory = set()
+#keep_in_memory = set()
 
 @ffi.def_extern()
 def patch_global_context(ctx):
@@ -29,7 +31,7 @@ def patch_global_context(ctx):
 def call_strengthen(f, model):
     global keep_in_memory
     out = ffi.from_buffer(formula_strengthener.strengthen_wrapper(intptr(f), intptr(model)))
-    keep_in_memory.add(out)
+#    keep_in_memory.add(out)
     return (len(out), out)
 """)
 

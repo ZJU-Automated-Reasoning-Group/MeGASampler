@@ -8,9 +8,9 @@ class MEGASampler : public Sampler {
   z3::expr simpl_formula;
 
  public:
-  MEGASampler(std::string input, int max_samples, double max_time,
-              int max_epoch_samples, double max_epoch_time, int strategy,
-              bool json);
+  MEGASampler(std::string input, std::string output_dir, int max_samples,
+              double max_time, int max_epoch_samples, double max_epoch_time,
+              int strategy, bool json);
   /*
    * Override from sampler
    */

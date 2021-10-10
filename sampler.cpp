@@ -233,6 +233,19 @@ void Sampler::write_json() {
        ++it) {
     json_output["time stats"][it->first] = it->second;
   }
+  for (auto it = max_times.cbegin(); it != max_times.cend(); ++it) {
+    json_output["max time stats"][it->first] = it->second;
+  }
+  json_output["formula stats"]["num arrays"] = num_arrays;
+  json_output["formula stats"]["num bvs"] = num_bv;
+  json_output["formula stats"]["num bools"] = num_bools;
+  json_output["formula stats"]["num uninterp funcs"] = num_uf;
+  json_output["formula stats"]["num ints"] = num_ints;
+  json_output["formula stats"]["num reals"] = num_reals;
+  json_output["formula stats"]["formula AST depth"] = max_depth;
+  json_output["options"]["use blocking"] = use_blocking;
+  json_output["options"]["max samples"] = max_samples;
+  json_output["options"]["max epoch samples"] = max_epoch_samples;
 
   Json::StreamWriterBuilder builder;
   builder["indentation"] = " ";

@@ -464,6 +464,10 @@ bool Sampler::save_and_output_sample_if_unique(const std::string &sample) {
     unique_valid_samples++;
     results_file << unique_valid_samples << ": " << sample << std::endl;
   }
+  if (unique_valid_samples >= max_samples) {
+      failure_cause = "Reached max samples.";
+      safe_exit(0);
+  }
   return res.second;
 }
 

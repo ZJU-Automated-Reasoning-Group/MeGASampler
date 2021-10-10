@@ -1,9 +1,6 @@
 import sys
 from z3 import And, IntVal, Int, BoolVal
 import random
-import itertools
-import infinite
-import math
 
 MINF = "minf"
 INF = "inf"

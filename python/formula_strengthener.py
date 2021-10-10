@@ -15,7 +15,8 @@ from .z3_utils import (Z3_ADD_OPS, Z3_AND_OPS, Z3_DISTINCT_OPS, Z3_EQ_OPS,
 
 from z3 import (And, Ast, ContextObj, ExprRef, Goal, ModelObj, ModelRef,
                 Tactic, Then, With, Z3_OP_UMINUS, is_app_of, is_bool, is_const,
-                is_not, math, substitute, z3)
+                is_not, math, substitute)
+import z3
 import capnp
 
 strengthen_capnp = capnp.load("strengthen.capnp")

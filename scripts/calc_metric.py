@@ -140,14 +140,18 @@ class ManualSatisfiesMetric(Metric):
             return self._build_nary(expr, all, self._build_bool)
         elif z3.is_or(expr):
             return self._build_nary(expr, any, self._build_bool)
+        elif z3.is_not(expr):
+            return self._build_unary_not(expr)
         elif z3.is_le(expr):
             return self._build_binary(expr, operator.le, self._build_int)
         elif z3.is_lt(expr):
             return self._build_binary(expr, operator.lt, self._build_int)
         elif z3.is_gt(expr):
+            return self._build_binary(expr, operator.gt, self._build_int)
+        elif z3.is_ge(expr):
             return self._build_binary(expr, operator.ge, self._build_int)
         elif z3.is_eq(expr):
-            return self._build_binary(expr, operator.gt, self._build_int)
+            return self._build_binary(expr, operator.eq, self._build_int)
         raise Exception(f"Unhandled: {expr}")
 
     def _build_int(self, expr):
@@ -187,6 +191,18 @@ class ManualSatisfiesMetric(Metric):
 
         def e(model):
             value = op(left(model), right(model))
+            if self._statistics:
+                self._statistics.evaluate_node(node_id, value)
+            return value
+
+        return e
+
+    def _build_unary_not(self, expr):
+        child = self._build_bool(expr.arg(0))
+        node_id = expr.get_id()
+
+        def e(model):
+            value = not child(model)
             if self._statistics:
                 self._statistics.evaluate_node(node_id, value)
             return value

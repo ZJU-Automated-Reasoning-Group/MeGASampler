@@ -1,4 +1,12 @@
-from z3 import *
+from z3 import (And, AstRef, Goal, Not, Or, Solver, Tactic, Then, Z3Exception, Z3_OP_ADD, Z3_OP_AND,
+                Z3_OP_BADD, Z3_OP_BAND, Z3_OP_BMUL, Z3_OP_BOR, Z3_OP_BREDAND, Z3_OP_BREDOR,
+                Z3_OP_BSDIV, Z3_OP_BSDIV0, Z3_OP_BSMOD, Z3_OP_BSMOD0, Z3_OP_BSREM, Z3_OP_BSREM0,
+                Z3_OP_BSUB, Z3_OP_BUDIV, Z3_OP_BUDIV0, Z3_OP_BUREM, Z3_OP_BUREM0, Z3_OP_DISTINCT,
+                Z3_OP_DIV, Z3_OP_EQ, Z3_OP_GE, Z3_OP_GT, Z3_OP_IDIV, Z3_OP_LE, Z3_OP_LT, Z3_OP_MOD,
+                Z3_OP_MUL, Z3_OP_OR, Z3_OP_REM, Z3_OP_SGEQ, Z3_OP_SGT, Z3_OP_SLEQ, Z3_OP_SLT,
+                Z3_OP_SUB, Z3_OP_UMINUS, Z3_OP_UNINTERPRETED, Z3_UNINTERPRETED_SORT, is_app_of,
+                is_array, is_bool, is_bv, is_bv_value, is_const, is_false, is_int, is_int_value,
+                is_mul, is_not, is_true, sat)
 
 # Z3 OPERATORS
 Z3_LE_OPS = [Z3_OP_LE,Z3_OP_SLEQ]

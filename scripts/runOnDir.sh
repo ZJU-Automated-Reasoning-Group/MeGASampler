@@ -32,7 +32,7 @@ EOF
 
 # run sampler and collect json files
 shopt -s globstar nullglob
-for f in "$input_dir"/**/*.smt2
+for f in "${input_dir}"/**/*.smt2
 do
   # Process benchmarks that are marked as satisfiable (not unsat or unknown)
   grep ":status" ${f} | grep unsat > /dev/null && continue
@@ -45,3 +45,7 @@ do
   popd
 done
 sem --id "$0" --wait
+
+cat >> "${newdir}/README.rst" <<EOF
+Finished run at $(date -Iseconds)
+EOF

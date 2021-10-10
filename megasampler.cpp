@@ -60,22 +60,19 @@ void MEGASampler::finish() {
 
 void MEGASampler::sample_intervals_in_rounds(
     const capnp::List<StrengthenResult::VarInterval>::Reader& intervalmap) {
-  int MAX_ROUNDS = 6;
+  const unsigned int MAX_ROUNDS = 20;
   float rate = 1.0;
-  for (int round = 0; round < MAX_ROUNDS && rate > 0.2; round++) {
+  for (unsigned int round = 0; round < MAX_ROUNDS && rate > 0.2; round++) {
     is_time_limit_reached();
-    std::cout << "Starting round: " << round << "\n";
-    int new_samples = 0;
-    int MAX_SAMPLES = 100;
-    int round_samples = 0;
-    while (round_samples < MAX_SAMPLES) {
+    unsigned int new_samples = 0;
+    const unsigned int MAX_SAMPLES = 100;
+    unsigned int round_samples = 0;
+    for (;round_samples <= MAX_SAMPLES; ++round_samples) {
       std::string sample = get_random_sample_from_intervals(intervalmap);
-      total_samples++;
-      bool is_unique = save_and_output_sample_if_unique(sample);
-      if (is_unique) {
-        new_samples++;
+      ++total_samples;
+      if (save_and_output_sample_if_unique(sample)) {
+        ++new_samples;
       }
-      round_samples++;
     }
     rate = new_samples / round_samples;
   }

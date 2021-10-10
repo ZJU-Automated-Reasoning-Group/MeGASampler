@@ -13,17 +13,22 @@ sampler_dir=$(realpath ..)
 [ $# -ge 2 ] || panic "Script arguments should receive at least two arguments: input_dir and output_dir."
 
 input_dir="$1"
-[[ -d "$input_dir" ]] || panic "First argument (input directory) is not a directory: $input_dir"
-input_dir=$(realpath "$input_dir")
+[[ -d "${input_dir}" ]] || panic "First argument (input directory) is not a directory: $input_dir"
+input_dir="$(realpath "${input_dir}")"
 echo "Input directory is: $input_dir"
 
 output_dir="$2"
-[[ -d "$output_dir" ]] || panic "Second argument (output directory) is not a directory: $output_dir"
-output_dir=$(realpath "$output_dir")
-echo "Output directory is: $output_dir"
+[[ -d "${output_dir}" ]] || panic "Second argument (output directory) is not a directory: $output_dir"
+output_dir="$(realpath "${output_dir}")"
+echo "Output directory is: '${output_dir}'"
 
 newdir="${output_dir}/$(basename "$input_dir")_$(date -Iseconds)"
-mkdir "$newdir"
+mkdir "${newdir}"
+
+cat > "${newdir}/README.rst" <<EOF
+Started run at $(date -Iseconds)
+Arguments: ${@:3}
+EOF
 
 # run sampler and collect json files
 shopt -s globstar nullglob

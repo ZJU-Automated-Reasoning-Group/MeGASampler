@@ -1,6 +1,15 @@
 #!/bin/bash
 #set -x
 
+# CONFIG
+
+# Send SIGHUP after this much time
+EXTERNAL_TIMEOUT="40m"
+
+# Send SIGKILL this much time after SIGHUP was sent
+KILL_AFTER="5m"
+# CODE
+
 panic() {
   echo "$1" > /dev/stderr
   exit 1
@@ -27,7 +36,8 @@ mkdir "${newdir}"
 
 cat > "${newdir}/README.rst" <<EOF
 Started run at $(date -Iseconds)
-Arguments: ${@:3}
+External timeout: ${EXTERNAL_TIMEOUT} (+${KILL_AFTER})
+Additional arguments: ${@:3}
 EOF
 
 # run sampler and collect json files
@@ -41,7 +51,9 @@ do
   cur_output_dir="${newdir}$(dirname ${f#$input_dir})"
   echo "Output to: ${cur_output_dir}"
   pushd ${sampler_dir}
-  sem -j50% --id "$0" -- ./smtsampler --json -o ${cur_output_dir} "${@:3}" "${f}"
+  sem -j50% --id "$0-$$" -- \
+      timeout -k${KILL_AFTER} -sHUP ${EXTERNAL_TIMEOUT} \
+      ./smtsampler --json -o ${cur_output_dir} "${@:3}" "${f}"
   popd
 done
 sem --id "$0" --wait

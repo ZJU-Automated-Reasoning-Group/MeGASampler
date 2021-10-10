@@ -143,7 +143,8 @@ void SMTSampler::find_combined_solutions(
           bool valid = b.bool_value() == Z3_L_TRUE;
           ++all_new;
           if (valid) {
-            save_and_output_sample_if_unique(candidate);
+            std::string output = model_to_string(m);
+            save_and_output_sample_if_unique(output);
             ++good;
             new_sigma.push_back(candidate);
           }

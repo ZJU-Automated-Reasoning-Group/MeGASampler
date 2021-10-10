@@ -188,10 +188,8 @@ bool Sampler::is_time_limit_reached(const std::string &category) {
   struct timespec now;
   clock_gettime(CLOCK_REALTIME, &now);
   double elapsed = duration(&timer_start_times[category], &now);
-  if (elapsed >= max_times[category])
-    return true;
-  if (should_exit)
-    return true;
+  if (elapsed >= max_times[category]) return true;
+  if (should_exit) return true;
   return false;
 }
 
@@ -210,15 +208,14 @@ bool Sampler::is_time_limit_reached() {
   return false;
 }
 
-void Sampler::set_exit() volatile {
-  should_exit = true;
-}
+void Sampler::set_exit() volatile { should_exit = true; }
 
 void Sampler::finish() {  // todo: remove exit and add where calling
   if (json) {
     write_json();
   }
-  if ((is_timer_on.find("total") != is_timer_on.cend()) && is_timer_on["total"]) {
+  if ((is_timer_on.find("total") != is_timer_on.cend()) &&
+      is_timer_on["total"]) {
     accumulate_time("total");
   }
   print_stats();
@@ -294,9 +291,9 @@ z3::model Sampler::start_epoch() {
   opt.push();  // because formula is constant, but other hard/soft constraints
                // change between epochs
   if (use_blocking) {
-      add_blocking_soft_constraints();
+    add_blocking_soft_constraints();
   } else {
-      choose_random_assignment();
+    choose_random_assignment();
   }
   z3::check_result res = solve("epoch");
 
@@ -368,12 +365,12 @@ void Sampler::choose_random_assignment() {
 }
 
 void Sampler::add_blocking_soft_constraints() {
-    std::cout << "Using blocking :)\n";
-    for (unsigned int i = 0; i < model.num_consts(); ++i) {
-        const auto& decl = model.get_const_decl(i);
-        assert_soft(decl() != model.get_const_interp(decl));
-    }
-#if 0 // TODO: Revisit if we have non-const functions
+  std::cout << "Using blocking :)\n";
+  for (unsigned int i = 0; i < model.num_consts(); ++i) {
+    const auto &decl = model.get_const_decl(i);
+    assert_soft(decl() != model.get_const_interp(decl));
+  }
+#if 0  // TODO: Revisit if we have non-const functions
     for (unsigned int i = 0; i < model.num_funcs(); ++i) {
         const auto& decl = model.get_func_decl(i);
         assert_soft(decl() != model.get_func_interp(decl));

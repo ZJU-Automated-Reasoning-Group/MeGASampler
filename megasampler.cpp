@@ -48,8 +48,7 @@ void MEGASampler::do_epoch(const z3::model& m) {
   }
   std::cout << "\n";
 
-  if (is_time_limit_reached("epoch"))
-      return;
+  if (is_time_limit_reached("epoch")) return;
 
   sample_intervals_in_rounds(container.getIntervalmap());
 }

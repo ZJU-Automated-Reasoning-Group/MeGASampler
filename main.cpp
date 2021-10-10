@@ -1,9 +1,9 @@
 #include <argp.h>
 #include <unistd.h>
 
-#include <cstring>
 #include <csignal>
 #include <cstdlib>
+#include <cstring>
 #include <memory>
 
 #include "megasampler.h"
@@ -102,13 +102,12 @@ static struct argp argp = {options, parse_opt, argp_args_doc, argp_doc, 0,
                            0,       0};
 
 namespace {
-static volatile Sampler* global_sampler = NULL;
+static volatile Sampler *global_sampler = NULL;
 }
 
 void signal_handler(__attribute__((unused)) int sig) {
   // External timeout
-  if (!global_sampler)
-    std::abort(); // This is kinda early...
+  if (!global_sampler) std::abort();  // This is kinda early...
   global_sampler->set_exit();
 }
 
@@ -126,11 +125,13 @@ int main(int argc, char *argv[]) {
   if (args.use_smtsampler) {
     s = std::make_unique<SMTSampler>(
         args.input, args.output_dir, args.max_samples, args.max_time,
-        args.max_epoch_samples, args.max_epoch_time, args.strategy, args.json, args.blocking);
+        args.max_epoch_samples, args.max_epoch_time, args.strategy, args.json,
+        args.blocking);
   } else {
     s = std::make_unique<MEGASampler>(
         args.input, args.output_dir, args.max_samples, args.max_time,
-        args.max_epoch_samples, args.max_epoch_time, args.strategy, args.json, args.blocking);
+        args.max_epoch_samples, args.max_epoch_time, args.strategy, args.json,
+        args.blocking);
   }
   global_sampler = s.get();
   patch_global_context(s->c);

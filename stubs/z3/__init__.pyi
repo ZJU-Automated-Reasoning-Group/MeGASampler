@@ -10,7 +10,7 @@ from typing import (
     Union,
     Sequence,
 )
-from .z3types import Ast, ContextObj, OptimizeObj
+from .z3types import Ast, ContextObj, OptimizeObj, SolverObj
 from .z3core import *
 
 
@@ -136,6 +136,7 @@ class Goal(Z3PPObject): ...
 
 class Solver(Z3PPObject):
     ctx: Context
+    solver: SolverObj
     def __init__(self, ctx: Optional[Context] = None) -> None: ...
     def to_smt2(self) -> str: ...
     def check(self) -> CheckSatResult: ...
@@ -148,6 +149,9 @@ class Solver(Z3PPObject):
     @overload
     def add(self, args: Sequence[Union[BoolRef, Goal]]) -> None: ...
     def reset(self) -> None: ...
+    def from_string(self, smt2_string: str) -> None: ...
+    def assertions(self) -> AstRef: ...
+
 
 class Optimize(Z3PPObject):
     ctx: Context

@@ -37,7 +37,7 @@ CTX = z3.Context()
 
 class Metric(abc.ABC):
     def __init__(self, formula: str):
-        self._solver = z3.Optimize(ctx=CTX)
+        self._solver = z3.Solver(ctx=CTX)
         self._total = 0
         self._satisfies = 0
         self._solver.from_string(formula)
@@ -68,7 +68,7 @@ class SatisfiesMetric(Metric):
             #z3.Z3_inc_ref(CTX.ref(), const)
             eq = z3.Z3_mk_eq(CTX.ref(), const, numeral)
             #z3.Z3_inc_ref(CTX.ref(), const)
-            z3.Z3_optimize_assert(CTX.ref(), self._solver.optimize, eq)
+            z3.Z3_solver_assert(CTX.ref(), self._solver.solver, eq)
             # Now they are Z3's?
             z3.Z3_dec_ref(CTX.ref(), numeral)
             #z3.Z3_dec_ref(CTX.ref(), const)

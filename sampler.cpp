@@ -158,6 +158,7 @@ z3::check_result Sampler::solve(const std::string &timer_category) {
     model = opt.get_model();
   } else if (res == z3::unknown) {
     std::cout << "MAX-SMT returned 'unknown' (timeout?)\n";
+    is_time_limit_reached();
     try {
       smt_calls++;
       params.set(":timeout",
@@ -183,18 +184,24 @@ z3::check_result Sampler::solve(const std::string &timer_category) {
   return res;
 }
 
-// TODO: This function doesn't really return bool?
 bool Sampler::is_time_limit_reached(const std::string &category) {
   struct timespec now;
   clock_gettime(CLOCK_REALTIME, &now);
   double elapsed = duration(&timer_start_times[category], &now);
-  if (elapsed >= max_times[category]) {
+  if (elapsed >= max_times[category])
     return true;
-  }
+  if (should_exit)
+    return true;
   return false;
 }
 
+// TODO: This function doesn't actually return bool...
 bool Sampler::is_time_limit_reached() {
+  if (should_exit) {
+    std::cout << "Stopping: External timeout\n";
+    failure_cause = "External timeout.";
+    safe_exit(3);
+  }
   if (is_time_limit_reached("total")) {
     std::cout << "Stopping: timeout\n";
     failure_cause = "Timeout.";
@@ -203,9 +210,16 @@ bool Sampler::is_time_limit_reached() {
   return false;
 }
 
+void Sampler::set_exit() volatile {
+  should_exit = true;
+}
+
 void Sampler::finish() {  // todo: remove exit and add where calling
   if (json) {
     write_json();
+  }
+  if ((is_timer_on.find("total") != is_timer_on.cend()) && is_timer_on["total"]) {
+    accumulate_time("total");
   }
   print_stats();
   results_file.close();

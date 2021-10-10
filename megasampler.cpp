@@ -36,7 +36,6 @@ void MEGASampler::do_epoch(const z3::model& m) {
     failure_cause = failureDescription.cStr();
     safe_exit(1);
   }
-  is_time_limit_reached();
   for (auto varinterval : container.getIntervalmap()) {
     std::string varname = varinterval.getVariable().cStr();
     auto interval = varinterval.getInterval();
@@ -48,6 +47,9 @@ void MEGASampler::do_epoch(const z3::model& m) {
               << "[" << low << "," << high << "] ";
   }
   std::cout << "\n";
+
+  if (is_time_limit_reached("epoch"))
+      return;
 
   sample_intervals_in_rounds(container.getIntervalmap());
 }

@@ -2,6 +2,8 @@
 #include <unistd.h>
 
 #include <cstring>
+#include <csignal>
+#include <cstdlib>
 #include <memory>
 
 #include "megasampler.h"
@@ -99,7 +101,19 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
 static struct argp argp = {options, parse_opt, argp_args_doc, argp_doc, 0,
                            0,       0};
 
+namespace {
+static volatile Sampler* global_sampler = NULL;
+}
+
+void signal_handler(__attribute__((unused)) int sig) {
+  // External timeout
+  if (!global_sampler)
+    std::abort(); // This is kinda early...
+  global_sampler->set_exit();
+}
+
 int main(int argc, char *argv[]) {
+  std::signal(SIGHUP, signal_handler);
   struct args args;
   argp_parse(&argp, argc, argv, 0, 0, &args);
 
@@ -118,6 +132,7 @@ int main(int argc, char *argv[]) {
         args.input, args.output_dir, args.max_samples, args.max_time,
         args.max_epoch_samples, args.max_epoch_time, args.strategy, args.json, args.blocking);
   }
+  global_sampler = s.get();
   patch_global_context(s->c);
   s->set_timer_max("total", args.max_time);
   s->set_timer_max("epoch", args.max_epoch_time);

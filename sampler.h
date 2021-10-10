@@ -44,6 +44,7 @@ class Sampler {
   bool json = false;
   bool random_soft_bit = false;  // TODO enable change from cmd line or remove
   bool use_blocking = false;
+  bool should_exit = false;
 
   // TODO take these max values into account during computation
   int max_samples;
@@ -196,6 +197,11 @@ class Sampler {
    * Set max time for timer (helps with timeout)
    */
   void set_timer_max(const std::string &category, double limit);
+
+  /*
+   * Make the sampler exit externally next time we check for time.
+   */
+  void set_exit() volatile;
 
   virtual ~Sampler(){};
 };

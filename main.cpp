@@ -25,6 +25,7 @@ static struct argp_option options[] = {
     {"strategy", 's', "STRAT", 0, "Strategy: {smtbit, smtbv, sat}", 0},
     {"smtsampler", 'x', 0, 0, "Use SMTSampler", 0},
     {"json", 'j', 0, 0, "Write JSON output", 0},
+    {"blocking", 'b', 0, 0, "Use blocking instead of random assignment", 0},
     {"output-dir", 'o', "DIRECTORY", 0,
      "Output directory (for statistics, samples, ...)", 0},
     {0, 0, 0, 0, 0, 0}};
@@ -35,7 +36,7 @@ struct args {
   unsigned int max_epochs = 1000000, max_samples = 1000000,
                max_epoch_samples = 10000;
   int strategy = STRAT_SMTBIT;
-  bool use_smtsampler = false, json = false;
+  bool use_smtsampler = false, json = false, blocking = false;
   double max_time = 3600.0, max_epoch_time = 600.0;
 };
 
@@ -75,6 +76,9 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
     case 'j':
       args->json = true;
       break;
+    case 'b':
+      args->blocking = true;
+      break;
     case 'o':
       args->output_dir = arg;
       break;
@@ -108,11 +112,11 @@ int main(int argc, char *argv[]) {
   if (args.use_smtsampler) {
     s = std::make_unique<SMTSampler>(
         args.input, args.output_dir, args.max_samples, args.max_time,
-        args.max_epoch_samples, args.max_epoch_time, args.strategy, args.json);
+        args.max_epoch_samples, args.max_epoch_time, args.strategy, args.json, args.blocking);
   } else {
     s = std::make_unique<MEGASampler>(
         args.input, args.output_dir, args.max_samples, args.max_time,
-        args.max_epoch_samples, args.max_epoch_time, args.strategy, args.json);
+        args.max_epoch_samples, args.max_epoch_time, args.strategy, args.json, args.blocking);
   }
   patch_global_context(s->c);
   s->set_timer_max("total", args.max_time);

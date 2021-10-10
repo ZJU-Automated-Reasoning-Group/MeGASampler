@@ -43,6 +43,7 @@ class Sampler {
   // Settings
   bool json = false;
   bool random_soft_bit = false;  // TODO enable change from cmd line or remove
+  bool use_blocking = false;
 
   // TODO take these max values into account during computation
   int max_samples;
@@ -100,6 +101,10 @@ class Sampler {
    */
   void choose_random_assignment();
   /*
+   * Adds negation of previous model as soft constraints to opt.
+   */
+  void add_blocking_soft_constraints();
+  /*
    * Tries to solve optimized formula (using opt).
    * If too long, resorts to regular formula (using solver).
    * Check result (sat/unsat/unknown) is returned.
@@ -126,7 +131,7 @@ class Sampler {
    */
   Sampler(std::string input, std::string output_dir, int max_samples,
           double max_time, int max_epoch_samples, double max_epoch_time,
-          int strategy, bool json);
+          int strategy, bool json, bool blocking);
   /*
    * Initializes solvers (MAX-SMT and SMT) with formula.
    */

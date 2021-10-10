@@ -3,9 +3,9 @@
 SMTSampler::SMTSampler(std::string _input, std::string _output_dir,
                        int _max_samples, double _max_time,
                        int _max_epoch_samples, double _max_epoch_time,
-                       int _strategy, bool _json)
+                       int _strategy, bool _json, bool _blocking)
     : Sampler(_input, _output_dir, _max_samples, _max_time, _max_epoch_samples,
-              _max_epoch_time, _strategy, _json),
+              _max_epoch_time, _strategy, _json, _blocking),
       strategy(_strategy) {
   initialize_solvers();
   //  if (!convert) {

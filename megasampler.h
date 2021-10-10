@@ -10,7 +10,7 @@ class MEGASampler : public Sampler {
  public:
   MEGASampler(std::string input, std::string output_dir, int max_samples,
               double max_time, int max_epoch_samples, double max_epoch_time,
-              int strategy, bool json);
+              int strategy, bool json, bool blocking);
   /*
    * Override from sampler
    */

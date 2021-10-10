@@ -16,7 +16,7 @@
 Sampler::Sampler(std::string _input, std::string _output_dir, int _max_samples,
                  double _max_time, int _max_epoch_samples,
                  double _max_epoch_time, int __attribute__((unused)) _strategy,
-                 bool _json)
+                 bool _json, bool _blocking)
     : c(),
       original_formula(c),
       params(c),
@@ -26,6 +26,7 @@ Sampler::Sampler(std::string _input, std::string _output_dir, int _max_samples,
       input_filename(_input),
       output_dir(_output_dir),
       json(_json),
+      use_blocking(_blocking),
       max_samples(_max_samples),
       max_time(_max_time),
       max_epoch_samples(_max_epoch_samples),
@@ -146,7 +147,7 @@ z3::check_result Sampler::solve(const std::string &timer_category) {
                static_cast<unsigned>(1000 * get_time_left(timer_category)));
 
     opt.set(params);
-    result = opt.check();  // bat: first, solve a MAX-SMT instance
+    res = opt.check();  // bat: first, solve a MAX-SMT instance
   } catch (const z3::exception &except) {
     std::cout << "Exception: " << except << "\n";
     // TODO exception "canceled" can be thrown when Timeout is reached
@@ -265,7 +266,11 @@ z3::model Sampler::start_epoch() {
 
   opt.push();  // because formula is constant, but other hard/soft constraints
                // change between epochs
-  choose_random_assignment();
+  if (use_blocking) {
+      add_blocking_soft_constraints();
+  } else {
+      choose_random_assignment();
+  }
   z3::check_result res = solve("epoch");
 
   assert(res != z3::unsat);
@@ -333,6 +338,20 @@ void Sampler::choose_random_assignment() {
         safe_exit(1);
     }
   }  // end for: random assignment chosen
+}
+
+void Sampler::add_blocking_soft_constraints() {
+    std::cout << "Using blocking :)\n";
+    for (unsigned int i = 0; i < model.num_consts(); ++i) {
+        const auto& decl = model.get_const_decl(i);
+        assert_soft(decl() != model.get_const_interp(decl));
+    }
+#if 0 // TODO: Revisit if we have non-const functions
+    for (unsigned int i = 0; i < model.num_funcs(); ++i) {
+        const auto& decl = model.get_func_decl(i);
+        assert_soft(decl() != model.get_func_interp(decl));
+    }
+#endif
 }
 
 void Sampler::do_epoch(__attribute__((unused)) const z3::model &m) {

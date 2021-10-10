@@ -21,7 +21,7 @@ class SMTSampler : public Sampler {
  public:
   SMTSampler(std::string input, std::string output_dir, int max_samples,
              double max_time, int max_epoch_samples, double max_epoch_time,
-             int strategy, bool json);
+             int strategy, bool json, bool blocking);
   /*
    * Finds additional valid models (samples) of the formula
    * (based on the given model, which is assumed valid).

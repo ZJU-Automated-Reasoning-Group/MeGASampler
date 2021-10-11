@@ -1,5 +1,8 @@
 #include "smtsampler.h"
 
+#include <climits>
+#include <cinttypes>
+
 SMTSampler::SMTSampler(std::string _input, std::string _output_dir,
                        int _max_samples, double _max_time,
                        int _max_epoch_samples, double _max_epoch_time,
@@ -124,9 +127,9 @@ void SMTSampler::find_combined_solutions(
         std::string candidate;
         for (z3::func_decl &w : ind) {
           assert_is_int_var(w);
-          int val_a = int_value(a_string.c_str() + pos_a);
-          int val_b = int_value(b_string.c_str() + pos_b);
-          int val_c = int_value(c_string.c_str() + pos_c);
+          long long val_a = ll_value(a_string.c_str() + pos_a);
+          long long val_b = ll_value(b_string.c_str() + pos_b);
+          long long val_c = ll_value(c_string.c_str() + pos_c);
           int num = combine_mutations(val_a, val_b, val_c);
           pos_a = a_string.find(';', pos_a) + 1;
           pos_b = b_string.find(';', pos_b) + 1;
@@ -211,8 +214,7 @@ std::string SMTSampler::model_string(z3::model m,
 }
 
 z3::expr SMTSampler::value(char const *n) {
-  int i_val = int_value(n);
-  return c.int_val(i_val);
+  return c.int_val((int64_t) ll_value(n));
 }
 
 // (exp == val) is added as soft constraint (to opt)
@@ -226,9 +228,16 @@ void SMTSampler::add_constraints(z3::expr exp, z3::expr val, int count) {
   assert_soft(exp == val);
 }
 
-int SMTSampler::combine_mutations(int val_orig, int val_b, int val_c) {
-  int diff_average = ((val_b - val_orig) + (val_c - val_orig)) / 2;
-  return val_orig + diff_average;
+inline long long add_safe(long long a, long long b) {
+  if (b >= 0) {
+    return a > INT_MAX - b ? INT_MAX : a + b;
+  } else { // b < 0
+    return a < INT_MIN - b ? INT_MIN : a + b;
+  }
+}
+
+int SMTSampler::combine_mutations(long long val_orig, long long val_b, long long val_c) {
+  return add_safe(val_orig, add_safe(val_b, val_c));
 }
 
 z3::model SMTSampler::gen_model(const std::string &candidate,
@@ -248,14 +257,13 @@ void SMTSampler::assert_is_int_var(const z3::func_decl &v) {
   assert(v.is_const() and v.range().sort_kind() == Z3_INT_SORT);
 }
 
-int SMTSampler::int_value(char const *n) {
+long long SMTSampler::ll_value(char const *n) {
   assert(n);
-  int value = atoi(n);
   if (n[0] == '(') {  // if n is negative we need to remove the brackets
     assert(n[1] == '-' && n[2] == ' ');
-    value = -atoi(n + 3);
+    return -atoll(n + 3);
   }
-  return value;
+  return atoll(n);
 }
 
 void SMTSampler::finish() {

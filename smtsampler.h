@@ -45,13 +45,13 @@ class SMTSampler : public Sampler {
  protected:
   std::string model_string(z3::model m, std::vector<z3::func_decl> ind);
   z3::expr value(char const *n);
-  int int_value(char const *n);
+  long long ll_value(char const *n);
   void add_constraints(z3::expr exp, z3::expr val, int count);
   void calculate_constraints(const std::string &m_string);
   void find_neighboring_solutions(std::unordered_set<std::string> &mutations);
   void find_combined_solutions(std::unordered_set<std::string> &mutations,
                                const std::string &a_string);
-  int combine_mutations(int val_orig, int val_b, int val_c);
+  int combine_mutations(long long val_orig, long long val_b, long long val_c);
   z3::model gen_model(const std::string &candidate,
                       std::vector<z3::func_decl> &ind);
   void assert_is_int_var(const z3::func_decl &v);

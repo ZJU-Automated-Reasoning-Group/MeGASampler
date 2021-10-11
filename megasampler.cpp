@@ -23,7 +23,7 @@ MEGASampler::MEGASampler(std::string _input, std::string _output_dir,
 
 void MEGASampler::do_epoch(const z3::model& m) {
   is_time_limit_reached();
-  struct buflen ret = call_strengthen(original_formula, m);
+  struct buflen ret = call_strengthen(original_formula, m, debug);
   const auto view = kj::arrayPtr(reinterpret_cast<const capnp::word*>(ret.buf),
                                  ret.len / sizeof(capnp::word));
   // Disable the security measure, we trust ourselves
@@ -46,10 +46,10 @@ void MEGASampler::do_epoch(const z3::model& m) {
     bool isHighInf = interval.getIshighinf();
     auto low = isLowMinf ? "MINF" : std::to_string(interval.getLow());
     auto high = isHighInf ? "INF" : std::to_string(interval.getHigh());
-    std::cout << varname << ": "
+    if (debug) std::cout << varname << ": "
               << "[" << low << "," << high << "] ";
   }
-  std::cout << "\n";
+  if (debug) std::cout << "\n";
 
   if (use_blocking)
     add_soft_constraint_from_intervals(container.getIntervalmap());

@@ -33,7 +33,7 @@ void patch_global_context(Z3_context ctx) {
   Py_DECREF(res);
 }
 
-void call_strengthen(Z3_app f, Z3_model model) {
+void call_strengthen(Z3_app f, Z3_model model, bool debug) {
   PyObject *m = get_formula_strengthener_module();
   PyObject *func = PyObject_GetAttrString(m, "strengthen_wrapper");
   assert(func);

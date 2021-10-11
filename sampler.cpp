@@ -176,7 +176,8 @@ z3::check_result Sampler::solve(const std::string &timer_category) {
       failure_cause = "SMT (z3) exception: " + ss.str();
       safe_exit(1);
     }
-    std::cout << "SMT result: " << result << "\n";
+    if (debug)
+        std::cout << "SMT result: " << result << "\n";
     if (res == z3::sat) {
       model = solver.get_model();
     }
@@ -286,7 +287,8 @@ void Sampler::print_stats() {
 z3::model Sampler::start_epoch() {
   is_time_limit_reached();
 
-  std::cout << "Sampler: Starting an epoch (" << epochs << ")" << std::endl;
+  if (debug)
+      std::cout << "Sampler: Starting an epoch (" << epochs << ")" << std::endl;
 
   opt.push();  // because formula is constant, but other hard/soft constraints
                // change between epochs
@@ -365,7 +367,8 @@ void Sampler::choose_random_assignment() {
 }
 
 void Sampler::add_blocking_soft_constraints() {
-  std::cout << "Using blocking :)\n";
+    if (debug)
+        std::cout << "Using blocking :)\n";
   for (unsigned int i = 0; i < model.num_consts(); ++i) {
     const auto &decl = model.get_const_decl(i);
     assert_soft(decl() != model.get_const_interp(decl));

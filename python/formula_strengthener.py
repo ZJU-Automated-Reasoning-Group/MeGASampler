@@ -152,7 +152,8 @@ class StrengthenedFormula():
                 i = i + 1
         else:
             # todo raise exception
-            print("warning: unexpected multiplication")
+            if debug:
+                print("warning: unexpected multiplication")
 
     def _strengthen_add(self, lhs_children, lhs_children_values, op, rhs_value,
                         model):
@@ -306,8 +307,9 @@ class StrengthenedFormula():
                                      rhs_value, model)
             else:
                 if self.collect_unsimplified:
-                    print(
-                        f"Unsupported binary operator: {op_to_string(lhs_op)}")
+                    if debug:
+                        print(
+                            f"Unsupported binary operator: {op_to_string(lhs_op)}")
                     self.add_unsimplified_demand(
                         build_binary_expression(lhs, rhs_value, op))
                 else:
@@ -315,8 +317,9 @@ class StrengthenedFormula():
         else:
             lhs_op = get_op(lhs)
             if self.collect_unsimplified:
-                print(
-                    f"Unsupported non-binary operator: {op_to_string(lhs_op)}")
+                if debug:
+                    print(
+                        f"Unsupported non-binary operator: {op_to_string(lhs_op)}")
                 self.add_unsimplified_demand(
                     build_binary_expression(lhs, rhs_value, op))
             else:
@@ -451,17 +454,18 @@ def remove_or(nnf_formula, guiding_model):
 
 
 def patch_z3_context(context_pointer):
-    print(context_pointer)
+    print(f"context pointer is: {hex(context_pointer)}")
     ctxobj = ContextObj(context_pointer)
     ctxobj.value = context_pointer  # why?!
     z3.main_ctx().ctx = ctxobj
 
 
-def strengthen_create_message(f, model):
+def strengthen_create_message(f, model, debug=False):
     b = strengthen_capnp.StrengthenResult.new_message()
     try:
-        #print(f"Calling strengthen with expr: {f}, model: {model}")
-        res = strengthen(f, model)
+        if debug:
+            print(f"Calling strengthen with expr: {f}, model: {model}")
+        res = strengthen(f, model, debug)
     except NoRuleForOp as e:
         b.res = False
         b.failuredecription = f"Operator {e.op_string} ({e.op_number}) with arity {e.op_arity} found, " \
@@ -487,12 +491,13 @@ def strengthen_create_message(f, model):
                 assert (isinstance(pythonInterval.high.n, int))
                 capnpVarInterval.interval.high = pythonInterval.high.n
     out = b.to_bytes()
-    print(f"Result binary length: {len(out)}")
+    if (debug):
+        print(f"Result binary length: {len(out)}")
     # print(b)
     return out
 
 
-def strengthen_wrapper(f, model):
+def strengthen_wrapper(f, model, debug=False):
     ast = Ast(f)
     ast.value = f
     f = ExprRef(ast, z3.main_ctx())
@@ -500,4 +505,4 @@ def strengthen_wrapper(f, model):
     modelobj.value = model
     model = ModelRef(modelobj, z3.main_ctx())
 
-    return strengthen_create_message(f, model)
+    return strengthen_create_message(f, model, debug)

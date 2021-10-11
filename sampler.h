@@ -22,6 +22,7 @@ class Sampler {
  public:
   z3::context c;  // must come before other z3 objects!
   z3::expr original_formula;
+  bool debug = false;
 
  private:
   z3::params params;

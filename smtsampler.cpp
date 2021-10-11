@@ -26,11 +26,13 @@ void SMTSampler::calculate_constraints(const std::string &m_string) {
     pos = m_string.find(';', pos) + 1;
     add_constraints(v(), a, count);
   }
-  std::cout << "Collected constraints: ";
-  for (auto constraint : constraints) {
-    std::cout << constraint << " ";
+  if (debug) {
+    std::cout << "Collected constraints: ";
+    for (auto constraint : constraints) {
+      std::cout << constraint << " ";
+    }
+    std::cout << "\n";
   }
-  std::cout << "\n";
 }
 
 void SMTSampler::find_neighboring_solutions(
@@ -79,14 +81,14 @@ void SMTSampler::find_neighboring_solutions(
       if (mutations.find(new_string) == mutations.end()) {
         mutations.insert(new_string);
         std::string sample_to_file = model_to_string(model);
-        std::cout << "mutation: " << sample_to_file << "\n";
+        if (debug) std::cout << "mutation: " << sample_to_file << "\n";
         save_and_output_sample_if_unique(sample_to_file);  // todo: check format
         flips += 1;
-      } else {
+      } else if (debug) {
         std::cout << "repeated\n";
       }
     } else if (res == z3::unsat) {
-      std::cout << "unsat\n";
+      if (debug) std::cout << "unsat\n";
       if (cons_to_ind[count].first >= 0) {
         unsat_ind[cons_to_ind[count].first].insert(cons_to_ind[count].second);
         ++unsat_ind_count;
@@ -96,14 +98,16 @@ void SMTSampler::find_neighboring_solutions(
     opt.pop();
     solver.pop();
     // print === as a progress bar (80 '=' to mark 100% of constraints flipped)
-    double new_progress =
-        80.0 * (double)((count + 1)) / (double)(constraints.size());
-    while (progress < new_progress) {
-      ++progress;
-      std::cout << '=' << std::flush;
+    if (debug) {
+      double new_progress =
+          80.0 * (double)((count + 1)) / (double)(constraints.size());
+      while (progress < new_progress) {
+        ++progress;
+        std::cout << '=' << std::flush;
+      }
     }
   }
-  std::cout << '\n';
+  if (debug) std::cout << '\n';
 }
 
 void SMTSampler::find_combined_solutions(
@@ -112,15 +116,15 @@ void SMTSampler::find_combined_solutions(
   std::vector<std::string> sigma = initial;
   for (int k = 2; k <= 6; ++k) {
     is_time_limit_reached();
-    std::cout << "Combining " << k << " mutations\n";
+    if (debug) std::cout << "Combining " << k << " mutations\n";
     std::vector<std::string> new_sigma;
     int all_new = 0;
     int good = 0;
     for (std::string b_string : sigma) {
       for (std::string c_string : initial) {
         is_time_limit_reached();
-        std::cout << "combining: " << b_string << " and " << c_string
-                  << " (orig is:" << a_string << ")\n";
+        if (debug) std::cout << "combining: " << b_string << " and " << c_string
+                             << " (orig is:" << a_string << ")\n";
         size_t pos_a = 0;
         size_t pos_b = 0;
         size_t pos_c = 0;
@@ -136,7 +140,7 @@ void SMTSampler::find_combined_solutions(
           pos_c = c_string.find(';', pos_c) + 1;
           candidate += std::to_string(num) + ';';
         }
-        std::cout << "candidate: " << candidate << "\n";
+        if (debug) std::cout << "candidate: " << candidate << "\n";
         total_samples++;
         if (mutations.find(candidate) == mutations.end() &&
             strcmp(candidate.c_str(), a_string.c_str()) != 0) {
@@ -151,14 +155,14 @@ void SMTSampler::find_combined_solutions(
             ++good;
             new_sigma.push_back(candidate);
           }
-        } else {
+        } else if (debug) {
           std::cout << "repeated candidate\n";
         }
       }
     }
     double accuracy = (double)(good) / (double)(all_new);
-    std::cout << "Valid: " << good << " / " << all_new << " = " << accuracy
-              << '\n';
+    if (debug) std::cout << "Valid: " << good << " / " << all_new << " = " << accuracy
+                         << '\n';
     //		print_stats();
     if (all_new == 0 || accuracy < 0.1) break;
 
@@ -169,8 +173,8 @@ void SMTSampler::find_combined_solutions(
 void SMTSampler::do_epoch(const z3::model &m) {
   is_time_limit_reached();
 
-  std::cout << "SMTSAMPLER: do epoch\n";
-  std::cout << "model is: " << m << "\n";
+  if (debug) std::cout << "SMTSAMPLER: do epoch\n";
+  if (debug) std::cout << "model is: " << m << "\n";
 
   std::unordered_set<std::string> mutations;
   std::string m_string = model_string(m, ind);

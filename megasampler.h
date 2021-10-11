@@ -16,12 +16,17 @@ class MEGASampler : public Sampler {
    */
   void do_epoch(const z3::model& model);
   void finish();
+  virtual void add_blocking_soft_constraints() { /* do nothing */ }
+
 
  private:
   void sample_intervals_in_rounds(
       const capnp::List<StrengthenResult::VarInterval>::Reader& intervalmap);
   std::string get_random_sample_from_intervals(
       const capnp::List<StrengthenResult::VarInterval>::Reader& intervalmap);
+  void add_soft_constraint_from_intervals(
+      const capnp::List<StrengthenResult::VarInterval>::Reader& intervalmap);
+
 };
 
 #endif /* MEGASAMPLER_H_ */

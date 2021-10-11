@@ -104,7 +104,7 @@ class Sampler {
   /*
    * Adds negation of previous model as soft constraints to opt.
    */
-  void add_blocking_soft_constraints();
+  virtual void add_blocking_soft_constraints();
   /*
    * Tries to solve optimized formula (using opt).
    * If too long, resorts to regular formula (using solver).

@@ -51,6 +51,9 @@ void MEGASampler::do_epoch(const z3::model& m) {
   }
   std::cout << "\n";
 
+  if (use_blocking)
+    add_soft_constraint_from_intervals(container.getIntervalmap());
+
   if (is_time_limit_reached("epoch")) return;
 
   sample_intervals_in_rounds(container.getIntervalmap());
@@ -63,7 +66,7 @@ void MEGASampler::finish() {
 
 void MEGASampler::sample_intervals_in_rounds(
     const capnp::List<StrengthenResult::VarInterval>::Reader& intervalmap) {
-  const unsigned int MAX_ROUNDS = 20;
+  const unsigned int MAX_ROUNDS = use_blocking ? 100 : 20;
   const unsigned int MAX_SAMPLES = 30;
   const float MIN_RATE = 0.2;
 
@@ -100,4 +103,22 @@ std::string MEGASampler::get_random_sample_from_intervals(
     sample_string += ";";
   }
   return sample_string;
+}
+
+void MEGASampler::add_soft_constraint_from_intervals(
+    const capnp::List<StrengthenResult::VarInterval>::Reader& intervals) {
+  z3::expr expr(c);
+  for (auto interval : intervals) {
+    if (interval.getInterval().getIshighinf() || interval.getInterval().getIslowminf())
+      continue;
+    const auto var = c.int_const(interval.getVariable().cStr());
+    const auto low = c.int_val(interval.getInterval().getLow());
+    const auto high = c.int_val(interval.getInterval().getHigh());
+    if (expr) {
+      expr = expr && (var >= low && var <= high);
+    } else {
+      expr = (var >= low && var <= high);
+    }
+  }
+  opt.add_soft(!expr, 1);
 }

@@ -25,7 +25,8 @@ void MEGASampler::do_epoch(const z3::model& m) {
   struct buflen ret = call_strengthen(original_formula, m);
   const auto view = kj::arrayPtr(reinterpret_cast<const capnp::word*>(ret.buf),
                                  ret.len / sizeof(capnp::word));
-  capnp::FlatArrayMessageReader message(view);
+  const capnp::ReaderOptions options { (uint64_t) (ret.len + 16), 64 };
+  capnp::FlatArrayMessageReader message(view, options);
   auto container = message.getRoot<StrengthenResult>();
 
   auto res = container.getRes();

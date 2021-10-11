@@ -3,6 +3,7 @@
 #include <capnp/serialize.h>
 
 #include <cinttypes>
+#include <cstdint>
 #include <iostream>
 #include <random>
 
@@ -25,7 +26,8 @@ void MEGASampler::do_epoch(const z3::model& m) {
   struct buflen ret = call_strengthen(original_formula, m);
   const auto view = kj::arrayPtr(reinterpret_cast<const capnp::word*>(ret.buf),
                                  ret.len / sizeof(capnp::word));
-  const capnp::ReaderOptions options { (uint64_t) (ret.len + 16), 64 };
+  // Disable the security measure, we trust ourselves
+  const capnp::ReaderOptions options { UINT64_MAX, 64 };
   capnp::FlatArrayMessageReader message(view, options);
   auto container = message.getRoot<StrengthenResult>();
 

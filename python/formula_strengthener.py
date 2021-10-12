@@ -2,6 +2,8 @@ from functools import reduce
 import cProfile
 import pstats
 import random
+import ctypes
+import operator
 
 from interval import Interval, IntervalSet, INF, MINF, MININT, MAXINT
 from z3_utils import (Z3_ADD_OPS, Z3_AND_OPS, Z3_DISTINCT_OPS, Z3_EQ_OPS,
@@ -15,7 +17,7 @@ from z3_utils import (Z3_ADD_OPS, Z3_AND_OPS, Z3_DISTINCT_OPS, Z3_EQ_OPS,
                       strict_to_nonstrict_bool_op)
 from z3 import (And, Ast, ContextObj, ExprRef, Goal, ModelObj, ModelRef,
                 Tactic, Then, With, Z3_OP_UMINUS, is_app_of, is_bool, is_const,
-                is_not, math, substitute)
+                is_not, substitute)
 import z3
 import capnp
 
@@ -111,7 +113,7 @@ class StrengthenedFormula():
 
     def _strengthen_mult(self, lhs_children, lhs_children_values, op,
                          rhs_value, model):
-        lhs_value = math.prod(lhs_children_values)
+        lhs_value = reduce(operator.mul, lhs_children_values, 1)
         num_children = len(lhs_children)
         ge_op = op
         le_op = reverse_boolean_operator(op)
@@ -240,8 +242,8 @@ class StrengthenedFormula():
     def _strengthen_mul_by_constant(self, constant, var_list, var_value_list,
                                     op, rhs_value, model):
         division_rounded_down = rhs_value // constant
-        var_prod = reduce((lambda x, y: x * y), var_list)
-        value_prod = math.prod(var_value_list)
+        var_prod = reduce(operator.mul, var_list)
+        value_prod = reduce(operator.mul, var_value_list, 1)
         if constant > 0:
             should_round_up = (op in Z3_GE_OPS or op
                                in Z3_GT_OPS) and rhs_value % constant != 0
@@ -455,9 +457,7 @@ def remove_or(nnf_formula, guiding_model):
 
 def patch_z3_context(context_pointer):
     print(f"context pointer is: {hex(context_pointer)}")
-    ctxobj = ContextObj(context_pointer)
-    ctxobj.value = context_pointer  # why?!
-    z3.main_ctx().ctx = ctxobj
+    z3.main_ctx().ctx = ctypes.c_void_p(context_pointer)
 
 
 def strengthen_create_message(f, model, debug=False):
@@ -498,11 +498,7 @@ def strengthen_create_message(f, model, debug=False):
 
 
 def strengthen_wrapper(f, model, debug=False):
-    ast = Ast(f)
-    ast.value = f
-    f = ExprRef(ast, z3.main_ctx())
-    modelobj = ModelObj(model)
-    modelobj.value = model
-    model = ModelRef(modelobj, z3.main_ctx())
+    f = ExprRef(ctypes.c_void_p(f), z3.main_ctx())
+    model = ModelRef(ctypes.c_void_p(model), z3.main_ctx())
 
     return strengthen_create_message(f, model, debug)

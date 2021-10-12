@@ -10,12 +10,13 @@ ffi_builder.set_source("pythonfuncs", r"""
 """)
 
 ffi_builder.embedding_init_code(r"""
-import z3
 import sys
 import os
+sys.path.append('./python/')
+if 'VIRTUAL_ENV' in os.environ:
+    sys.path.append(f"{os.environ['VIRTUAL_ENV']}/site-packages")
 from pythonfuncs import ffi, lib
 import pythonfuncs
-sys.path.append('./python/')
 import formula_strengthener
 
 def intptr(ptr):

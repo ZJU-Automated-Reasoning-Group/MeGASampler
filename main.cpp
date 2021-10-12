@@ -19,6 +19,7 @@ static const char *argp_doc = "megasampler -- Sample SMT formulas";
 static const char *argp_args_doc = "INPUT";
 
 static struct argp_option options[] = {
+    {"debug", 'd', 0, 0, "Show debug messages (can be very verbose)", 0},
     {"samples", 'n', "NUM", 0, "Number of samples", 0},
     {"time", 't', "SECONDS", 0, "Time limit", 0},
     {"epochs", 'e', "NUM", 0, "Number of epochs", 0},
@@ -38,7 +39,7 @@ struct args {
   unsigned int max_epochs = 1000000, max_samples = 1000000,
                max_epoch_samples = 10000;
   int strategy = STRAT_SMTBIT;
-  bool use_smtsampler = false, json = false, blocking = false;
+  bool use_smtsampler = false, json = false, blocking = false, debug = false;
   double max_time = 3600.0, max_epoch_time = 600.0;
 };
 
@@ -46,6 +47,9 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
   struct args *args = (struct args *)state->input;
 
   switch (key) {
+    case 'd':
+      args->debug = true;
+      break;
     case 'n':
       args->max_samples = atoi(arg);
       break;
@@ -133,6 +137,9 @@ int main(int argc, char *argv[]) {
         args.max_epoch_samples, args.max_epoch_time, args.strategy, args.json,
         args.blocking);
   }
+  if (args.debug)
+    s->debug = true;
+
   global_sampler = s.get();
   patch_global_context(s->c);
   s->set_timer_max("total", args.max_time);

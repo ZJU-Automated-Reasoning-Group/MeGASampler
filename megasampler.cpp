@@ -105,19 +105,24 @@ std::string MEGASampler::get_random_sample_from_intervals(
   return sample_string;
 }
 
+static inline z3::expr combine_expr(const z3::expr& base, const z3::expr& arg) {
+  if (base)
+    return base && arg;
+  return arg;
+}
+
 void MEGASampler::add_soft_constraint_from_intervals(
     const capnp::List<StrengthenResult::VarInterval>::Reader& intervals) {
   z3::expr expr(c);
   for (auto interval : intervals) {
-    if (interval.getInterval().getIshighinf() || interval.getInterval().getIslowminf())
-      continue;
     const auto var = c.int_const(interval.getVariable().cStr());
-    const auto low = c.int_val(interval.getInterval().getLow());
-    const auto high = c.int_val(interval.getInterval().getHigh());
-    if (expr) {
-      expr = expr && (var >= low && var <= high);
-    } else {
-      expr = (var >= low && var <= high);
+    if (!interval.getInterval().getIslowminf()) {
+      const auto low = c.int_val(interval.getInterval().getLow());
+      expr = combine_expr(expr, var >= low);
+    }
+    if (!interval.getInterval().getIshighinf()) {
+      const auto high = c.int_val(interval.getInterval().getHigh());
+      expr = combine_expr(expr, var <= high);
     }
   }
   opt.add_soft(!expr, 1);

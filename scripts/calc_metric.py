@@ -154,7 +154,7 @@ class ManualSatisfiesMetric(Metric):
         elif z3.is_eq(expr):
             return self._build_binary(expr, operator.eq, self._build_int)
         elif z3.is_const(expr):
-            return self._build_leaf_literal(expr, expr.as_bool())
+            return self._build_leaf_literal(expr, bool(expr))
         raise Exception(f"Unhandled: {expr}")
 
     def _build_int(self, expr):

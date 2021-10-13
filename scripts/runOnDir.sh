@@ -1,15 +1,16 @@
 #!/bin/bash
 #set -x
+shopt -s globstar nullglob
 
 # CONFIG
 
 # Send SIGHUP after this much time
-EXTERNAL_TIMEOUT="40m"
+EXTERNAL_TIMEOUT="35m"
 
 # Send SIGKILL this much time after SIGHUP was sent
-KILL_AFTER="5m"
+KILL_AFTER="2m"
 
-JOBS="-32"
+JOBS="50%"
 
 # CODE
 
@@ -44,7 +45,6 @@ Additional arguments: ${@:3}
 EOF
 
 # run sampler and collect json files
-shopt -s globstar nullglob
 for f in "${input_dir}"/**/*.smt2
 do
   # Process benchmarks that are marked as satisfiable (not unsat or unknown)

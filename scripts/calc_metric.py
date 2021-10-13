@@ -153,6 +153,8 @@ class ManualSatisfiesMetric(Metric):
             return self._build_binary(expr, operator.ge, self._build_int)
         elif z3.is_eq(expr):
             return self._build_binary(expr, operator.eq, self._build_int)
+        elif z3.is_const(expr):
+            return self._build_leaf_literal(expr, expr.as_bool())
         raise Exception(f"Unhandled: {expr}")
 
     def _build_int(self, expr):
@@ -169,7 +171,7 @@ class ManualSatisfiesMetric(Metric):
         elif z3.is_app_of(expr, z3.Z3_OP_UMINUS):
             return self._build_unary_minus(expr)
         elif z3.is_int_value(expr):
-            return self._build_leaf_literal(expr)
+            return self._build_leaf_literal(expr, expr.as_long())
         elif z3.is_const(expr):
             return self._build_leaf_symbol(expr)
         raise Exception(f"Unhandled: {expr}")
@@ -234,8 +236,7 @@ class ManualSatisfiesMetric(Metric):
 
         return e
 
-    def _build_leaf_literal(self, expr):
-        value = expr.as_long()
+    def _build_leaf_literal(self, expr, value):
         node_id = expr.get_id()
 
         def e(model):

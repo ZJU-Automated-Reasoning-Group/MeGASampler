@@ -2,8 +2,8 @@
 from __future__ import annotations
 import abc
 import argparse
+import functools
 import fractions
-import math
 import operator
 import sys
 import typing as typ
@@ -33,6 +33,10 @@ PARSER.add_argument('-m', '--metric',
                     choices=["satisfies", "wire_coverage"])
 
 CTX = z3.Context()
+
+
+def prod(*args):
+    return functools.reduce(operator.mul, args, 1)
 
 
 class Metric(abc.ABC):
@@ -101,9 +105,6 @@ class SatisfiesMetric(Metric):
             self._satisfies += 1
         self._total += 1
 
-        if self._total % 1000 == 0:
-            print(f"{self._satisfies}/{self._total}")
-
 
 class ManualSatisfiesMetric(Metric):
     def __init__(self, formula: str, statistics: NodeStatistics = None):
@@ -118,9 +119,6 @@ class ManualSatisfiesMetric(Metric):
         if self._evaluator(model):
             self._satisfies += 1
         self._total += 1
-
-        if self._total % 1000 == 0:
-            print(f"{self._satisfies}/{self._total}")
 
     @property
     def result(self) -> fractions.Fraction:
@@ -164,7 +162,7 @@ class ManualSatisfiesMetric(Metric):
         elif z3.is_sub(expr):
             return self._build_binary(expr, operator.sub, self._build_int)
         elif z3.is_mul(expr):
-            return self._build_nary(expr, math.prod, self._build_int)
+            return self._build_nary(expr, prod, self._build_int)
         elif z3.is_app_of(expr, z3.Z3_OP_UMINUS):
             return self._build_unary_minus(expr)
         elif z3.is_int_value(expr):

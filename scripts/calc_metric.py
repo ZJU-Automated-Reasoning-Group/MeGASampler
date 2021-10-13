@@ -325,14 +325,14 @@ def parse_samples(f: typ.TextIO) -> typ.Iterator[list[tuple[str, int]]]:
         yield [to_tuple(x) for x in p]
 
 
-def calc_metric(formula: typ.TextIO, samples: typ.TextIO,
-                metric: str) -> fractions.Fraction:
-    formula = _load_formula(args.formula)
-    samples = parse_samples(args.samples)
+def calc_metric(_formula: typ.TextIO, _samples: typ.TextIO,
+                _metric: str, _use_c_api=False) -> fractions.Fraction:
+    formula = _load_formula(_formula)
+    samples = parse_samples(_samples)
 
-    if args.metric == 'satisfies':
-        metric = SatisfiesMetric(formula, use_c_api=args.use_c_api)
-    elif args.metric == 'wire_coverage':
+    if _metric == 'satisfies':
+        metric: Metric = SatisfiesMetric(formula, use_c_api=_use_c_api)
+    elif _metric == 'wire_coverage':
         metric = ManualSatisfiesMetric(formula,
                                        statistics=WireCoverageStatistics())
 
@@ -343,7 +343,7 @@ def calc_metric(formula: typ.TextIO, samples: typ.TextIO,
 def main():
     args = PARSER.parse_args(sys.argv[1:])
 
-    print(calc_metric(args.formula, args.samples, args.metric))
+    print(calc_metric(args.formula, args.samples, args.metric, args.use_c_api))
 
 
 if __name__ == '__main__':

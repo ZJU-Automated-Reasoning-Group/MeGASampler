@@ -28,7 +28,8 @@ PARSER.add_argument('-f',
 PARSER.add_argument('--use-c-api',
                     action='store_true',
                     help="Use Z3 C API calls to load samples, if applicable")
-PARSER.add_argument('-m', '--metric',
+PARSER.add_argument('-m',
+                    '--metric',
                     required=True,
                     choices=["satisfies", "wire_coverage"])
 
@@ -264,7 +265,7 @@ class NodeStatistics(abc.ABC):
 
 
 class WireCoverageStatistics(NodeStatistics):
-    MASK = 2**64-1
+    MASK = 2**64 - 1
 
     def register_node(self, node_id: int, sort: str):
         if sort == "bool":
@@ -277,16 +278,14 @@ class WireCoverageStatistics(NodeStatistics):
     def evaluate_node(self, node_id: int, value: typ.Any):
         old_true, old_false, sort = self._storage[node_id]
         if sort == "bool":
-            self._storage[node_id] = (old_true or value,
-                                      old_false or not value,
-                                      sort)
+            self._storage[node_id] = (old_true or value, old_false
+                                      or not value, sort)
         elif sort == "int":
-            self._storage[node_id] = (old_true | (value & self.MASK),
-                                      old_false | ((value & self.MASK) ^ self.MASK),
+            self._storage[node_id] = (old_true | (value & self.MASK), old_false
+                                      | ((value & self.MASK) ^ self.MASK),
                                       sort)
         else:
             raise Exception(f"Unhandled: {sort}")
-
 
     @property
     def result(self) -> fractions.Fraction:
@@ -305,6 +304,7 @@ class WireCoverageStatistics(NodeStatistics):
 
         return fractions.Fraction(count, total)
 
+
 def _load_formula(f: typ.TextIO) -> str:
     return f.read()
 
@@ -315,7 +315,7 @@ def _apply_metric(metric: Metric, samples: typ.Iterator[list[tuple[str,
         metric.count_sample(sample)
 
 
-def _parse_samples(f: typ.TextIO) -> typ.Iterator[list[tuple[str, int]]]:
+def parse_samples(f: typ.TextIO) -> typ.Iterator[list[tuple[str, int]]]:
     def to_tuple(sample):
         var, value = sample.split(':')
         return var, int(value.strip('()').replace(' ', ''))
@@ -325,19 +325,25 @@ def _parse_samples(f: typ.TextIO) -> typ.Iterator[list[tuple[str, int]]]:
         yield [to_tuple(x) for x in p]
 
 
-def main():
-    args = PARSER.parse_args(sys.argv[1:])
-
+def calc_metric(formula: typ.TextIO, samples: typ.TextIO,
+                metric: str) -> fractions.Fraction:
     formula = _load_formula(args.formula)
-    samples = _parse_samples(args.samples)
+    samples = parse_samples(args.samples)
 
     if args.metric == 'satisfies':
         metric = SatisfiesMetric(formula, use_c_api=args.use_c_api)
     elif args.metric == 'wire_coverage':
-        metric = ManualSatisfiesMetric(formula, statistics=WireCoverageStatistics())
+        metric = ManualSatisfiesMetric(formula,
+                                       statistics=WireCoverageStatistics())
 
     _apply_metric(metric, samples)
-    print(metric.result)
+    return metric.result
+
+
+def main():
+    args = PARSER.parse_args(sys.argv[1:])
+
+    print(calc_metric(args.formula, args.samples, args.metric))
 
 
 if __name__ == '__main__':

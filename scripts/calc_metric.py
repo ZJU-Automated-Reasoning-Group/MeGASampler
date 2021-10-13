@@ -229,7 +229,7 @@ class ManualSatisfiesMetric(Metric):
         node_id = expr.get_id()
 
         def e(model):
-            value = model[name]
+            value = model.get(name, 0)
             if self._statistics:
                 self._statistics.evaluate_node(node_id, value)
             return value

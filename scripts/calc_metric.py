@@ -37,7 +37,7 @@ CTX = z3.Context()
 
 def prod(*args):
     if (len(args) == 1):
-        args = args
+        args = args[0]
     return functools.reduce(operator.mul, args, 1)
 
 

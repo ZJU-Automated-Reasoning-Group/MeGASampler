@@ -64,26 +64,58 @@ void MEGASampler::finish() {
   Sampler::finish();
 }
 
+
+static inline uint64_t ilog2(const uint64_t x) {
+  if (0 == x) return 1; // undefined but useful for me here
+  return (63 - __builtin_clzll(x));
+}
+
+static inline int64_t safe_mul(const int64_t a, const int64_t b) {
+  int64_t ret;
+  if (!__builtin_mul_overflow(a, b, &ret))
+    return ret;
+  return ((a > 0) ^ (b > 0)) ? INT64_MIN : INT64_MAX;
+}
+
 void MEGASampler::sample_intervals_in_rounds(
     const capnp::List<StrengthenResult::VarInterval>::Reader& intervalmap) {
-  const unsigned int MAX_ROUNDS = use_blocking ? 100 : 20;
+  uint64_t coeff = 1;
+  for (auto imap : intervalmap) {
+    const auto& i = imap.getInterval();
+    if (i.getIslowminf() || i.getIshighinf()) {
+      coeff += 32;
+      continue;
+    }
+    coeff = safe_mul(coeff, ilog2(1 + ilog2(1 + i.getHigh() - i.getLow())));
+  }
+  if (use_blocking)
+    coeff = safe_mul(coeff, intervalmap.size());
+  const uint64_t MAX_ROUNDS = std::max(use_blocking ? 50UL : 10UL, coeff);
   const unsigned int MAX_SAMPLES = 30;
-  const float MIN_RATE = 0.2;
+  const float MIN_RATE = 0.75;
+  uint64_t debug_samples = 0;
 
+  if (debug)
+    std::cout << "Sampling, coeff = " << coeff << ", MAX_ROUNDS = " << MAX_ROUNDS << ", MAX_SAMPLES = " << MAX_SAMPLES << "\n";
+  
   float rate = 1.0;
-  for (unsigned int round = 0; round < MAX_ROUNDS && rate > MIN_RATE; round++) {
+  for (uint64_t round = 0; round < MAX_ROUNDS && rate > MIN_RATE; ++round) {
     is_time_limit_reached();
     unsigned int new_samples = 0;
     unsigned int round_samples = 0;
     for (;round_samples <= MAX_SAMPLES; ++round_samples) {
-      std::string sample = get_random_sample_from_intervals(intervalmap);
+      const std::string sample = get_random_sample_from_intervals(intervalmap);
       ++total_samples;
       if (save_and_output_sample_if_unique(sample)) {
+        if (debug)
+          ++debug_samples;
         ++new_samples;
       }
     }
     rate = new_samples / round_samples;
   }
+  if (debug)
+    std::cout << "Epoch unique samples: " << debug_samples << ", rate = " << rate << "\n";
 }
 
 std::string MEGASampler::get_random_sample_from_intervals(
@@ -91,7 +123,7 @@ std::string MEGASampler::get_random_sample_from_intervals(
   std::string sample_string;
   for (auto varinterval : intervalmap) {
     std::string varname = varinterval.getVariable().cStr();
-    auto interval = varinterval.getInterval();
+    const auto& interval = varinterval.getInterval();
     sample_string += varname;
     sample_string += ":";
     int64_t low = interval.getLow();

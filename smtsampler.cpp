@@ -232,12 +232,11 @@ void SMTSampler::add_constraints(z3::expr exp, z3::expr val, int count) {
   assert_soft(exp == val);
 }
 
-inline long long add_safe(long long a, long long b) {
-  if (b >= 0) {
-    return a > INT_MAX - b ? INT_MAX : a + b;
-  } else { // b < 0
-    return a < INT_MIN - b ? INT_MIN : a + b;
-  }
+static inline long long add_safe(long long a, long long b) {
+  long long ret;
+  if (!__builtin_add_overflow(a, b, &ret))
+    return ret;
+  return (a < 0) ? LLONG_MIN : LLONG_MAX;
 }
 
 int SMTSampler::combine_mutations(long long val_orig, long long val_b, long long val_c) {

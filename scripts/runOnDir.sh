@@ -5,10 +5,10 @@ shopt -s globstar nullglob
 # CONFIG
 
 # Send SIGHUP after this much time
-EXTERNAL_TIMEOUT="35m"
+EXTERNAL_TIMEOUT="31m"
 
 # Send SIGKILL this much time after SIGHUP was sent
-KILL_AFTER="2m"
+KILL_AFTER="6m"
 
 JOBS="50%"
 
@@ -54,12 +54,12 @@ do
   cur_output_dir="${newdir}$(dirname ${f#$input_dir})"
   echo "Output to: ${cur_output_dir}"
   pushd ${sampler_dir}
-  sem -j${JOBS} --id "$0-$$" -- \
-      timeout -k${KILL_AFTER} -sHUP ${EXTERNAL_TIMEOUT} \
+  sem -j${JOBS} --id "$0" -- \
+      timeout --foreground -k${KILL_AFTER} -sHUP ${EXTERNAL_TIMEOUT} \
       ./smtsampler --json -o ${cur_output_dir} "${@:3}" "${f}"
   popd
 done
-sem --id "$0-$$" --wait
+# sem --id "$0-$$" --wait
 
 cat >> "${newdir}/README.rst" <<EOF
 Finished run at $(date -Iseconds)

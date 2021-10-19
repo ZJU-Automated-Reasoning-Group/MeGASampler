@@ -1,7 +1,7 @@
 #include "smtsampler.h"
 
-#include <climits>
 #include <cinttypes>
+#include <climits>
 
 SMTSampler::SMTSampler(std::string _input, std::string _output_dir,
                        int _max_samples, double _max_time,
@@ -123,8 +123,9 @@ void SMTSampler::find_combined_solutions(
     for (std::string b_string : sigma) {
       for (std::string c_string : initial) {
         is_time_limit_reached();
-        if (debug) std::cout << "combining: " << b_string << " and " << c_string
-                             << " (orig is:" << a_string << ")\n";
+        if (debug)
+          std::cout << "combining: " << b_string << " and " << c_string
+                    << " (orig is:" << a_string << ")\n";
         size_t pos_a = 0;
         size_t pos_b = 0;
         size_t pos_c = 0;
@@ -161,8 +162,9 @@ void SMTSampler::find_combined_solutions(
       }
     }
     double accuracy = (double)(good) / (double)(all_new);
-    if (debug) std::cout << "Valid: " << good << " / " << all_new << " = " << accuracy
-                         << '\n';
+    if (debug)
+      std::cout << "Valid: " << good << " / " << all_new << " = " << accuracy
+                << '\n';
     //		print_stats();
     if (all_new == 0 || accuracy < 0.1) break;
 
@@ -218,7 +220,7 @@ std::string SMTSampler::model_string(z3::model m,
 }
 
 z3::expr SMTSampler::value(char const *n) {
-  return c.int_val((int64_t) ll_value(n));
+  return c.int_val((int64_t)ll_value(n));
 }
 
 // (exp == val) is added as soft constraint (to opt)
@@ -234,12 +236,12 @@ void SMTSampler::add_constraints(z3::expr exp, z3::expr val, int count) {
 
 static inline long long add_safe(long long a, long long b) {
   long long ret;
-  if (!__builtin_add_overflow(a, b, &ret))
-    return ret;
+  if (!__builtin_add_overflow(a, b, &ret)) return ret;
   return (a < 0) ? LLONG_MIN : LLONG_MAX;
 }
 
-int SMTSampler::combine_mutations(long long val_orig, long long val_b, long long val_c) {
+int SMTSampler::combine_mutations(long long val_orig, long long val_b,
+                                  long long val_c) {
   return add_safe(val_orig, add_safe(val_b, val_c));
 }
 

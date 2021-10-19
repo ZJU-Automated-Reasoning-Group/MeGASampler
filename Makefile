@@ -1,14 +1,28 @@
-.PHONY: all
+.PHONY: all clean
 
-SRC=$( wildcard *.cpp ) $( wildcard *.h )
+BINARY=megasampler
+SRC=$( wildcard *.cpp ) $( wildcard *.h ) $( wildcard *.c++ ) $( wildcard *.c )
 PYVER=3.9
 PYNAME=python$(PYVER)
 PYLIBNAME=$(PYNAME)
 #PYNAME=pypy3
 #PYLIBNAME=pypy3-c
 
-all: strengthen.capnp.h $(SRC) pythonfuncs.c
-	g++ -Wall -Wextra -Wshadow -Wnon-virtual-dtor -pedantic -ggdb -std=gnu++17 -march=native -pipe -O3 -o megasampler strengthen.capnp.c++ smtsampler.cpp pythonfuncs.c megasampler.cpp sampler.cpp main.cpp -isystem /usr/lib/$(PYNAME)/include -isystem /usr/include/$(PYNAME) -isystem ../z3/src/api -isystem ../z3/src/api/c++  -L ../z3/build -L /usr/lib/$(PYNAME)/config-$(PYVER)m-x86_64-linux-gnu -lz3 -l$(PYLIBNAME) -lpthread -lcapnp -ljsoncpp
+all: $(BINARY)
+
+clean:
+	rm -f $(BINARY) strengthen.capnp.h pythonfuncs.c strengthen.capnp.c++
+
+$(BINARY): strengthen.capnp.h $(SRC) pythonfuncs.c
+	g++ -Wall -Wextra -Wshadow -Wnon-virtual-dtor -pedantic -ggdb \
+  -std=gnu++17 -march=native -pipe -O3 -o $(BINARY) \
+  strengthen.capnp.c++ smtsampler.cpp pythonfuncs.c megasampler.cpp sampler.cpp \
+  main.cpp \
+  -isystem /usr/lib/$(PYNAME)/include -isystem /usr/include/$(PYNAME) \
+  -isystem ../z3/src/api -isystem ../z3/src/api/c++  \
+  -L ../z3/build -L /usr/lib/$(PYNAME)/config-$(PYVER)m-x86_64-linux-gnu \
+  -lz3 -l$(PYLIBNAME) -lpthread -lcapnp -ljsoncpp
+
 strengthen.capnp.h: strengthen.capnp
 	capnp compile -oc++ strengthen.capnp
 

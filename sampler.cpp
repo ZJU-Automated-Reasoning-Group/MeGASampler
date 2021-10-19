@@ -11,8 +11,6 @@
 
 #include <filesystem>
 
-#include "samples.capnp.h"
-
 Sampler::Sampler(std::string _input, std::string _output_dir, int _max_samples,
                  double _max_time, int _max_epoch_samples,
                  double _max_epoch_time, int __attribute__((unused)) _strategy,
@@ -176,8 +174,7 @@ z3::check_result Sampler::solve(const std::string &timer_category) {
       failure_cause = "SMT (z3) exception: " + ss.str();
       safe_exit(1);
     }
-    if (debug)
-        std::cout << "SMT result: " << result << "\n";
+    if (debug) std::cout << "SMT result: " << result << "\n";
     if (res == z3::sat) {
       model = solver.get_model();
     }
@@ -288,7 +285,7 @@ z3::model Sampler::start_epoch() {
   is_time_limit_reached();
 
   if (debug)
-      std::cout << "Sampler: Starting an epoch (" << epochs << ")" << std::endl;
+    std::cout << "Sampler: Starting an epoch (" << epochs << ")" << std::endl;
 
   opt.push();  // because formula is constant, but other hard/soft constraints
                // change between epochs
@@ -367,8 +364,7 @@ void Sampler::choose_random_assignment() {
 }
 
 void Sampler::add_blocking_soft_constraints() {
-    if (debug)
-        std::cout << "Using blocking :)\n";
+  if (debug) std::cout << "Using blocking :)\n";
   for (unsigned int i = 0; i < model.num_consts(); ++i) {
     const auto &decl = model.get_const_decl(i);
     assert_soft(decl() != model.get_const_interp(decl));
@@ -468,8 +464,8 @@ bool Sampler::save_and_output_sample_if_unique(const std::string &sample) {
     results_file << unique_valid_samples << ": " << sample << std::endl;
   }
   if (unique_valid_samples >= max_samples) {
-      failure_cause = "Reached max samples.";
-      safe_exit(0);
+    failure_cause = "Reached max samples.";
+    safe_exit(0);
   }
   return res.second;
 }

@@ -137,8 +137,7 @@ int main(int argc, char *argv[]) {
         args.max_epoch_samples, args.max_epoch_time, args.strategy, args.json,
         args.blocking);
   }
-  if (args.debug)
-    s->debug = true;
+  if (args.debug) s->debug = true;
 
   global_sampler = s.get();
   patch_global_context(s->c);

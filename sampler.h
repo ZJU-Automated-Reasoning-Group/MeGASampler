@@ -10,8 +10,6 @@
 #include <unordered_set>
 #include <vector>
 
-#include "samples.capnp.h"
-
 enum { STRAT_SMTBIT, STRAT_SMTBV, STRAT_SAT };
 
 Z3_ast parse_bv(char const *n, Z3_sort s, Z3_context ctx);

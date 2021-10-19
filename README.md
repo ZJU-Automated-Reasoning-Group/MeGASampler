@@ -60,21 +60,6 @@ $ ./megasampler -n 1000000 -t 3600 formula.smt2
 Usage:
 
 ```
- MeGASampler
-$ make
-```
-
-# Running
-
-tl;dr:
-
-```
-$ ./megasampler -n 1000000 -t 3600 formula.smt2
-```
-
-Usage:
-
-```
 $ ./megasampler --help
 Usage: megasampler [OPTION...] INPUT
 megasampler -- Sample SMT formulas

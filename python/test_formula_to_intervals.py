@@ -1,6 +1,7 @@
+from z3 import parse_smt2_file, is_and, unsat
 from z3_utils import *
 import sys as _sys
-from formula_strengthener import strengthen
+from formula_strengthener import strengthen, nnf_simplify_and_remove_or
 from interval import Interval, IntervalSet, INF, MINF
 
 
@@ -16,15 +17,23 @@ def timed(func):
 
 def solve_and_strengthen_formula(f, debug = True):
     print("f is: " + str(f))
-    s = Solver()
-    s.add(f)
-    s.check()
-    m = s.model()
+    m = solve_formula(f)
     r, stren_time = timed(strengthen)(f, m, debug)
     print("f after strengthening:")
     print(r)
     print(f"time to strengthen f: {stren_time.total_seconds()}s")
     return r
+
+
+def solve_formula(f):
+    s = Solver()
+    s.add(f)
+    res = s.check()
+    if res == sat:
+        m = s.model()
+        return sat, m
+    else:
+        return unsat, None
 
 
 def read_smt2(filename):

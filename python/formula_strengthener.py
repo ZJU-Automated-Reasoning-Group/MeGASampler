@@ -21,7 +21,7 @@ from z3 import (And, Ast, ContextObj, ExprRef, Goal, ModelObj, ModelRef,
 import z3
 import capnp
 
-strengthen_capnp = capnp.load("strengthen.capnp")
+strengthen_capnp = capnp.load("../strengthen.capnp")
 
 
 class NoRuleForOp(Exception):

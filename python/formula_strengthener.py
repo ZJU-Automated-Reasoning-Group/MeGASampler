@@ -415,12 +415,10 @@ def strengthen(f, model, debug=False):
     return res
 
 
-def nnf_simplify_and_remove_or(f, guiding_model):
-    goal = Goal()
-    goal.add(f)
-    t_1 = Tactic('nnf')
-    # nnf_formula = t_1(goal).as_expr()
-    nnf_formula = Then(t_1, With('simplify', arith_lhs=True))(goal).as_expr()
+def nnf_simplify_and_remove_or(f, guiding_model, debug=False):
+    nnf_formula = nnf_simplify(f)
+    if debug:
+        print(f"f after nnf+simplification: {nnf_formula}")
     return And(remove_or(nnf_formula, guiding_model))
 
 
@@ -428,7 +426,8 @@ def nnf_simplify(f):
     goal = Goal()
     goal.add(f)
     t_1 = Tactic('nnf')
-    nnf_formula = Then(t_1, With('simplify', arith_lhs=True))(goal).as_expr()
+    nnf_formula = Then(t_1, With('simplify', arith_lhs=True, expand_select_store=True,
+                                 expand_store_eq=True))(goal).as_expr()  # expand_nested_stores=True
     return nnf_formula
 
 

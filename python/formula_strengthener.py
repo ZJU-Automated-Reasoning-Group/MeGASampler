@@ -275,6 +275,8 @@ class StrengthenedFormula():
         if is_const(lhs) or is_select(lhs) or is_uninterpreted(lhs):
             self._add_interval_for_binary_boolean(lhs, lhs_value, rhs_value,
                                                   op)
+        elif is_ite(lhs):
+            self._strengthen_ite(lhs, rhs_value, op, model)
         elif op in Z3_EQ_OPS:
             children_values = get_children_values(lhs, model)
             for i in range(0, len(children_values)):
@@ -407,6 +409,18 @@ class StrengthenedFormula():
     def __deepcopy__(self):
         return StrengthenedFormula.intersection(
             [self, StrengthenedFormula.get_top()])
+
+    def _strengthen_ite(self, ite_expr, rhs_value, op, model):
+        assert (len(ite_expr.children()) == 3)
+        cond = ite_expr.arg(0)
+        e_true = ite_expr.arg(1)
+        e_false = ite_expr.arg(2)
+        if model_evaluate_to_const(cond, model):
+            self._strengthen_binary_boolean_conjunct(e_true, model_evaluate_to_const(e_true, model), rhs_value, op, model)
+            self._strengthen_conjunct(cond, model)
+        else:
+            self._strengthen_binary_boolean_conjunct(e_false, model_evaluate_to_const(e_false, model), rhs_value, op, model)
+            self._strengthen_conjunct(Not(cond), model)
 
 
 def strengthen(f, model, debug=False):

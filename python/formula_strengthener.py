@@ -14,10 +14,10 @@ from z3_utils import (Z3_ADD_OPS, Z3_AND_OPS, Z3_DISTINCT_OPS, Z3_EQ_OPS,
                       is_binary_boolean, is_numeral_constant,
                       model_evaluate_to_const, negate_condition, op_to_string,
                       print_all_models, reverse_boolean_operator,
-                      strict_to_nonstrict_bool_op)
+                      strict_to_nonstrict_bool_op, expend_select_store, is_ite, is_array_equality, is_uninterpreted)
 from z3 import (And, Ast, ContextObj, ExprRef, Goal, ModelObj, ModelRef,
                 Tactic, Then, With, Z3_OP_UMINUS, is_app_of, is_bool, is_const,
-                is_not, substitute)
+                is_not, substitute, is_select, help_simplify, Not)
 import z3
 import capnp
 
@@ -422,13 +422,22 @@ def nnf_simplify_and_remove_or(f, guiding_model, debug=False):
     return And(remove_or(nnf_formula, guiding_model))
 
 
-def nnf_simplify(f):
+def nnf_simplify(f, debug=False):
+    # help_simplify()
+
     goal = Goal()
     goal.add(f)
-    t_1 = Tactic('nnf')
-    nnf_formula = Then(t_1, With('simplify', arith_lhs=True, expand_select_store=True,
-                                 expand_store_eq=True))(goal).as_expr()  # expand_nested_stores=True
-    return nnf_formula
+    nnf_formula = Tactic('nnf')(goal).as_expr()
+    if debug:
+        print(f"nnf_formula: {nnf_formula}")
+
+    goal = Goal()
+    goal.add(nnf_formula)
+    simp_ss = With('simplify', blast_select_store=True, arith_lhs=True)(goal).as_expr()
+    if debug:
+        print(f"simplify blast_select_store+arith_lhs: {simp_ss}")
+
+    return simp_ss
 
 
 def remove_or(nnf_formula, guiding_model):

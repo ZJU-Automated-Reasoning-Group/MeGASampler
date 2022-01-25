@@ -1,3 +1,4 @@
+import numpy as numpy
 from z3 import (And, AstRef, Goal, Not, Or, Solver, Tactic, Then, Z3Exception, Z3_OP_ADD, Z3_OP_AND,
                 Z3_OP_BADD, Z3_OP_BAND, Z3_OP_BMUL, Z3_OP_BOR, Z3_OP_BREDAND, Z3_OP_BREDOR,
                 Z3_OP_BSDIV, Z3_OP_BSDIV0, Z3_OP_BSMOD, Z3_OP_BSMOD0, Z3_OP_BSREM, Z3_OP_BSREM0,
@@ -6,9 +7,11 @@ from z3 import (And, AstRef, Goal, Not, Or, Solver, Tactic, Then, Z3Exception, Z
                 Z3_OP_MUL, Z3_OP_OR, Z3_OP_REM, Z3_OP_SGEQ, Z3_OP_SGT, Z3_OP_SLEQ, Z3_OP_SLT,
                 Z3_OP_SUB, Z3_OP_UMINUS, Z3_OP_UNINTERPRETED, Z3_UNINTERPRETED_SORT, is_app_of,
                 is_array, is_bool, is_bv, is_bv_value, is_const, is_false, is_int, is_int_value,
-                is_mul, is_not, is_true, sat)
+                is_mul, is_not, is_true, sat, Z3_mk_add, Z3_OP_NOT, Z3_OP_SELECT, Z3_OP_STORE, Z3_OP_ITE)
 
 # Z3 OPERATORS
+from z3.z3 import _coerce_exprs, ArithRef, _mk_bin, is_select, Store, is_store, Select, If
+
 Z3_LE_OPS = [Z3_OP_LE,Z3_OP_SLEQ]
 Z3_LT_OPS = [Z3_OP_LT,Z3_OP_SLT]
 Z3_GE_OPS = [Z3_OP_GE,Z3_OP_SGEQ]
@@ -23,6 +26,12 @@ Z3_REM_OPS = [Z3_OP_REM,Z3_OP_BSREM,Z3_OP_BSREM0,Z3_OP_BUREM,Z3_OP_BUREM0]
 Z3_MOD_OPS = [Z3_OP_MOD,Z3_OP_BSMOD,Z3_OP_BSMOD0]
 Z3_AND_OPS = [Z3_OP_AND,Z3_OP_BAND,Z3_OP_BREDAND]
 Z3_OR_OPS = [Z3_OP_OR,Z3_OP_BOR,Z3_OP_BREDOR]
+Z3_NOT_OPS = [Z3_OP_NOT]
+Z3_UMINUS_OPS = [Z3_OP_UMINUS]
+Z3_SELECT_OPS = [Z3_OP_SELECT]
+Z3_STORE_OPS = [Z3_OP_STORE]
+Z3_ITE_OPS = [Z3_OP_ITE]
+Z3_UNINTERPRETED_OPS = [Z3_OP_UNINTERPRETED]
 
 
 # Wrapper for allowing Z3 ASTs to be stored into Python Hashtables.
@@ -38,6 +47,29 @@ class AstRefKey:
 
     def __repr__(self):
         return str(self.n)
+
+
+def expend_select_store(f):
+    if is_select(f) and is_store(f.arg(0)):
+        store = f.arg(0)
+        array = store.arg(0)
+        select_index = f.arg(1)
+        store_index = store.arg(1)
+        value = store.arg(2)
+        return If(select_index == store_index, value, Select(array, select_index))
+    if is_nary_op(get_op(f)):
+        return build_nary_expression([expend_select_store(c) for c in f.children()], get_op(f))
+    if is_binary(f):
+        return build_binary_expression(expend_select_store(f.arg(0)), expend_select_store(f.arg(1)), get_op(f))
+    elif is_unary(f):
+        return build_unary_expression(expend_select_store(f.arg(0)), get_op(f))
+    elif is_trinary(f):
+        return build_trinary_expression(expend_select_store(f.arg(0)), expend_select_store(f.arg(1)),
+                                        expend_select_store(f.arg(2)), get_op(f))
+    elif len(f.children()) > 0:
+        raise UnsupportedOperator(get_op(f))
+    else:
+        return f
 
 
 def askey(n):
@@ -144,6 +176,14 @@ def is_binary(expr):
     return len(expr.children()) == 2
 
 
+def is_unary(expr):
+    return len(expr.children()) == 1
+
+
+def is_trinary(expr):
+    return len(expr.children()) == 3
+
+
 def is_uminus_on_int_value(expr):
     return is_app_of(expr,Z3_OP_UMINUS) and is_int_value(expr.arg(0))
 
@@ -154,6 +194,10 @@ def is_uminus_on_bv_value(expr):
 
 def is_numeral_constant(expr):
     return is_int_value(expr) or is_uminus_on_int_value(expr) or is_bv_value(expr) or is_uminus_on_bv_value(expr)
+
+
+def is_array_equality(expr):
+    return is_eq_or_seq(expr) and is_array(expr.arg(0))
 
 
 def evaluate_binary_expr(expr, model):
@@ -203,8 +247,49 @@ def build_binary_expression(lhs, rhs, op):
         return lhs / rhs
     elif op in Z3_REM_OPS or op in Z3_MOD_OPS:
         return lhs % rhs
+    elif op in Z3_OR_OPS:
+        return Or(lhs, rhs)
+    elif op in Z3_AND_OPS:
+        return And(lhs, rhs)
+    elif op in Z3_SELECT_OPS:
+        return Select(lhs, rhs)
     else:
-        raise UnsupportedOperator
+        raise UnsupportedOperator(op)
+
+
+def build_unary_expression(arg, op):
+    if op in Z3_NOT_OPS:
+        return Not(arg)
+    elif op in Z3_UMINUS_OPS:
+        return -arg
+    else:
+        raise UnsupportedOperator(op)
+
+
+def build_trinary_expression(arg0, arg1, arg2, op):
+    if op in Z3_STORE_OPS:
+        return Store(arg0, arg1, arg2)
+    if op in Z3_ITE_OPS:
+        return If(arg0, arg1, arg2)
+    else:
+        raise UnsupportedOperator(op)
+
+
+def is_nary_op(op):
+    return op in Z3_AND_OPS or op in Z3_OR_OPS or op in Z3_MUL_OPS or op in Z3_ADD_OPS
+
+
+def build_nary_expression(args, op):
+    if op in Z3_AND_OPS:
+        return And(args)
+    if op in Z3_OR_OPS:
+        return Or(args)
+    if op in Z3_MUL_OPS:
+        return numpy.prod(args)
+    if op in Z3_ADD_OPS:
+        return sum(args)
+    else:
+        raise UnsupportedOperator(op)
 
 
 def op_to_string(op):
@@ -239,7 +324,7 @@ def op_to_string(op):
     elif op == Z3_OP_UMINUS:
         return "-"
     else:
-        raise UnsupportedOperator
+        raise UnsupportedOperator(op)
 
 
 def reverse_boolean_operator(op):
@@ -264,7 +349,7 @@ def reverse_boolean_operator(op):
     elif op == Z3_OP_DISTINCT:
         return Z3_OP_DISTINCT
     else:
-        raise UnsupportedOperator
+        raise UnsupportedOperator(op)
 
 
 # Further simplifies a bitvector constraint by making sure that the rhs contains only constants
@@ -450,6 +535,11 @@ def is_rem_or_srem(expr):
 def is_mod_or_smod(expr):
     return True in [is_app_of(expr, op) for op in Z3_MOD_OPS]
 
+def is_ite(expr):
+    return True in [is_app_of(expr, op) for op in Z3_ITE_OPS]
+
+def is_uninterpreted(expr):
+    return True in [is_app_of(expr, op) for op in Z3_UNINTERPRETED_OPS]
 
 def model_evaluate_to_const(expr, model):
     if is_bool(expr):
@@ -458,7 +548,9 @@ def model_evaluate_to_const(expr, model):
         assert res_false or res_true
         return res_true
     else:
-        assert is_int(expr) or is_bv(expr)
+        if is_array(expr):
+            return
+        assert is_int(expr) or is_bv(expr), f"expr is: {expr}"
         return model.evaluate(expr).as_long()
 
 

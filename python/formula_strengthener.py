@@ -37,13 +37,15 @@ class StrengthenedFormula():
         self.unsimplified_demands = []
         self.interval_set = IntervalSet.get_top()
         self.debug = debug
+        self.array_equalities = []
 
     def add_unsimplified_demand(self, demand):
         self.unsimplified_demands.append(demand)
 
     def __str__(self):
         return "Interval set: " + str(self.interval_set) + \
-               "\nUnsimplified demands: " + str(self.unsimplified_demands)
+               "\nUnsimplified demands: " + str(self.unsimplified_demands) +\
+               "\nArray equalities: " + str(self.array_equalities)
 
     def __repr__(self):
         return str(self)
@@ -64,6 +66,10 @@ class StrengthenedFormula():
                 neg_cond = negate_condition(argument)
                 self._strengthen_conjunct(neg_cond, model)
         elif is_binary_boolean(conjunct):  # case (e bool_op c)
+            # save array equalities for later
+            if is_array_equality(conjunct):
+                self.array_equalities.append(conjunct)
+                return
             lhs, rhs, lhs_value, rhs_value, op = evaluate_binary_expr(
                 conjunct, model)
             # stren_binary_boolean expects op in >=,<=,==

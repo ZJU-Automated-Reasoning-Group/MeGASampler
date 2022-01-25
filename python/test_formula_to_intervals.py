@@ -1,4 +1,4 @@
-from z3 import parse_smt2_file, is_and, unsat
+from z3 import parse_smt2_file, is_and, unsat, Int, Bool, Implies, If
 from z3_utils import *
 import sys as _sys
 from formula_strengthener import strengthen, nnf_simplify_and_remove_or
@@ -17,7 +17,7 @@ def timed(func):
 
 def solve_and_strengthen_formula(f, debug = True):
     print("f is: " + str(f))
-    m = solve_formula(f)
+    res, m = solve_formula(f)
     r, stren_time = timed(strengthen)(f, m, debug)
     print("f after strengthening:")
     print(r)

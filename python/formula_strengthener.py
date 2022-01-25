@@ -264,7 +264,9 @@ class StrengthenedFormula():
         if self.debug:
             print("Strengthening: " + str(lhs) + " " + op_to_string(op) + " " +
                   str(rhs_value))
-        if is_const(lhs):
+        if is_numeral_constant(lhs):
+            return
+        if is_const(lhs) or is_select(lhs) or is_uninterpreted(lhs):
             self._add_interval_for_binary_boolean(lhs, lhs_value, rhs_value,
                                                   op)
         elif op in Z3_EQ_OPS:

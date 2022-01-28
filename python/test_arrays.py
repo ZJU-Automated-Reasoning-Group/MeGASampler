@@ -22,31 +22,31 @@ def built_in_tests():
     b = Array("b", I, I)
     c = Array("c", I, I)
 
-    # f = And((Select(a, x) == 3), (Select(a, 0) == 8))
-    # test_formula(f)
-    #
-    # f = Select(a, Select(b, y)) > Select(Store(a, 0, 4), z)
-    # test_formula(f)
-    #
-    # f = Select(a, Select(b, y)) > Select(Store(a, x, 4), z)
-    # test_formula(f)
+    f = And((Select(a, x) == 3), (Select(a, 0) == 8))
+    test_formula(f)
 
-    # f = Select(Store(Store(a, x, 0), y, 1), z) > 8
-    # test_formula(f)
+    f = Select(a, Select(b, y)) > Select(Store(a, 0, 4), z)
+    test_formula(f)
 
-    # f = Select(
-    #            Store(Store(a, x, 0),
-    #                  Select((Store(a, y, 1)), 5),
-    #                  1),
-    #            z) > 8
-    # test_formula(f)
+    f = Select(a, Select(b, y)) > Select(Store(a, x, 4), z)
+    test_formula(f)
 
-    # f = Select(
-    #            Store(Store(a, x, 0),
-    #                  Select((Store(a, y, 1)), 5),
-    #                  1),
-    #            z) > Select(a, x + y)
-    # test_formula(f)
+    f = Select(Store(Store(a, x, 0), y, 1), z) > 8
+    test_formula(f)
+
+    f = Select(
+               Store(Store(a, x, 0),
+                     Select((Store(a, y, 1)), 5),
+                     1),
+               z) > 8
+    test_formula(f)
+
+    f = Select(
+               Store(Store(a, x, 0),
+                     Select((Store(a, y, 1)), 5),
+                     1),
+               z) > Select(a, x + y)
+    test_formula(f)
 
     f = Store(a, x, x) == Store(a, y, y)
     test_formula(f)
@@ -67,7 +67,7 @@ def test_formula(f):
     print(f"m is: {m}")
     f_slice = remove_or(f_simple, m)
     print(f"slice is: {f_slice}")
-    f_intervals = strengthen(f, m)
+    f_intervals = strengthen(f, m, isAUF=True)
     print(f"interval formula is: {f_intervals}")
     print("--------------")
 

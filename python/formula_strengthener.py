@@ -160,7 +160,7 @@ class StrengthenedFormula():
                 i = i + 1
         else:
             # todo raise exception
-            if debug:
+            if self.debug:
                 print("warning: unexpected multiplication")
 
     def _strengthen_add(self, lhs_children, lhs_children_values, op, rhs_value,
@@ -319,7 +319,7 @@ class StrengthenedFormula():
                                      rhs_value, model)
             else:
                 if self.collect_unsimplified:
-                    if debug:
+                    if self.debug:
                         print(
                             f"Unsupported binary operator: {op_to_string(lhs_op)}")
                     self.add_unsimplified_demand(
@@ -329,7 +329,7 @@ class StrengthenedFormula():
         else:
             lhs_op = get_op(lhs)
             if self.collect_unsimplified:
-                if debug:
+                if self.debug:
                     print(
                         f"Unsupported non-binary operator: {op_to_string(lhs_op)}")
                 self.add_unsimplified_demand(

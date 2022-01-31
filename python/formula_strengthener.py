@@ -17,7 +17,7 @@ from z3_utils import (Z3_ADD_OPS, Z3_AND_OPS, Z3_DISTINCT_OPS, Z3_EQ_OPS,
                       strict_to_nonstrict_bool_op, expend_select_store, is_ite, is_array_equality, is_uninterpreted_function)
 from z3 import (And, Ast, ContextObj, ExprRef, Goal, ModelObj, ModelRef,
                 Tactic, Then, With, Z3_OP_UMINUS, is_app_of, is_bool, is_const,
-                is_not, substitute, is_select, help_simplify, Not, is_int, is_bv)
+                is_not, substitute, is_select, help_simplify, Not, is_int, is_bv, Select)
 import z3
 import capnp
 
@@ -422,11 +422,13 @@ class AUFStrengthenedFormula(StrengthenedFormula):
     def __init__(self, debug=False, collect_unsimplified=False):
         StrengthenedFormula.__init__(self, debug, collect_unsimplified)
         self.array_equalities = []
+        self.auf_indices = {}
 
     def __str__(self):
         return "Interval set: " + str(self.interval_set) + \
                "\nUnsimplified demands: " + str(self.unsimplified_demands) +\
-               "\nArray equalities: " + str(self.array_equalities)
+               "\nArray equalities: " + str(self.array_equalities) +\
+               "\nArray index map: " + str(self.auf_indices)
 
     def _strengthen_conjunct(self, conjunct, model):
         if is_binary_boolean(conjunct) and is_array_equality(conjunct):
@@ -434,24 +436,23 @@ class AUFStrengthenedFormula(StrengthenedFormula):
             return
         StrengthenedFormula._strengthen_conjunct(self, conjunct, model)
 
-    def _add_interval_for_binary_boolean(self, var, var_value, rhs_value, op):
-        # if var is a(e) [ same for f(e) ]
-        # eval e in the model m to get val_e
-        # find (a,val_e) in the map my_map
-        # if (a, val_e) is in the map:
-        #   append e to the list in my_map[a, val_e]
-        #   add interval for a[my_map[a, val_e][0]] instead
-        #   (the first expression added is the one we use for the interval)
-        # else:
-        #   my_map[a, val_e] = [e]
-        #   add interval for a[e]self, var, var_value, rhs_value, op
-        StrengthenedFormula._add_interval_for_binary_boolean(self, var, var_value, rhs_value, op)
-
     def _strengthen_binary_boolean_conjunct(self, lhs, lhs_value, rhs_value,
                                             op, model):
-        if is_select(lhs) or is_uninterpreted(lhs):
-            self._add_interval_for_binary_boolean(lhs, lhs_value, rhs_value,
-                                          op)
+        if is_uninterpreted_function(lhs):
+            raise NoRuleForOp(lhs)
+        if is_select(lhs):
+            array = lhs.arg(0)
+            index = lhs.arg(1)
+            index_val = model_evaluate_to_const(lhs.arg(1), model)
+            if (array, index_val) in self.auf_indices:
+                if index not in self.auf_indices[(array, index_val)]:
+                    self.auf_indices[(array, index_val)].append(index)
+                cached_index = self.auf_indices[(array, index_val)][0]
+                StrengthenedFormula._add_interval_for_binary_boolean(self, Select(array, cached_index), lhs_value, rhs_value,
+                                                                     op)
+            else:
+                self.auf_indices[(array, index_val)] = [index]
+                StrengthenedFormula._add_interval_for_binary_boolean(self, lhs, lhs_value, rhs_value, op)
         else:
             StrengthenedFormula._strengthen_binary_boolean_conjunct(self, lhs, lhs_value,
                                                                     rhs_value, op, model)

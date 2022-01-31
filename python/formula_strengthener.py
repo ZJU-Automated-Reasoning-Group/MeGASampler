@@ -14,7 +14,7 @@ from z3_utils import (Z3_ADD_OPS, Z3_AND_OPS, Z3_DISTINCT_OPS, Z3_EQ_OPS,
                       is_binary_boolean, is_numeral_constant,
                       model_evaluate_to_const, negate_condition, op_to_string,
                       print_all_models, reverse_boolean_operator,
-                      strict_to_nonstrict_bool_op, expend_select_store, is_ite, is_array_equality, is_uninterpreted)
+                      strict_to_nonstrict_bool_op, expend_select_store, is_ite, is_array_equality, is_uninterpreted_function)
 from z3 import (And, Ast, ContextObj, ExprRef, Goal, ModelObj, ModelRef,
                 Tactic, Then, With, Z3_OP_UMINUS, is_app_of, is_bool, is_const,
                 is_not, substitute, is_select, help_simplify, Not, is_int, is_bv)

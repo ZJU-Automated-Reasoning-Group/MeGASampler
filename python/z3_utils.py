@@ -538,8 +538,8 @@ def is_mod_or_smod(expr):
 def is_ite(expr):
     return True in [is_app_of(expr, op) for op in Z3_ITE_OPS]
 
-def is_uninterpreted(expr):
-    return True in [is_app_of(expr, op) for op in Z3_UNINTERPRETED_OPS]
+def is_uninterpreted_function(expr):
+    return (True in [is_app_of(expr, op) for op in Z3_UNINTERPRETED_OPS]) and len(expr.children()) > 0
 
 def model_evaluate_to_const(expr, model):
     if is_bool(expr):

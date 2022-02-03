@@ -533,7 +533,7 @@ def strengthen_create_message(f, model, debug=False):
     try:
         if debug:
             print(f"Calling strengthen with expr: {f}, model: {model}")
-        res = strengthen(f, model, debug)
+        res = strengthen(f, model, debug, isAUF=True) # TODO: get isAUF from parameters
     except NoRuleForOp as e:
         b.res = False
         b.failuredecription = f"Operator {e.op_string} ({e.op_number}) with arity {e.op_arity} found, " \
@@ -544,7 +544,16 @@ def strengthen_create_message(f, model, debug=False):
         b.init('intervalmap', len(res.interval_set.dict))
         for i, var in enumerate(res.interval_set.dict):
             capnpVarInterval = b.intervalmap[i]
-            capnpVarInterval.variable = str(var)
+            if is_select(var):
+                capnpVarInterval.varsort = "select"
+                capnpVarInterval.variable = str(var.arg(0))
+                capnpVarInterval.index = str(var.arg(1))
+            elif is_const(var):
+                capnpVarInterval.varsort = "int"
+                capnpVarInterval.variable = str(var)
+            else:
+                b.res = False
+                b.failuredecription = f"Unexpected sort for var {var}"
             pythonInterval = res.interval_set.dict[var]
             capnpVarInterval.interval.islowminf = pythonInterval.is_low_minf()
             capnpVarInterval.interval.ishighinf = pythonInterval.is_high_inf()

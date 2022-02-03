@@ -40,7 +40,15 @@ void MEGASampler::do_epoch(const z3::model& m) {
     safe_exit(1);
   }
   for (auto varinterval : container.getIntervalmap()) {
-    std::string varname = varinterval.getVariable().cStr();
+    std::string varsort = varinterval.getVarsort().cStr();
+    std::string varname;
+    if (varsort == "int") {
+        varname = varinterval.getVariable().cStr();
+    } else {
+        assert(varsort == "select");
+        varname = varinterval.getVariable().cStr();
+        varname += std::string{"["} + varinterval.getIndex().cStr() + std::string{"]"};
+    }
     auto interval = varinterval.getInterval();
     bool isLowMinf = interval.getIslowminf();
     bool isHighInf = interval.getIshighinf();

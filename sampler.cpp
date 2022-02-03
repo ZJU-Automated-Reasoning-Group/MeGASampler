@@ -55,10 +55,14 @@ Sampler::Sampler(std::string _input, std::string _output_dir, int _max_samples,
   json_filename = output_base + ".json";
   results_file.open(output_base + ".samples");
 
-  if (num_arrays > 0 || num_bv > 0 || num_uf > 0 || num_reals > 0) {
+  if (num_bv > 0 || num_uf > 0 || num_reals > 0) {
     std::cout << "Unsupported sort in formula. Exiting.\n";
     failure_cause = "Unsupported sort in formula.";
     safe_exit(1);
+  }
+
+  if (num_arrays > 0){
+    has_arrays = true;
   }
 
   if (num_bools > 0) {

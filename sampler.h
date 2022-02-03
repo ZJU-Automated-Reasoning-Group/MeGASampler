@@ -64,6 +64,7 @@ class Sampler {
       "false"};  // initialize with constant names so that
                  // constants are not mistaken for variables
   int max_depth = 0;
+  bool has_arrays = false;
   std::unordered_set<Z3_ast> sup;  // bat: nodes (=leaves?)
 
   // Other statistics

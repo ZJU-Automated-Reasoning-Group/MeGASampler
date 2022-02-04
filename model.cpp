@@ -46,3 +46,27 @@ std::string Model::toString(){
     }
     return res;
 }
+
+std::pair<int,bool> Model::evalIntVar(const std::string & var){
+    auto it = variable_map.find(var);
+    if (it == variable_map.end()){
+        return std::pair<int,bool>(-1, false);
+    } else {
+        return std::pair<int,bool>(it->second, true);
+    }
+}
+
+std::pair<int,bool> Model::evalArrayVar(const std::string &array, int index) {
+    auto it = array_map.find(array);
+    if (it == array_map.end()){
+        return std::pair<int,bool>(-1, false);
+    } else {
+        auto & curr_array_map = it->second;
+        auto it2 = curr_array_map.find(index);
+        if (it2 == curr_array_map.end()){
+            return std::pair<int,bool>(-1, false);
+        } else {
+            return std::pair<int,bool>(it2->second, true);
+        }
+    }
+}

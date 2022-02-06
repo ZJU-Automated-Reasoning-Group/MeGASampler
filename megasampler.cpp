@@ -47,7 +47,9 @@ void MEGASampler::do_epoch(const z3::model& m) {
     } else {
         assert(varsort == "select");
         varname = varinterval.getVariable().cStr();
-        varname += std::string{"["} + varinterval.getIndex().cStr() + std::string{"]"};
+        std::string index_str = varinterval.getIndex().cStr();
+        z3::expr index_expr = deserialise_expr(index_str);
+        varname += std::string{"["} + index_expr.to_string() + std::string{"]"};
     }
     auto interval = varinterval.getInterval();
     bool isLowMinf = interval.getIslowminf();
@@ -165,4 +167,11 @@ void MEGASampler::add_soft_constraint_from_intervals(
     }
   }
   opt.add_soft(!expr, 1);
+}
+
+z3::expr MEGASampler::deserialise_expr(const std::string & str){
+    auto constraints = c.parse_string(str.c_str());
+    assert(constraints.size() == 1);
+    assert(constraints[0].is_eq());
+    return constraints[0].arg(0);
 }

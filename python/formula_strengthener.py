@@ -17,7 +17,7 @@ from z3_utils import (Z3_ADD_OPS, Z3_AND_OPS, Z3_DISTINCT_OPS, Z3_EQ_OPS,
                       strict_to_nonstrict_bool_op, expend_select_store, is_ite, is_array_equality, is_uninterpreted_function)
 from z3 import (And, Ast, ContextObj, ExprRef, Goal, ModelObj, ModelRef,
                 Tactic, Then, With, Z3_OP_UMINUS, is_app_of, is_bool, is_const,
-                is_not, substitute, is_select, help_simplify, Not, is_int, is_bv, Select)
+                is_not, substitute, is_select, help_simplify, Not, is_int, is_bv, Select, Solver)
 import z3
 import capnp
 
@@ -547,7 +547,7 @@ def strengthen_create_message(f, model, debug=False):
             if is_select(var):
                 capnpVarInterval.varsort = "select"
                 capnpVarInterval.variable = str(var.arg(0))
-                capnpVarInterval.index = str(var.arg(1))
+                capnpVarInterval.index = serialize(var.arg(1))
             elif is_const(var):
                 capnpVarInterval.varsort = "int"
                 capnpVarInterval.variable = str(var)
@@ -579,3 +579,9 @@ def strengthen_wrapper(f, model, debug=False):
     model = ModelRef(ctypes.c_void_p(model), z3.main_ctx())
 
     return strengthen_create_message(f, model, debug)
+
+
+def serialize(expression):
+    solver = Solver()
+    solver.add(expression == expression)
+    return solver.sexpr()

@@ -26,6 +26,7 @@ class MEGASampler : public Sampler {
       const capnp::List<StrengthenResult::VarInterval>::Reader& intervalmap);
   void add_soft_constraint_from_intervals(
       const capnp::List<StrengthenResult::VarInterval>::Reader& intervalmap);
+  z3::expr deserialise_expr(const std::string & str);
 };
 
 #endif /* MEGASAMPLER_H_ */

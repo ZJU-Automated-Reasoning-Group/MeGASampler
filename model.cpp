@@ -87,12 +87,13 @@ std::pair<int,bool> Model::evalIntExpr(const z3::expr & e, bool debug){
     } else if (fd.decl_kind() == Z3_OP_SELECT){
         auto array = e.arg(0);
         auto index = e.arg(1);
-        std::string array_name = array.decl().name().str();
-        int index_val = 0;
-        if (index.is_numeral_i(index_val)){
-            if (debug) std::cout << "found array access: " << array_name << "[" << std::to_string(index_val) << "]\n";
+        std::pair<int, bool> index_res = evalIntExpr(index, debug);
+        if (index_res.second){
+            std::string array_name = array.decl().name().str();
+            return evalArrayVar(array_name,index_res.first);
+        } else {
+            return index_res;
         }
-        return evalArrayVar(array_name,index_val);
     }
     std::vector<int> children_values;
     for (unsigned int i=0; i < e.num_args(); i++){

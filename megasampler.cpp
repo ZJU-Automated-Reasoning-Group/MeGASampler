@@ -9,6 +9,7 @@
 
 #include "pythonfuncs.h"
 #include "strengthen.capnp.h"
+#include "model.h"
 
 MEGASampler::MEGASampler(std::string _input, std::string _output_dir,
                          int _max_samples, double _max_time,
@@ -67,12 +68,7 @@ void MEGASampler::do_epoch(const z3::model& m) {
 
   if (is_time_limit_reached("epoch")) return;
 
-  if (!has_arrays) {
-      // TODO: make sure this case still works with new capnp format
-      sample_intervals_in_rounds(container.getIntervalmap());
-  } else {
-      sample_array_intervals_in_rounds(container.getIntervalmap());
-  }
+  sample_intervals_in_rounds(container.getIntervalmap());
 }
 
 void MEGASampler::finish() {
@@ -91,10 +87,13 @@ static inline int64_t safe_mul(const int64_t a, const int64_t b) {
   return ((a > 0) ^ (b > 0)) ? INT64_MIN : INT64_MAX;
 }
 
-void MEGASampler::sample_array_intervals_in_rounds(
-        const capnp::List<StrengthenResult::VarInterval>::Reader& intervalmap) {
-    // TODO: implement this
-    std::cout << "not implemented yet\n";
+static int count_selects(const z3::expr & e){
+    if (!e.is_app()) return 0;
+    int count = (e.decl().decl_kind() == Z3_OP_SELECT);
+    for (unsigned int i=0; i < e.num_args(); i++){
+        count += count_selects(e.arg(i));
+    }
+    return count;
 }
 
 void MEGASampler::sample_intervals_in_rounds(
@@ -119,13 +118,34 @@ void MEGASampler::sample_intervals_in_rounds(
               << ", MAX_ROUNDS = " << MAX_ROUNDS
               << ", MAX_SAMPLES = " << MAX_SAMPLES << "\n";
 
+  std::vector<arrayAccessData> index_vec;
+  if (has_arrays){
+      for (auto varinterval : intervalmap) {
+          std::string varsort = varinterval.getVarsort().cStr();
+          if (varsort == "select") {
+              z3::expr index_expr = deserialise_expr(varinterval.getIndex().cStr());
+              int num_selects = count_selects(index_expr);
+              arrayAccessData d(varinterval, index_expr, num_selects);
+              index_vec.push_back(d);
+          }
+      }
+  }
+  for (auto it = index_vec.begin(); it < index_vec.end() ; it++){
+      std::cout << it->toString() << "\n";
+  }
+
   float rate = 1.0;
   for (uint64_t round = 0; round < MAX_ROUNDS && rate > MIN_RATE; ++round) {
     is_time_limit_reached();
     unsigned int new_samples = 0;
     unsigned int round_samples = 0;
     for (; round_samples <= MAX_SAMPLES; ++round_samples) {
-      const std::string sample = get_random_sample_from_intervals(intervalmap);
+      std::string sample;
+      if (has_arrays){
+        sample = get_random_sample_from_array_intervals(intervalmap, index_vec);
+      } else {
+        sample = get_random_sample_from_int_intervals(intervalmap);
+      }
       ++total_samples;
       if (save_and_output_sample_if_unique(sample)) {
         if (debug) ++debug_samples;
@@ -139,19 +159,41 @@ void MEGASampler::sample_intervals_in_rounds(
               << ", rate = " << rate << "\n";
 }
 
-std::string MEGASampler::get_random_sample_from_intervals(
-    const capnp::List<StrengthenResult::VarInterval>::Reader& intervalmap) {
+int64_t randomInInterval(const ::StrengthenResult::VarInterval::Interval::Reader & interval){
+    int64_t low = interval.getLow();
+    int64_t high = interval.getHigh();
+    std::mt19937 rng(std::random_device{}());
+    std::uniform_int_distribution<int64_t> gen(low, high);  // uniform, unbiased
+    return gen(rng);
+}
+
+std::string MEGASampler::get_random_sample_from_array_intervals(
+        const capnpIntervalMap& intervalmap, const std::vector<arrayAccessData>& indexvec){
+    Model m_out;
+    for (auto varinterval : intervalmap) {
+        std::string varsort = varinterval.getVarsort().cStr();
+        if (varsort == "int"){
+            std::string varname = varinterval.getVariable().cStr();
+            const auto &interval = varinterval.getInterval();
+            int64_t rand = randomInInterval(interval);
+            bool res = m_out.addIntAssignment(varname, rand);
+            assert(res);
+        }
+    }
+//    std::cout << "model after int assignment:\n" << m_out.toString() << "\n";
+
+    return m_out.toString();
+}
+
+std::string MEGASampler::get_random_sample_from_int_intervals(
+    const capnpIntervalMap& intervalmap) {
   std::string sample_string;
   for (auto varinterval : intervalmap) {
     std::string varname = varinterval.getVariable().cStr();
     const auto& interval = varinterval.getInterval();
     sample_string += varname;
     sample_string += ":";
-    int64_t low = interval.getLow();
-    int64_t high = interval.getHigh();
-    std::mt19937 rng(std::random_device{}());
-    std::uniform_int_distribution<int64_t> gen(low, high);  // uniform, unbiased
-    int64_t randNum = gen(rng);
+    int64_t randNum = randomInInterval(interval);
     sample_string += std::to_string(randNum);
     sample_string += ";";
   }
@@ -164,7 +206,7 @@ static inline z3::expr combine_expr(const z3::expr& base, const z3::expr& arg) {
 }
 
 void MEGASampler::add_soft_constraint_from_intervals(
-    const capnp::List<StrengthenResult::VarInterval>::Reader& intervals) {
+    const capnpIntervalMap& intervals) {
   z3::expr expr(c);
   for (auto interval : intervals) {
     const auto var = c.int_const(interval.getVariable().cStr());

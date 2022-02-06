@@ -22,6 +22,8 @@ class MEGASampler : public Sampler {
  private:
   void sample_intervals_in_rounds(
       const capnp::List<StrengthenResult::VarInterval>::Reader& intervalmap);
+  void sample_array_intervals_in_rounds(
+      const capnp::List<StrengthenResult::VarInterval>::Reader& intervalmap);
   std::string get_random_sample_from_intervals(
       const capnp::List<StrengthenResult::VarInterval>::Reader& intervalmap);
   void add_soft_constraint_from_intervals(

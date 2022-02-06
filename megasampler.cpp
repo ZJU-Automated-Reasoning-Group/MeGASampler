@@ -62,12 +62,17 @@ void MEGASampler::do_epoch(const z3::model& m) {
   }
   if (debug) std::cout << "\n";
 
-  if (use_blocking)
+  if (use_blocking) // TODO: update for arrays and make sure still works for int
     add_soft_constraint_from_intervals(container.getIntervalmap());
 
   if (is_time_limit_reached("epoch")) return;
 
-  sample_intervals_in_rounds(container.getIntervalmap());
+  if (!has_arrays) {
+      // TODO: make sure this case still works with new capnp format
+      sample_intervals_in_rounds(container.getIntervalmap());
+  } else {
+      sample_array_intervals_in_rounds(container.getIntervalmap());
+  }
 }
 
 void MEGASampler::finish() {
@@ -84,6 +89,12 @@ static inline int64_t safe_mul(const int64_t a, const int64_t b) {
   int64_t ret;
   if (!__builtin_mul_overflow(a, b, &ret)) return ret;
   return ((a > 0) ^ (b > 0)) ? INT64_MIN : INT64_MAX;
+}
+
+void MEGASampler::sample_array_intervals_in_rounds(
+        const capnp::List<StrengthenResult::VarInterval>::Reader& intervalmap) {
+    // TODO: implement this
+    std::cout << "not implemented yet\n";
 }
 
 void MEGASampler::sample_intervals_in_rounds(

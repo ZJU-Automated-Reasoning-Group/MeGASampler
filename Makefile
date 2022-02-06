@@ -17,7 +17,7 @@ $(BINARY): strengthen.capnp.h $(SRC) pythonfuncs.c
 	g++ -Wall -Wextra -Wshadow -Wnon-virtual-dtor -pedantic -ggdb \
   -std=gnu++17 -march=native -pipe -O3 -o $(BINARY) \
   strengthen.capnp.c++ smtsampler.cpp pythonfuncs.c megasampler.cpp sampler.cpp \
-  main.cpp \
+  main.cpp model.cpp\
   -isystem /usr/lib/$(PYNAME)/include -isystem /usr/include/$(PYNAME) \
   -isystem ../z3/src/api -isystem ../z3/src/api/c++  \
   -L ../z3/build -L /usr/lib/$(PYNAME)/config-$(PYVER)m-x86_64-linux-gnu \

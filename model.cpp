@@ -71,18 +71,18 @@ std::pair<int,bool> Model::evalArrayVar(const std::string &array, int index) {
     }
 }
 
-std::pair<int,bool> Model::evalIntExpr(const z3::expr & e){
+std::pair<int,bool> Model::evalIntExpr(const z3::expr & e, bool debug){
     assert(z3::is_int(e));
     assert(e.is_app());
     z3::func_decl fd = e.decl();
     if (e.is_const()) {
         int i;
         if (e.is_numeral_i(i)){
-            std::cout << "found numeral: " << std::to_string(i) << "\n";
+            if (debug) std::cout << "found numeral: " << std::to_string(i) << "\n";
             return std::pair<int,bool>(i, true);
         }
         std::string name = fd.name().str();
-        std::cout << "found const: " << name << "\n";
+        if (debug) std::cout << "found const: " << name << "\n";
         return evalIntVar(name);
     } else if (fd.decl_kind() == Z3_OP_SELECT){
         auto array = e.arg(0);
@@ -90,14 +90,14 @@ std::pair<int,bool> Model::evalIntExpr(const z3::expr & e){
         std::string array_name = array.decl().name().str();
         int index_val = 0;
         if (index.is_numeral_i(index_val)){
-            std::cout << "found array access: " << array_name << "[" << std::to_string(index_val) << "]\n";
+            if (debug) std::cout << "found array access: " << array_name << "[" << std::to_string(index_val) << "]\n";
         }
         return evalArrayVar(array_name,index_val);
     }
     std::vector<int> children_values;
     for (unsigned int i=0; i < e.num_args(); i++){
         auto arg = e.arg(i);
-        std::pair<int,bool> res_arg = evalIntExpr(arg);
+        std::pair<int,bool> res_arg = evalIntExpr(arg, debug);
         if (!res_arg.second){
             return res_arg;
         } else {
@@ -106,6 +106,7 @@ std::pair<int,bool> Model::evalIntExpr(const z3::expr & e){
     }
     switch (fd.decl_kind()) {
         case Z3_OP_ADD: {
+            if (debug) std::cout << "found add\n";
             int sum = 0;
             for (std::vector<int>::iterator it = children_values.begin(); it != children_values.end(); ++it) {
                 sum += *it;
@@ -113,6 +114,7 @@ std::pair<int,bool> Model::evalIntExpr(const z3::expr & e){
             return std::pair<int, bool>(sum, true);
         }
         case Z3_OP_MUL: {
+            if (debug) std::cout << "found mul\n";
             int prod = 1;
             for (std::vector<int>::iterator it = children_values.begin(); it != children_values.end(); ++it) {
                 prod *= *it;
@@ -120,14 +122,18 @@ std::pair<int,bool> Model::evalIntExpr(const z3::expr & e){
             return std::pair<int, bool>(prod, true);
         }
         case Z3_OP_SUB: {
+            if (debug) std::cout << "found sub\n";
             assert(children_values.size() == 2);
             return std::pair<int, bool>(children_values[0] - children_values[1], true);
         }
         case Z3_OP_UMINUS: {
+            if (debug) std::cout << "found uminus\n";
             assert(children_values.size() == 1);
             return std::pair<int, bool>(-children_values[0], true);
         }
-        default:
+        default:{
+            if (debug) std::cout << "unknown op: " << fd.decl_kind() << "\n";
             return std::pair<int,bool>(-1, false);
+        }
     }
 }

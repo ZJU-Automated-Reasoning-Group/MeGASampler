@@ -34,7 +34,7 @@ public:
      * If all variables in e are assigned in the current model - returns the value of e in the model and true.
      * Else - returns -1 and false.
      * */
-    std::pair<int,bool> evalIntExpr(const z3::expr & e);
+    std::pair<int,bool> evalIntExpr(const z3::expr & e, bool debug = false);
 };
 
 #endif //MEGASAMPLER_MODEL_H

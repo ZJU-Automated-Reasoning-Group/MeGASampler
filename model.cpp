@@ -2,7 +2,14 @@
 // Created by batchen on 03/02/2022.
 //
 
+#include <random>
 #include "model.h"
+
+static inline int64_t draw_random_int(){
+    std::mt19937 rng(std::random_device{}());
+    std::uniform_int_distribution<int64_t> gen(INT64_MIN,INT64_MAX);  // uniform, unbiased
+    return gen(rng);
+}
 
 bool Model::addIntAssignment(const std::string & var, int value){
     std::pair<std::map<std::string,int>::iterator,bool> ret;
@@ -71,7 +78,7 @@ std::pair<int,bool> Model::evalArrayVar(const std::string &array, int index) {
     }
 }
 
-std::pair<int,bool> Model::evalIntExpr(const z3::expr & e, bool debug){
+std::pair<int,bool> Model::evalIntExpr(const z3::expr & e, bool debug, bool model_completion){
     assert(z3::is_int(e));
     assert(e.is_app());
     z3::func_decl fd = e.decl();
@@ -83,14 +90,30 @@ std::pair<int,bool> Model::evalIntExpr(const z3::expr & e, bool debug){
         }
         std::string name = fd.name().str();
         if (debug) std::cout << "found const: " << name << "\n";
-        return evalIntVar(name);
+        auto res = evalIntVar(name);
+        if (model_completion && !res.second){
+            int64_t rand = draw_random_int();
+            auto r = addIntAssignment(name, rand);
+            assert(r);
+            return std::pair<int, bool>(rand, true);
+        } else {
+            return res;
+        }
     } else if (fd.decl_kind() == Z3_OP_SELECT){
         auto array = e.arg(0);
         auto index = e.arg(1);
         std::pair<int, bool> index_res = evalIntExpr(index, debug);
         if (index_res.second){
             std::string array_name = array.decl().name().str();
-            return evalArrayVar(array_name,index_res.first);
+            auto res = evalArrayVar(array_name,index_res.first);
+            if (model_completion && !res.second){
+                int64_t rand = draw_random_int();
+                auto r = addArrayAssignment(array_name, index_res.first, rand);
+                assert(r);
+                return std::pair<int, bool>(rand, true);
+            } else {
+                return res;
+            }
         } else {
             return index_res;
         }

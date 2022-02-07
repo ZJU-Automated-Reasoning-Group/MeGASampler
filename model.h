@@ -33,8 +33,11 @@ public:
     /*
      * If all variables in e are assigned in the current model - returns the value of e in the model and true.
      * Else - returns -1 and false.
+     * If model_completion flag is on, the result will always be true and variables
+     * (or array accesses with constant indices) in e that are not assigned will be assigned a random value
+     * (in this case the model itself changes).
      * */
-    std::pair<int,bool> evalIntExpr(const z3::expr & e, bool debug = false);
+    std::pair<int,bool> evalIntExpr(const z3::expr & e, bool debug = false, bool model_completion = false);
 };
 
 #endif //MEGASAMPLER_MODEL_H

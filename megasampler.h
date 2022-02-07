@@ -9,14 +9,16 @@ class MEGASampler : public Sampler {
   typedef capnp::List<StrengthenResult::VarInterval>::Reader capnpIntervalMap;
   typedef ::StrengthenResult::VarInterval::Reader capnpVarInterval;
 
-  class arrayAccessData {
-      const capnpVarInterval & entryInCapnpMap;
+  struct arrayAccessData {
+      const capnpVarInterval * entryInCapnpMap;
       z3::expr indexExpr;
       int numSelecetsInIndex;
-  public:
-      arrayAccessData(const capnpVarInterval & e, z3::expr i, int n): entryInCapnpMap(e), indexExpr(i), numSelecetsInIndex(n){}
+      arrayAccessData(const capnpVarInterval * e, z3::expr i, int n): entryInCapnpMap(e), indexExpr(i), numSelecetsInIndex(n){}
       std::string toString() {
           return "expr " + indexExpr.to_string() + " has " + std::to_string(numSelecetsInIndex) + " selects.";
+      }
+      bool operator < (const arrayAccessData& d) const{
+          return numSelecetsInIndex < d.numSelecetsInIndex;
       }
   };
 

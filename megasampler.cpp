@@ -120,18 +120,24 @@ void MEGASampler::sample_intervals_in_rounds(
 
   std::vector<arrayAccessData> index_vec;
   if (has_arrays){
+      if (debug) {
+          std::cout << "parsing indices of array accesses:\n";
+      }
       for (auto varinterval : intervalmap) {
           std::string varsort = varinterval.getVarsort().cStr();
           if (varsort == "select") {
               z3::expr index_expr = deserialise_expr(varinterval.getIndex().cStr());
               int num_selects = count_selects(index_expr);
-              arrayAccessData d(varinterval, index_expr, num_selects);
+              arrayAccessData d(&varinterval, index_expr, num_selects);
               index_vec.push_back(d);
           }
       }
-  }
-  for (auto it = index_vec.begin(); it < index_vec.end() ; it++){
-      std::cout << it->toString() << "\n";
+      std::sort(index_vec.begin(),index_vec.end());
+      if (debug) {
+          for (auto it = index_vec.begin(); it < index_vec.end(); it++) {
+              std::cout << it->toString() << "\n";
+          }
+      }
   }
 
   float rate = 1.0;
@@ -181,7 +187,18 @@ std::string MEGASampler::get_random_sample_from_array_intervals(
         }
     }
 //    std::cout << "model after int assignment:\n" << m_out.toString() << "\n";
-
+    for (auto it = indexvec.begin(); it < indexvec.end(); it++){
+        int i_val;
+        z3::expr index_expr = it->indexExpr;
+        auto res = m_out.evalIntExpr(index_expr);
+        if (res.second) {
+            i_val = res.first;
+        } else {
+            std::mt19937 rng(std::random_device{}());
+            std::uniform_int_distribution<int64_t> gen(INT64_MIN,INT64_MAX);  // uniform, unbiased
+            i_val = gen(rng);
+        }
+    }
     return m_out.toString();
 }
 

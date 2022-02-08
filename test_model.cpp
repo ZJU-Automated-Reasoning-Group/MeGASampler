@@ -1,0 +1,118 @@
+//
+// Created by batchen on 06/02/2022.
+//
+
+#include "z3++.h"
+#include "model.h"
+
+int main()
+{
+    Model new_m = Model();
+    z3::context c;
+    bool res;
+    std::pair<int,bool> p;
+    z3::expr e1(c);
+    p = new_m.evalArrayVar("a",0);
+    assert(!p.second);
+    assert(p.first == -1);
+    res = new_m.addArrayAssignment("a",0,3);
+    assert(res);
+    p = new_m.evalArrayVar("a",0);
+    assert(p.second);
+    assert(p.first == 3);
+    res = new_m.addArrayAssignment("a",1,5);
+    assert(res);
+    p = new_m.evalArrayVar("a",1);
+    assert(p.second);
+    assert(p.first == 5);
+    res = new_m.addArrayAssignment("a",1,5);
+    assert(!res);
+    res = new_m.addArrayAssignment("a",2,-6);
+    assert(res);
+    res = new_m.addArrayAssignment("b",0,3);
+    assert(res);
+    res = new_m.addArrayAssignment("b",2,50);
+    assert(res);
+    p = new_m.evalArrayVar("b",2);
+    assert(p.second);
+    assert(p.first == 50);
+    res = new_m.addArrayAssignment("a",1,5);
+    assert(!res);
+    res = new_m.addArrayAssignment("a",1,-8);
+    assert(!res);
+    p = new_m.evalArrayVar("a",1);
+    assert(p.second);
+    assert(p.first == 5);
+    p = new_m.evalIntVar("x");
+    assert(!p.second);
+    assert(p.first == -1);
+    res = new_m.addIntAssignment("x",3);
+    assert(res);
+    p = new_m.evalIntVar("x");
+    assert(p.second);
+    assert(p.first == 3);
+    res = new_m.addIntAssignment("x",30);
+    assert(!res);
+    p = new_m.evalIntVar("x");
+    assert(p.second);
+    assert(p.first == 3);
+    res = new_m.addIntAssignment("y",3);
+    assert(res);
+    p = new_m.evalIntVar("y");
+    assert(p.second);
+    assert(p.first == 3);
+    res = new_m.addIntAssignment("x",3);
+    assert(!res);
+    res = new_m.addIntAssignment("y",-93);
+    assert(!res);
+    p = new_m.evalIntVar("y");
+    assert(p.second);
+    assert(p.first == 3);
+    p = new_m.evalArrayVar("b",2);
+    assert(p.second);
+    assert(p.first == 50);
+    p = new_m.evalArrayVar("c",2);
+    assert(!p.second);
+    assert(p.first == -1);
+    std::cout << new_m.toString() << "\n";
+    e1 = c.int_const("x");
+    p = new_m.evalIntExpr(e1, true);
+    assert(p.second);
+    assert(p.first == 3);
+    e1 = c.int_const("z");
+    p = new_m.evalIntExpr(e1, true);
+    assert(!p.second);
+    assert(p.first == -1);
+    e1 = z3::select(c.constant("a",c.array_sort(c.int_sort(), c.int_sort())), 0);
+    p = new_m.evalIntExpr(e1, true);
+    assert(p.second);
+    assert(p.first == 3);
+    e1 = z3::select(c.constant("a",c.array_sort(c.int_sort(), c.int_sort())), -1);
+    p = new_m.evalIntExpr(e1, true);
+    assert(!p.second);
+    assert(p.first == -1);
+    e1 = c.int_val(8);
+    p = new_m.evalIntExpr(e1, true);
+    assert(p.second);
+    assert(p.first == 8);
+    e1 = c.int_val(8) + z3::select(c.constant("a",c.array_sort(c.int_sort(), c.int_sort())), 0);
+    p = new_m.evalIntExpr(e1, true);
+    assert(p.second);
+    assert(p.first == 11);
+    e1 = c.int_const("x") - z3::select(c.constant("b",c.array_sort(c.int_sort(), c.int_sort())), 2);
+    p = new_m.evalIntExpr(e1, true);
+    assert(p.second);
+    assert(p.first == -47);
+    e1 = -(c.int_const("x") * z3::select(c.constant("b",c.array_sort(c.int_sort(), c.int_sort())), 2));
+    p = new_m.evalIntExpr(e1, true);
+    assert(p.second);
+    assert(p.first == -150);
+    z3::expr e2 = (e1 + e1);
+    p = new_m.evalIntExpr(e2, true);
+    assert(p.second);
+    assert(p.first == -300);
+    p = new_m.evalIntExpr(4*e2, true);
+    assert(p.second);
+    assert(p.first == -1200);
+    std::cout << "TEST SUCCESSFUL\n";
+}

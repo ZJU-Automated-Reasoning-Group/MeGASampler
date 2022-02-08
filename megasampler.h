@@ -6,6 +6,21 @@
 
 class MEGASampler : public Sampler {
   z3::expr simpl_formula;
+  typedef capnp::List<StrengthenResult::VarInterval>::Reader capnpIntervalMap;
+  typedef ::StrengthenResult::VarInterval::Reader capnpVarInterval;
+
+  struct arrayAccessData {
+      const capnpVarInterval * entryInCapnpMap;
+      z3::expr indexExpr;
+      int numSelecetsInIndex;
+      arrayAccessData(const capnpVarInterval * e, z3::expr i, int n): entryInCapnpMap(e), indexExpr(i), numSelecetsInIndex(n){}
+      std::string toString() {
+          return "expr " + indexExpr.to_string() + " has " + std::to_string(numSelecetsInIndex) + " selects.";
+      }
+      bool operator < (const arrayAccessData& d) const{
+          return numSelecetsInIndex < d.numSelecetsInIndex;
+      }
+  };
 
  public:
   MEGASampler(std::string input, std::string output_dir, int max_samples,
@@ -21,11 +36,14 @@ class MEGASampler : public Sampler {
 
  private:
   void sample_intervals_in_rounds(
-      const capnp::List<StrengthenResult::VarInterval>::Reader& intervalmap);
-  std::string get_random_sample_from_intervals(
-      const capnp::List<StrengthenResult::VarInterval>::Reader& intervalmap);
+      const capnpIntervalMap& intervalmap);
+  std::string get_random_sample_from_int_intervals(
+      const capnpIntervalMap& intervalmap);
+  std::string get_random_sample_from_array_intervals(
+      const capnpIntervalMap& intervalmap, const std::vector<arrayAccessData>& indexvec);
   void add_soft_constraint_from_intervals(
-      const capnp::List<StrengthenResult::VarInterval>::Reader& intervalmap);
+      const capnpIntervalMap& intervalmap);
+  z3::expr deserialise_expr(const std::string & str);
 };
 
 #endif /* MEGASAMPLER_H_ */

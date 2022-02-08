@@ -8,8 +8,10 @@ struct StrengthenResult {
   unsimplified @3 :Text;
 
   struct VarInterval {
-    variable @0 :Text;
-    interval @1 :Interval;
+    varsort @0 :Text;
+    variable @1 :Text;
+    index @2 :Text;
+    interval @3 :Interval;
 
     struct Interval {
       islowminf @0 :Bool;

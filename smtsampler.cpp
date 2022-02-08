@@ -2,6 +2,7 @@
 
 #include <cinttypes>
 #include <climits>
+#include <cstring>
 
 SMTSampler::SMTSampler(std::string _input, std::string _output_dir,
                        int _max_samples, double _max_time,

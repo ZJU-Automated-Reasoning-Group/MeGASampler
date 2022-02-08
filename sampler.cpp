@@ -500,7 +500,10 @@ std::string Sampler::model_to_string(const z3::model &m) {
         std::vector<std::string> values;
         while (e.decl().name().str() == "store") {
           std::string arg = bv_string(e.arg(1), c);
-          if (std::find(args.begin(), args.end(), arg) != args.end()) continue;
+          if (std::find(args.begin(), args.end(), arg) != args.end()) {
+            e = e.arg(0);
+            continue;
+          }
           args.push_back(arg);
           values.push_back(bv_string(e.arg(2), c));
           e = e.arg(0);

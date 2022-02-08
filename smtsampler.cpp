@@ -21,6 +21,10 @@ void SMTSampler::calculate_constraints(const std::string &m_string) {
   size_t pos = 0;
   for (size_t count = 0; count < ind.size(); ++count) {
     z3::func_decl &v = ind[count];
+    // TODO: Handle array case, orig:smtsampler.cpp:408
+    if (v.range().is_array()) {
+      assert(false);
+    }
     assert_is_int_var(v);
     z3::expr a = value(m_string.c_str() + pos);
     pos = m_string.find(';', pos) + 1;

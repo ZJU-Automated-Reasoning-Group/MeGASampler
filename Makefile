@@ -1,7 +1,7 @@
 .PHONY: all clean
 
 BINARY=megasampler
-SRC=$( wildcard *.cpp ) $( wildcard *.h ) $( wildcard *.c++ ) $( wildcard *.c )
+SRC=$(wildcard *.cpp) $(wildcard *.h) $(wildcard *.c++) $(wildcard *.c)
 PYVER=3.9
 PYNAME=python$(PYVER)
 PYLIBNAME=$(PYNAME)

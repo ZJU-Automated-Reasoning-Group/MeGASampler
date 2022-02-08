@@ -4,24 +4,28 @@ import pstats
 import random
 import ctypes
 import operator
+import pathlib
 
 from interval import Interval, IntervalSet, INF, MINF, MININT, MAXINT
 from z3_utils import (Z3_ADD_OPS, Z3_AND_OPS, Z3_DISTINCT_OPS, Z3_EQ_OPS,
                       Z3_GE_OPS, Z3_GT_OPS, Z3_LE_OPS, Z3_LT_OPS, Z3_MUL_OPS,
                       Z3_OR_OPS, Z3_SUB_OPS, build_binary_expression,
                       distinct_to_ineq, evaluate_binary_expr,
-                      get_children_values, get_op, is_binary,
-                      is_binary_boolean, is_numeral_constant,
-                      model_evaluate_to_const, negate_condition, op_to_string,
-                      print_all_models, reverse_boolean_operator,
-                      strict_to_nonstrict_bool_op, expend_select_store, is_ite, is_array_equality, is_uninterpreted_function)
-from z3 import (And, Ast, ContextObj, ExprRef, Goal, ModelObj, ModelRef,
-                Tactic, Then, With, Z3_OP_UMINUS, is_app_of, is_bool, is_const,
-                is_not, substitute, is_select, help_simplify, Not, is_int, is_bv, Select, Solver)
+                      get_children_values, get_op, is_binary, is_binary_boolean,
+                      is_numeral_constant, model_evaluate_to_const,
+                      negate_condition, op_to_string, print_all_models,
+                      reverse_boolean_operator, strict_to_nonstrict_bool_op,
+                      expend_select_store, is_ite, is_array_equality,
+                      is_uninterpreted_function)
+from z3 import (And, Ast, ContextObj, ExprRef, Goal, ModelObj, ModelRef, Tactic,
+                Then, With, Z3_OP_UMINUS, is_app_of, is_bool, is_const, is_not,
+                substitute, is_select, help_simplify, Not, is_int, is_bv,
+                Select, Solver)
 import z3
 import capnp
 
-strengthen_capnp = capnp.load("../strengthen.capnp")
+strengthen_capnp = capnp.load(str(pathlib.Path(__file__).parent.parent /
+                                  "strengthen.capnp"))
 
 
 class NoRuleForOp(Exception):

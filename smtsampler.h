@@ -43,6 +43,10 @@ class SMTSampler : public Sampler {
   void finish();
 
  protected:
+  struct Triple {
+    std::string a[3] = {"", "", ""};
+  };
+
   std::string model_string(z3::model m, std::vector<z3::func_decl> ind);
   z3::expr value(char const *n);
   long long ll_value(char const *n);
@@ -55,6 +59,21 @@ class SMTSampler : public Sampler {
   z3::model gen_model(const std::string &candidate,
                       std::vector<z3::func_decl> &ind);
   void assert_is_int_var(const z3::func_decl &v);
+
+  std::string parse_function(std::string const &m_string, size_t &pos,
+                             int arity,
+                             std::unordered_map<std::string, Triple>& values,
+                             int index);
+  std::string combine_function(std::string const &str_a,
+                               std::string const &str_b,
+                               std::string const &str_c,
+                               size_t &pos_a,
+                               size_t &pos_b,
+                               size_t &pos_c,
+                               int arity,
+                               z3::sort s);
+
+
 };
 
 #endif /* SMTSAMPLER_H_ */

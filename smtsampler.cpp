@@ -24,12 +24,33 @@ void SMTSampler::calculate_constraints(const std::string &m_string) {
     z3::func_decl &v = ind[count];
     // TODO: Handle array case, orig:smtsampler.cpp:408
     if (v.range().is_array()) {
+      assert(m_string[pos] == '[');
+      ++pos;
+      unsigned long long num = atoll(m_string.c_str() + pos); // array size
+      pos = m_string.find(';', pos) + 1;
+      z3::expr def = value(m_string.c_str () + pos);
+      pos = m_string.find(';', pos) + 1;
+
+      for (unsigned long long i = 0; i < num; ++i) {
+        z3::expr arg = value(m_string.c_str() + pos);
+        pos = m_string.find(';', pos) + 1;
+
+        z3::expr val = value(m_string.c_str() + pos);
+        pos = m_string.find(';',  pos) + 1;
+
+        add_constraints(z3::select(v(), arg), val, -1);
+      }
+      assert(m_string.c_str()[pos] == ']');
+      ++pos;
+    } else if (v.is_const()) {
+      assert_is_int_var(v);
+      z3::expr a = value(m_string.c_str() + pos);
+      pos = m_string.find(';', pos) + 1;
+      add_constraints(v(), a, count);
+    } else {
+      // TODO: Handle uninterpreted function case
       assert(false);
     }
-    assert_is_int_var(v);
-    z3::expr a = value(m_string.c_str() + pos);
-    pos = m_string.find(';', pos) + 1;
-    add_constraints(v(), a, count);
   }
   if (debug) {
     std::cout << "Collected constraints: ";
@@ -115,6 +136,75 @@ void SMTSampler::find_neighboring_solutions(
   if (debug) std::cout << '\n';
 }
 
+std::string SMTSampler::combine_function(std::string const &str_a,
+                                         std::string const &str_b,
+                                         std::string const &str_c,
+                                         size_t &pos_a,
+                                         size_t &pos_b,
+                                         size_t &pos_c,
+                                         int arity,
+                                         z3::sort s) {
+  std::stringstream ss;
+  std::unordered_map<std::string, SMTSampler::Triple> values;
+  if (debug)
+    std::cerr << "combine_function" << s << '\n';
+  const std::string def_a = parse_function(str_a, pos_a, arity, values, 0);
+  const std::string def_b = parse_function(str_b, pos_b, arity, values, 1);
+  const std::string def_c = parse_function(str_c, pos_c, arity, values, 2);
+
+  ss << (arity == 0 ? '[' : '(');
+  ss << std::to_string(values.size()) << ';';
+  ss << std::to_string(combine_mutations(stoll(def_a), stoll(def_b), stoll(def_c))) << ';';
+  for (const auto& value : values) {
+    std::string val_a = value.second.a[0];
+    if (val_a.empty())
+      val_a = def_a;
+    std::string val_b = value.second.a[1];
+    if (val_b.empty())
+      val_b = def_b;
+    std::string val_c = value.second.a[2];
+    if (val_c.empty())
+      val_c = def_c;
+    ss << value.first;
+    ss << std::to_string(combine_mutations(stoll(val_a), stoll(val_b), stoll(val_c))) << ';';
+  }
+  ss << (arity == 0 ? ']' : ')');
+  return ss.str();
+}
+
+std::string SMTSampler::parse_function(
+    std::string const &m_string, size_t &pos, int arity,
+    std::unordered_map<std::string, SMTSampler::Triple>& values, int index) {
+  size_t start;
+  bool is_array = false;
+  if (arity == 0) {
+    is_array = true;
+    arity = 1;
+  }
+  assert(m_string[pos] == (is_array ? '[' : '('));
+  ++pos;
+  int num = atoi(m_string.c_str() + pos);
+  pos = m_string.find(';', pos) + 1;
+
+  start = pos;
+  pos = m_string.find(';', pos) + 1;
+  const std::string def = m_string.substr(start, pos - start);
+
+  for (int i = 0; i < num; ++i) {
+    start = pos;
+    for (int k = 0; k < arity; ++k) {
+      pos = m_string.find(';', pos) + 1;
+    }
+    std::string args = m_string.substr(start, pos - start);
+    start = pos;
+    pos = m_string.find(';', pos) + 1;
+    values[args].a[index] = m_string.substr(start, pos - start);
+  }
+  assert(m_string[pos] == (is_array ? ']' : ')'));
+  ++pos;
+  return def;
+}
+
 void SMTSampler::find_combined_solutions(
     std::unordered_set<std::string> &mutations, const std::string &a_string) {
   std::vector<std::string> initial(mutations.begin(), mutations.end());
@@ -136,15 +226,25 @@ void SMTSampler::find_combined_solutions(
         size_t pos_c = 0;
         std::string candidate;
         for (z3::func_decl &w : ind) {
-          assert_is_int_var(w);
-          long long val_a = ll_value(a_string.c_str() + pos_a);
-          long long val_b = ll_value(b_string.c_str() + pos_b);
-          long long val_c = ll_value(c_string.c_str() + pos_c);
-          int num = combine_mutations(val_a, val_b, val_c);
-          pos_a = a_string.find(';', pos_a) + 1;
-          pos_b = b_string.find(';', pos_b) + 1;
-          pos_c = c_string.find(';', pos_c) + 1;
-          candidate += std::to_string(num) + ';';
+          if (w.range().is_array()) {
+            const int arity = 0; // all we support?
+            z3::sort s = w.range().array_range(); // should always be int
+            candidate += combine_function(a_string, b_string, c_string, pos_a, pos_b, pos_c,
+                                          arity, s);
+          } else if (w.is_const()) {
+            assert_is_int_var(w);
+            const long long val_a = ll_value(a_string.c_str() + pos_a);
+            const long long val_b = ll_value(b_string.c_str() + pos_b);
+            const long long val_c = ll_value(c_string.c_str() + pos_c);
+            const int num = combine_mutations(val_a, val_b, val_c);
+            pos_a = a_string.find(';', pos_a) + 1;
+            pos_b = b_string.find(';', pos_b) + 1;
+            pos_c = c_string.find(';', pos_c) + 1;
+            candidate += std::to_string(num) + ';';
+          } else {
+            // Uninterpreted function case
+            assert(false);
+          }
         }
         if (debug) std::cout << "candidate: " << candidate << "\n";
         total_samples++;
@@ -211,17 +311,59 @@ void SMTSampler::do_epoch(const z3::model &m) {
 
 std::string SMTSampler::model_string(z3::model m,
                                      std::vector<z3::func_decl> _ind) {
-  std::string s;
+  std::stringstream ss;
   for (z3::func_decl &v : _ind) {
-    assert_is_int_var(v);
-    z3::expr b = m.get_const_interp(v);
-    Z3_ast ast = b;
-    assert(ast);  // model should have an interpretation for all variables
-    std::stringstream ss;
-    ss << b;
-    s += ss.str() + ';';
+    if (v.range().is_array()) {
+      // case array
+      z3::expr e = m.get_const_interp(v);
+      const Z3_func_decl as_array = Z3_get_as_array_func_decl(c, e);
+      if (as_array) { // is this an "as_array" cmd
+        z3::func_interp f = m.get_func_interp(to_func_decl(c, as_array));
+        ss << '[' << std::to_string(f.num_entries()) << ';';
+        ss << f.else_value() << ';';
+        for (unsigned int i = 0; i < f.num_entries(); ++i) {
+          ss << f.entry(i).arg(0) << ';';
+          ss << f.entry(i).value() << ';';
+        }
+        ss << ']';
+      } else { // this is a list of stores
+        std::vector<std::string> args;
+        std::vector<std::string> values;
+        while (e.decl().name().str() == "store") {
+          if (debug) {
+            std::cerr << "model_string found store: " << e << '\n';
+          }
+          std::string arg = std::to_string(e.arg(1));
+          // TODO: seems inefficient, use a set?
+          if (std::find(args.begin(), args.end(), arg) != args.end()) {
+            e = e.arg(0);
+            continue;
+          }
+          args.push_back(arg);
+          values.push_back(std::to_string(e.arg(2)));
+          e = e.arg(0); // go to inner cmd
+        }
+        ss << '[' << std::to_string(args.size()) << ';';
+        ss << e.arg(0) << ';';
+        for (int i = args.size() - 1; i >= 0; --i) {
+          ss << args[i] << ';' << values[i] << ';';
+        }
+        ss << ']';
+      }
+    } else if (v.is_const()) {
+      // case const, i.e., int sorts
+      assert_is_int_var(v);
+      z3::expr b = m.get_const_interp(v);
+      Z3_ast ast = b;
+      assert(ast);  // model should have an interpretation for all variables
+      ss << b;
+      ss << ';';
+    } else {
+      // case uninterpreted functions
+      
+    }
   }
-  return s;
+  return ss.str();
 }
 
 z3::expr SMTSampler::value(char const *n) {
@@ -255,10 +397,43 @@ z3::model SMTSampler::gen_model(const std::string &candidate,
   z3::model m(c);
   size_t pos = 0;
   for (z3::func_decl &v : _ind) {
-    assert_is_int_var(v);
-    z3::expr a = value(candidate.c_str() + pos);
-    pos = candidate.find(';', pos) + 1;
-    m.add_const_interp(v, a);
+    if (v.range().is_array()) {
+      assert(candidate[pos] == '[');
+      ++pos;
+
+      int num = atoi(candidate.c_str() + pos);
+      pos = candidate.find(';', pos) + 1;
+
+      z3::expr def = value(candidate.c_str() + pos);
+      pos = candidate.find(';', pos) + 1;
+
+      Z3_sort domain_sort[1] = { v.range().array_domain() };
+      Z3_func_decl cfd = Z3_mk_fresh_func_decl(c, "k", 1, domain_sort, v.range().array_range());
+      z3::func_decl fd(c, cfd);
+      z3::func_interp f = m.add_func_interp(fd, def);
+
+      for (int i = 0; i < num; ++i) {
+        z3::expr_vector args(c);
+        args.push_back(value(candidate.c_str() + pos));
+        pos = candidate.find(';', pos) + 1;
+
+        z3::expr val = value(candidate.c_str() + pos);
+        f.add_entry(args, val);
+        pos = candidate.find(';', pos) + 1;
+      }
+      z3::expr array = as_array(fd);
+      m.add_const_interp(v, array);
+      assert(candidate[pos] == ']');
+      ++pos;
+    } else if (v.is_const()) {
+      assert_is_int_var(v);
+      z3::expr a = value(candidate.c_str() + pos);
+      pos = candidate.find(';', pos) + 1;
+      m.add_const_interp(v, a);
+    } else {
+      // uninterpreted function case
+      assert(false);
+    }
   }
   return m;
 }

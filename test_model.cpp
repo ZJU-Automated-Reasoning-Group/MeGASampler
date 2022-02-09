@@ -114,5 +114,25 @@ int main()
     p = new_m.evalIntExpr(4*e2, true);
     assert(p.second);
     assert(p.first == -1200);
+    p = new_m.evalIntExpr(c.int_const("w"), true);
+    assert(!p.second);
+    p = new_m.evalIntExpr(c.int_const("w"), true, true);
+    assert(p.second);
+    int w_val = p.first;
+    p = new_m.evalIntVar("w");
+    assert(p.second);
+    assert(p.first == w_val);
+    e1 = c.int_val(8) + z3::select(c.constant("a",c.array_sort(c.int_sort(), c.int_sort())), 8);
+    p = new_m.evalIntExpr(e1, true);
+    assert(!p.second);
+    p = new_m.evalIntExpr(e1, true, true);
+    assert(p.second);
+    int e1_val = p.first;
+    p = new_m.evalIntExpr(e1, true, true);
+    assert(p.second);
+    assert(e1_val == p.first);
+    e1 = z3::select(c.constant("a",c.array_sort(c.int_sort(), c.int_sort())), 80);
+    p = new_m.evalIntExpr(e1, true, true);
+    assert(p.second);
     std::cout << "TEST SUCCESSFUL\n";
 }

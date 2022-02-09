@@ -102,7 +102,7 @@ std::pair<int,bool> Model::evalIntExpr(const z3::expr & e, bool debug, bool mode
     } else if (fd.decl_kind() == Z3_OP_SELECT){
         auto array = e.arg(0);
         auto index = e.arg(1);
-        std::pair<int, bool> index_res = evalIntExpr(index, debug);
+        std::pair<int, bool> index_res = evalIntExpr(index, debug, model_completion);
         if (index_res.second){
             std::string array_name = array.decl().name().str();
             auto res = evalArrayVar(array_name,index_res.first);
@@ -121,7 +121,7 @@ std::pair<int,bool> Model::evalIntExpr(const z3::expr & e, bool debug, bool mode
     std::vector<int> children_values;
     for (unsigned int i=0; i < e.num_args(); i++){
         auto arg = e.arg(i);
-        std::pair<int,bool> res_arg = evalIntExpr(arg, debug);
+        std::pair<int,bool> res_arg = evalIntExpr(arg, debug, model_completion);
         if (!res_arg.second){
             return res_arg;
         } else {

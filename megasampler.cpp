@@ -24,7 +24,7 @@ MEGASampler::MEGASampler(std::string _input, std::string _output_dir,
 
 void MEGASampler::do_epoch(const z3::model& m) {
   is_time_limit_reached();
-  struct buflen ret = call_strengthen(original_formula, m, debug);
+  struct buflen ret = call_strengthen(original_formula, m, has_arrays, debug);
   const auto view = kj::arrayPtr(reinterpret_cast<const capnp::word*>(ret.buf),
                                  ret.len / sizeof(capnp::word));
   // Disable the security measure, we trust ourselves

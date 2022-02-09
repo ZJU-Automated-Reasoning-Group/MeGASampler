@@ -29,9 +29,9 @@ def patch_global_context(ctx):
     formula_strengthener.patch_z3_context(intptr(ctx))
 
 @ffi.def_extern()
-def call_strengthen(f, model, debug):
+def call_strengthen(f, model, isAUF, debug):
     global keep_in_memory
-    out = ffi.from_buffer(formula_strengthener.strengthen_wrapper(intptr(f), intptr(model), debug))
+    out = ffi.from_buffer(formula_strengthener.strengthen_wrapper(intptr(f), intptr(model), isAUF, debug))
     # keep until just the next call to leak less
     keep_in_memory = out
     return (len(out), out)

@@ -16,4 +16,4 @@ struct buflen {
 };
 
 extern void patch_global_context(Z3_context m_ctx);
-extern struct buflen call_strengthen(Z3_app f, Z3_model model, bool debug);
+extern struct buflen call_strengthen(Z3_app f, Z3_model model, bool isAUF, bool debug);

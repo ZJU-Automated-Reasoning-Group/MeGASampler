@@ -532,12 +532,12 @@ def patch_z3_context(context_pointer):
     z3.main_ctx().ctx = ctypes.c_void_p(context_pointer)
 
 
-def strengthen_create_message(f, model, debug=False):
+def strengthen_create_message(f, model, isAUF=False, debug=False):
     b = strengthen_capnp.StrengthenResult.new_message()
     try:
         if debug:
             print(f"Calling strengthen with expr: {f}, model: {model}")
-        res = strengthen(f, model, debug, isAUF=True) # TODO: get isAUF from parameters
+        res = strengthen(f, model, isAUF, debug)
     except NoRuleForOp as e:
         b.res = False
         b.failuredecription = f"Operator {e.op_string} ({e.op_number}) with arity {e.op_arity} found, " \
@@ -578,11 +578,11 @@ def strengthen_create_message(f, model, debug=False):
     return out
 
 
-def strengthen_wrapper(f, model, debug=False):
+def strengthen_wrapper(f, model, isAUF=False, debug=False):
     f = ExprRef(ctypes.c_void_p(f), z3.main_ctx())
     model = ModelRef(ctypes.c_void_p(model), z3.main_ctx())
 
-    return strengthen_create_message(f, model, debug)
+    return strengthen_create_message(f, model, isAUF, debug)
 
 
 def serialize(expression):

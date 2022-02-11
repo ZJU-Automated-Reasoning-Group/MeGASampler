@@ -11,6 +11,10 @@
 #include "strengthen.capnp.h"
 #include "model.h"
 
+static inline bool check_if_in_interval(int64_t val, const MEGASampler::capnpInterval& interval){
+    return (val >= interval.getLow() && val <= interval.getHigh());
+}
+
 MEGASampler::MEGASampler(std::string _input, std::string _output_dir,
                          int _max_samples, double _max_time,
                          int _max_epoch_samples, double _max_epoch_time,
@@ -198,7 +202,7 @@ std::string MEGASampler::get_random_sample_from_array_intervals(
             std::string array_name = it->entryInCapnpMap->getVariable().cStr();
             auto res = m_out.evalArrayVar(array_name, i_val);
             if (res.second) {
-//                valid_model = check_if_in_interval(res.first, it->entryInCapnpMap->getInterval());
+                valid_model = check_if_in_interval(res.first, it->entryInCapnpMap->getInterval());
                 if (!valid_model) break;
             } else {
                 const auto &interval = it->entryInCapnpMap->getInterval();

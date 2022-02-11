@@ -5,9 +5,13 @@
 #include "strengthen.capnp.h"
 
 class MEGASampler : public Sampler {
+ public:
+    typedef capnp::List<StrengthenResult::VarInterval>::Reader capnpIntervalMap;
+    typedef ::StrengthenResult::VarInterval::Reader capnpVarInterval;
+    typedef ::StrengthenResult::VarInterval::Interval::Reader capnpInterval;
+
+ private:
   z3::expr simpl_formula;
-  typedef capnp::List<StrengthenResult::VarInterval>::Reader capnpIntervalMap;
-  typedef ::StrengthenResult::VarInterval::Reader capnpVarInterval;
 
   struct arrayAccessData {
       const capnpVarInterval * entryInCapnpMap;

@@ -165,7 +165,7 @@ void MEGASampler::sample_intervals_in_rounds(
               << ", rate = " << rate << "\n";
 }
 
-int64_t randomInInterval(const ::StrengthenResult::VarInterval::Interval::Reader & interval){
+int64_t randomInInterval(const MEGASampler::capnpInterval & interval){
     int64_t low = interval.getLow();
     int64_t high = interval.getHigh();
     std::mt19937 rng(std::random_device{}());

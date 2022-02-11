@@ -14,10 +14,10 @@ class MEGASampler : public Sampler {
   z3::expr simpl_formula;
 
   struct arrayAccessData {
-      const capnpVarInterval * entryInCapnpMap;
+      capnpVarInterval entryInCapnpMap;
       z3::expr indexExpr;
       int numSelecetsInIndex;
-      arrayAccessData(const capnpVarInterval * e, z3::expr i, int n): entryInCapnpMap(e), indexExpr(i), numSelecetsInIndex(n){}
+      arrayAccessData(const capnpVarInterval e, z3::expr i, int n): entryInCapnpMap(e), indexExpr(i), numSelecetsInIndex(n){}
       std::string toString() {
           return "expr " + indexExpr.to_string() + " has " + std::to_string(numSelecetsInIndex) + " selects.";
       }

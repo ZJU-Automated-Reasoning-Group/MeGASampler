@@ -132,7 +132,7 @@ void MEGASampler::sample_intervals_in_rounds(
           if (varsort == "select") {
               z3::expr index_expr = deserialise_expr(varinterval.getIndex().cStr());
               int num_selects = count_selects(index_expr);
-              arrayAccessData d(&varinterval, index_expr, num_selects);
+              arrayAccessData d(varinterval, index_expr, num_selects);
               index_vec.push_back(d);
           }
       }
@@ -192,20 +192,20 @@ std::string MEGASampler::get_random_sample_from_array_intervals(
                 assert(res);
             }
         }
-//    std::cout << "model after int assignment:\n" << m_out.toString() << "\n";
+//        std::cout << "model after int assignment:\n" << m_out.toString() << "\n";
         for (auto it = indexvec.begin(); it < indexvec.end(); it++) {
             int i_val;
             z3::expr index_expr = it->indexExpr;
             auto index_res = m_out.evalIntExpr(index_expr, false, true);
             assert (index_res.second);
             i_val = index_res.first;
-            std::string array_name = it->entryInCapnpMap->getVariable().cStr();
+            std::string array_name = it->entryInCapnpMap.getVariable().cStr();
             auto res = m_out.evalArrayVar(array_name, i_val);
             if (res.second) {
-                valid_model = check_if_in_interval(res.first, it->entryInCapnpMap->getInterval());
+                valid_model = check_if_in_interval(res.first, it->entryInCapnpMap.getInterval());
                 if (!valid_model) break;
             } else {
-                const auto &interval = it->entryInCapnpMap->getInterval();
+                const auto &interval = it->entryInCapnpMap.getInterval();
                 int64_t rand = randomInInterval(interval);
                 m_out.addArrayAssignment(array_name, i_val, rand);
             }

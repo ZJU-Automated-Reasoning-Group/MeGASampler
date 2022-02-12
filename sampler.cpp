@@ -306,6 +306,7 @@ z3::model Sampler::start_epoch() {
   epochs++;
   total_samples++;
 
+  std::cout << model.to_string() << "\n";
   save_and_output_sample_if_unique(model_to_string(model));
 
   return model;
@@ -486,11 +487,11 @@ std::string Sampler::model_to_string(const z3::model &m) {
         std::string num = "[";
         num += std::to_string(f.num_entries());
         s += num + ';';
-        std::string def = bv_string(f.else_value(), c);
+        std::string def = std::to_string(f.else_value());
         s += def + ';';
         for (size_t j = 0; j < f.num_entries(); ++j) {
-          std::string arg = bv_string(f.entry(j).arg(0), c);
-          std::string val = bv_string(f.entry(j).value(), c);
+          std::string arg = std::to_string(f.entry(j).arg(0));
+          std::string val = std::to_string(f.entry(j).value());
           s += arg + ';';
           s += val + ';';
         }
@@ -499,19 +500,19 @@ std::string Sampler::model_to_string(const z3::model &m) {
         std::vector<std::string> args;
         std::vector<std::string> values;
         while (e.decl().name().str() == "store") {
-          std::string arg = bv_string(e.arg(1), c);
+          std::string arg = std::to_string(e.arg(1));
           if (std::find(args.begin(), args.end(), arg) != args.end()) {
             e = e.arg(0);
             continue;
           }
           args.push_back(arg);
-          values.push_back(bv_string(e.arg(2), c));
+          values.push_back(std::to_string(e.arg(2)));
           e = e.arg(0);
         }
         std::string num = "[";
         num += std::to_string(args.size());
         s += num + ';';
-        std::string def = bv_string(e.arg(0), c);
+        std::string def = std::to_string(e.arg(0));
         s += def + ';';
         for (int j = args.size() - 1; j >= 0; --j) {
           std::string arg = args[j];
@@ -559,14 +560,14 @@ std::string Sampler::model_to_string(const z3::model &m) {
       std::string num = "(";
       num += std::to_string(f.num_entries());
       s += num + ';';
-      std::string def = bv_string(f.else_value(), c);
+      std::string def = std::to_string(f.else_value());
       s += def + ';';
       for (size_t j = 0; j < f.num_entries(); ++j) {
         for (size_t k = 0; k < f.entry(j).num_args(); ++k) {
-          std::string arg = bv_string(f.entry(j).arg(k), c);
+          std::string arg = std::to_string(f.entry(j).arg(k));
           s += arg + ';';
         }
-        std::string val = bv_string(f.entry(j).value(), c);
+        std::string val = std::to_string(f.entry(j).value());
         s += val + ';';
       }
       s += ")";

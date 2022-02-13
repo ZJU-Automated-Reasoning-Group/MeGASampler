@@ -306,7 +306,6 @@ z3::model Sampler::start_epoch() {
   epochs++;
   total_samples++;
 
-  std::cout << model.to_string() << "\n";
   save_and_output_sample_if_unique(model_to_string(model));
 
   return model;

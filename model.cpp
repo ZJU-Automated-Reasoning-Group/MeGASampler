@@ -74,9 +74,9 @@ std::string Model::toString(){
 std::pair<int64_t,bool> Model::evalIntVar(const std::string & var){
     auto it = variable_map.find(var);
     if (it == variable_map.end()){
-        return std::pair<int,bool>(-1, false);
+        return std::pair<int64_t,bool>(-1, false);
     } else {
-        return std::pair<int,bool>(it->second, true);
+        return std::pair<int64_t,bool>(it->second, true);
     }
 }
 

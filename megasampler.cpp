@@ -194,7 +194,7 @@ std::string MEGASampler::get_random_sample_from_array_intervals(
         }
 //        std::cout << "model after int assignment:\n" << m_out.toString() << "\n";
         for (auto it = indexvec.begin(); it < indexvec.end(); it++) {
-            int i_val;
+            int64_t i_val;
             z3::expr index_expr = it->indexExpr;
             auto index_res = m_out.evalIntExpr(index_expr, false, true);
             assert (index_res.second);

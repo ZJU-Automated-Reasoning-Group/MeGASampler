@@ -3,7 +3,20 @@
 //
 
 #include <random>
+#include <cstdint>
 #include "model.h"
+
+static inline int64_t safe_add(int64_t a, int64_t b){
+    int64_t ret;
+    if (!__builtin_add_overflow(a, b, &ret)) return ret;
+    return ((a > 0) & (b > 0)) ? INT64_MAX : INT64_MIN; // TODO: fix for opposite signs? If there is overflow the value will be wrong anyway
+}
+
+static inline int64_t safe_mul(int64_t a, int64_t b){
+    int64_t ret;
+    if (!__builtin_mul_overflow(a, b, &ret)) return ret;
+    return ((a > 0) ^ (b > 0)) ? INT64_MIN : INT64_MAX;
+}
 
 static inline int64_t draw_random_int(){
     std::mt19937 rng(std::random_device{}());
@@ -83,6 +96,7 @@ std::pair<int64_t,bool> Model::evalArrayVar(const std::string &array, int64_t in
 }
 
 std::pair<int64_t,bool> Model::evalIntExpr(const z3::expr & e, bool debug, bool model_completion){
+    if (debug) std::cout << "evel int expr on: " << e.to_string() << "\n";
     assert(z3::is_int(e));
     assert(e.is_app());
     z3::func_decl fd = e.decl();
@@ -99,8 +113,10 @@ std::pair<int64_t,bool> Model::evalIntExpr(const z3::expr & e, bool debug, bool 
             int64_t rand = draw_random_int();
             auto r = addIntAssignment(name, rand);
             assert(r);
+            if (debug) std::cout << "returning mc rand value: " << std::to_string(rand) << "\n";
             return std::pair<int64_t, bool>(rand, true);
         } else {
+            if (debug) std::cout << "returning existing value for int var: " << std::to_string(res.first) << "\n";
             return res;
         }
     } else if (fd.decl_kind() == Z3_OP_SELECT){
@@ -114,8 +130,10 @@ std::pair<int64_t,bool> Model::evalIntExpr(const z3::expr & e, bool debug, bool 
                 int64_t rand = draw_random_int();
                 auto r = addArrayAssignment(array_name, index_res.first, rand);
                 assert(r);
+                if (debug) std::cout << "returning mc rand value for array: " << std::to_string(rand) << "\n";
                 return std::pair<int64_t, bool>(rand, true);
             } else {
+                if (debug) std::cout << "returning existing value for array: " << std::to_string(res.first) << "\n";
                 return res;
             }
         } else {
@@ -137,27 +155,32 @@ std::pair<int64_t,bool> Model::evalIntExpr(const z3::expr & e, bool debug, bool 
             if (debug) std::cout << "found add\n";
             int64_t sum = 0;
             for (std::vector<int64_t>::iterator it = children_values.begin(); it != children_values.end(); ++it) {
-                sum += *it;
+                sum = safe_add(sum, *it);
             }
+            if (debug) std::cout << "returning sum result: " << std::to_string(sum) << "\n";
             return std::pair<int64_t, bool>(sum, true);
         }
         case Z3_OP_MUL: {
             if (debug) std::cout << "found mul\n";
-            int prod = 1;
+            int64_t prod = 1;
             for (std::vector<int64_t>::iterator it = children_values.begin(); it != children_values.end(); ++it) {
-                prod *= *it;
+                prod = safe_mul(prod, *it);
             }
+            if (debug) std::cout << "returning mult result: " << std::to_string(prod) << "\n";
             return std::pair<int64_t, bool>(prod, true);
         }
         case Z3_OP_SUB: {
             if (debug) std::cout << "found sub\n";
             assert(children_values.size() == 2);
-            return std::pair<int64_t, bool>(children_values[0] - children_values[1], true);
+            int64_t sub = safe_add(children_values[0], -children_values[1]); // TODO: can unary minus computation overflow?
+            if (debug) std::cout << "returning sub result: " << std::to_string(sub) << "\n";
+            return std::pair<int64_t, bool>(sub, true);
         }
         case Z3_OP_UMINUS: {
             if (debug) std::cout << "found uminus\n";
             assert(children_values.size() == 1);
-            return std::pair<int64_t, bool>(-children_values[0], true);
+            if (debug) std::cout << "returning uminus result: " << std::to_string(-children_values[0]) << "\n";
+            return std::pair<int64_t, bool>(-children_values[0], true); // TODO: can unary minus computation overflow?
         }
         default:{
             if (debug) std::cout << "unknown op: " << fd.decl_kind() << "\n";

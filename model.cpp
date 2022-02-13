@@ -40,16 +40,20 @@ std::string Model::toString(){
         res += ";";
     }
     for (std::map<std::string,std::map<int,int>>::iterator  it=array_map.begin(); it!=array_map.end(); ++it){
-        res += it->first;
-        res += "::";
+        res += it->first; // array name
+        res += ":[";
         std::map<int,int> idx_val_map = it->second;
+        res += std::to_string(idx_val_map.size()); // #entries
+        res += ";";
+        res += "0"; // default value. TODO: choose randomly? this value has no impact on the formula anyway
+        res += ";";
         for (std::map<int,int>::iterator it2=idx_val_map.begin(); it2!=idx_val_map.end(); it2++){
-            res += std::to_string(it2->first);
+            res += std::to_string(it2->first); // index
             res += ":";
-            res += std::to_string(it2->second);
+            res += std::to_string(it2->second); // value
             res += ",";
         }
-        res += ";";
+        res += "];";
     }
     return res;
 }

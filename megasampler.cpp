@@ -241,6 +241,7 @@ void MEGASampler::add_soft_constraint_from_intervals(
       expr = combine_expr(expr, var <= high);
     }
   }
+  if (debug) std::cout << "blocking constraint: " << expr.to_string() << "\n";
   opt.add_soft(!expr, 1);
 }
 

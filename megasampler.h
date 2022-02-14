@@ -12,7 +12,6 @@ class MEGASampler : public Sampler {
 
  private:
   z3::expr simpl_formula;
-
   struct arrayAccessData {
       capnpVarInterval entryInCapnpMap;
       z3::expr indexExpr;
@@ -46,7 +45,7 @@ class MEGASampler : public Sampler {
   std::string get_random_sample_from_array_intervals(
       const capnpIntervalMap& intervalmap, const std::vector<arrayAccessData>& indexvec);
   void add_soft_constraint_from_intervals(
-      const capnpIntervalMap& intervalmap);
+      const capnpIntervalMap& intervalmap, const std::vector<arrayAccessData>& index_vec);
   z3::expr deserialise_expr(const std::string & str);
 };
 

@@ -89,8 +89,8 @@ void MEGASampler::do_epoch(const z3::model& m) {
     }
   }
 
-  if (use_blocking) // TODO: update for arrays and make sure still works for int
-    add_soft_constraint_from_intervals(container.getIntervalmap());
+  if (use_blocking)
+    add_soft_constraint_from_intervals(container.getIntervalmap(), index_vec);
 
   if (is_time_limit_reached("epoch")) return;
 
@@ -228,18 +228,36 @@ static inline z3::expr combine_expr(const z3::expr& base, const z3::expr& arg) {
 }
 
 void MEGASampler::add_soft_constraint_from_intervals(
-    const capnpIntervalMap& intervals) {
+    const capnpIntervalMap& intervals, const std::vector<arrayAccessData>& index_vec) {
   z3::expr expr(c);
   for (auto interval : intervals) {
-    const auto var = c.int_const(interval.getVariable().cStr());
-    if (!interval.getInterval().getIslowminf()) {
-      const auto low = c.int_val(interval.getInterval().getLow());
-      expr = combine_expr(expr, var >= low);
+    std::string varsort =  interval.getVarsort().cStr();
+    if (varsort == "int") {
+        const auto var = c.int_const(interval.getVariable().cStr());
+        if (!interval.getInterval().getIslowminf()) {
+            const auto low = c.int_val(interval.getInterval().getLow());
+            expr = combine_expr(expr, var >= low);
+        }
+        if (!interval.getInterval().getIshighinf()) {
+            const auto high = c.int_val(interval.getInterval().getHigh());
+            expr = combine_expr(expr, var <= high);
+        }
     }
-    if (!interval.getInterval().getIshighinf()) {
-      const auto high = c.int_val(interval.getInterval().getHigh());
-      expr = combine_expr(expr, var <= high);
-    }
+  }
+  z3::sort int_sort = c.int_sort();
+  z3::sort array_sort = c.array_sort(int_sort,int_sort);
+  for (const auto & access_data : index_vec){
+      std::string array_name = access_data.entryInCapnpMap.getVariable().cStr();
+      z3::expr arr = c.constant(array_name.c_str(), array_sort);
+      z3::expr select_e = z3::select(arr, access_data.indexExpr);
+      if (!access_data.entryInCapnpMap.getInterval().getIslowminf()) {
+          const auto low = c.int_val(access_data.entryInCapnpMap.getInterval().getLow());
+          expr = combine_expr(expr, select_e >= low);
+      }
+      if (!access_data.entryInCapnpMap.getInterval().getIshighinf()) {
+          const auto high = c.int_val(access_data.entryInCapnpMap.getInterval().getHigh());
+          expr = combine_expr(expr, select_e <= high);
+      }
   }
   if (debug) std::cout << "blocking constraint: " << expr.to_string() << "\n";
   opt.add_soft(!expr, 1);

@@ -416,10 +416,12 @@ class StrengthenedFormula():
         e_false = ite_expr.arg(2)
         if model_evaluate_to_const(cond, model):
             self._strengthen_binary_boolean_conjunct(e_true, model_evaluate_to_const(e_true, model), rhs_value, op, model)
-            self._strengthen_conjunct(cond, model) # potential bug if cond is not a literal, or if its not simplified
+            satisfied_cond_as_and = nnf_simplify_and_remove_or(cond, model)
         else:
             self._strengthen_binary_boolean_conjunct(e_false, model_evaluate_to_const(e_false, model), rhs_value, op, model)
-            self._strengthen_conjunct(Not(cond), model) # potential bug if cond is not a literal, or if its not simplified
+            satisfied_cond_as_and = nnf_simplify_and_remove_or(Not(cond), model)
+        for c in satisfied_cond_as_and.children():
+            self._strengthen_conjunct(c, model)
 
 
 class AUFStrengthenedFormula(StrengthenedFormula):

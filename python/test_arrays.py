@@ -1,5 +1,5 @@
 import z3
-from z3 import help_simplify, unsat, With, Int, Bool, Array, IntSort, Select, Store
+from z3 import help_simplify, unsat, With, Int, Bool, Array, IntSort, Select, Store, Implies
 
 from test_formula_to_intervals import read_smt2, solve_and_strengthen_formula, solve_formula
 from z3_utils import *
@@ -66,8 +66,8 @@ def test_formula(f):
     print(f"f is: {f}")
     f_simple = nnf_simplify(f, True)
     print(f"f_simple is: {f_simple}")
-    # sanity check that f=f_simple
-    res, m = solve_formula(Or(And(f, Not(f_simple)), (And(Not(f), f_simple))))
+    # sanity check that f_simple implies f
+    res, m = solve_formula(Not(Implies(f_simple, f)))
     assert res == unsat
     # now solve f_simple
     res, m = solve_formula(f_simple)
@@ -86,6 +86,9 @@ if __name__ == "__main__":
     sys_args = _sys.argv[1:]
     if len(sys_args) == 0:
         print("No files were given. Running built-in tests.")
+        # or_e = Or(Int("x") > 0, Int("y") > 0)
+        # new_e = or_e.decl()(Int("x") <= 0, or_e.arg(1))
+        # print(new_e)
         built_in_tests()
     for file in sys_args:
         print(f"reading from file: {file}")

@@ -40,7 +40,7 @@ class MEGASampler : public Sampler {
 
  private:
   void sample_intervals_in_rounds(
-      const capnpIntervalMap& intervalmap);
+      const capnpIntervalMap& intervalmap, const std::vector<arrayAccessData>& index_vec);
   std::string get_random_sample_from_int_intervals(
       const capnpIntervalMap& intervalmap);
   std::string get_random_sample_from_array_intervals(

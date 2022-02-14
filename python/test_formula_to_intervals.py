@@ -18,7 +18,7 @@ def timed(func):
 def solve_and_strengthen_formula(f, debug = True):
     print("f is: " + str(f))
     res, m = solve_formula(f)
-    r, stren_time = timed(strengthen)(f, m, debug)
+    r, stren_time = timed(strengthen)(f, m, debug=debug)
     print("f after strengthening:")
     print(r)
     print(f"time to strengthen f: {stren_time.total_seconds()}s")

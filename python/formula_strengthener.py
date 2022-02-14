@@ -379,7 +379,7 @@ class StrengthenedFormula():
         return res
 
     def strengthen_and_add_condition(self, cond, model):
-        strengthened_condition = strengthen(cond, model, self.debug)
+        strengthened_condition = strengthen(cond, model, debug=self.debug)
         self.intersect(strengthened_condition)
 
     def substitute_var_with_expr(self, var, expr, model):
@@ -464,9 +464,9 @@ class AUFStrengthenedFormula(StrengthenedFormula):
                                                                     rhs_value, op, model)
 
 
-def strengthen(f, model, debug=False, isAUF=False):
+def strengthen(f, model, isAUF=False, debug=False):
     if isAUF:
-        res = AUFStrengthenedFormula()
+        res = AUFStrengthenedFormula(debug)
     else:
         res = StrengthenedFormula(debug)
     f_as_and = nnf_simplify_and_remove_or(f, model, debug)

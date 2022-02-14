@@ -77,7 +77,7 @@ def test_formula(f):
     print(f"m is: {m}")
     f_slice = remove_or(f_simple, m)
     print(f"slice is: {f_slice}")
-    f_intervals = strengthen(f, m, isAUF=True)
+    f_intervals = strengthen(f, m, isAUF=True, debug=True)
     print(f"interval formula is: {f_intervals}")
     print("--------------")
 

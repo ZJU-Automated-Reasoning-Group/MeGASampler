@@ -169,42 +169,41 @@ int64_t randomInInterval(const MEGASampler::capnpInterval & interval){
 }
 
 std::string MEGASampler::get_random_sample_from_array_intervals(
-        const capnpIntervalMap& intervalmap, const std::vector<arrayAccessData>& indexvec){
-    while(true) { //TODO some heuristic for early termination in case we keep getting clashes?
-        Model m_out;
-        bool valid_model = true;
-        for (auto varinterval: intervalmap) {
-            std::string varsort = varinterval.getVarsort().cStr();
-            if (varsort == "int") {
-                std::string varname = varinterval.getVariable().cStr();
-                const auto &interval = varinterval.getInterval();
-                int64_t rand = randomInInterval(interval);
-                bool res = m_out.addIntAssignment(varname, rand);
-                assert(res);
-            }
-        }
-//        std::cout << "model after int assignment:\n" << m_out.toString() << "\n";
-        for (auto it = indexvec.begin(); it < indexvec.end(); it++) {
-            int64_t i_val;
-            z3::expr index_expr = it->indexExpr;
-            auto index_res = m_out.evalIntExpr(index_expr, false, true);
-            assert (index_res.second);
-            i_val = index_res.first;
-            std::string array_name = it->entryInCapnpMap.getVariable().cStr();
-            auto res = m_out.evalArrayVar(array_name, i_val);
-            if (res.second) {
-                valid_model = check_if_in_interval(res.first, it->entryInCapnpMap.getInterval());
-                if (!valid_model) break;
-            } else {
-                const auto &interval = it->entryInCapnpMap.getInterval();
-                int64_t rand = randomInInterval(interval);
-                m_out.addArrayAssignment(array_name, i_val, rand);
-            }
-        }
-        if (valid_model) {
-            return m_out.toString();
-        }
+                                                                const capnpIntervalMap& intervalmap, const std::vector<arrayAccessData>& indexvec) {
+  while(true) { //TODO some heuristic for early termination in case we keep getting clashes?
+    Model m_out(variable_names);
+    bool valid_model = true;
+    for (auto varinterval : intervalmap) {
+      std::string varsort = varinterval.getVarsort().cStr();
+      if (varsort == "int") {
+        std::string varname = varinterval.getVariable().cStr();
+        const auto &interval = varinterval.getInterval();
+        int64_t rand = randomInInterval(interval);
+        bool res = m_out.addIntAssignment(varname, rand);
+        assert(res);
+      }
     }
+    for (auto it : indexvec) {
+      int64_t i_val;
+      z3::expr index_expr = it.indexExpr;
+      auto index_res = m_out.evalIntExpr(index_expr, false, true);
+      assert (index_res.second);
+      i_val = index_res.first;
+      std::string array_name = it.entryInCapnpMap.getVariable().cStr();
+      auto res = m_out.evalArrayVar(array_name, i_val);
+      if (res.second) {
+        valid_model = check_if_in_interval(res.first, it.entryInCapnpMap.getInterval());
+        if (!valid_model) break;
+      } else {
+        const auto &interval = it.entryInCapnpMap.getInterval();
+        int64_t rand = randomInInterval(interval);
+        m_out.addArrayAssignment(array_name, i_val, rand);
+      }
+    }
+    if (valid_model) {
+      return m_out.toString();
+    }
+  }
 }
 
 std::string MEGASampler::get_random_sample_from_int_intervals(

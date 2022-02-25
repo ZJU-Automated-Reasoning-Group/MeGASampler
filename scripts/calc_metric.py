@@ -7,6 +7,7 @@ import fractions
 import operator
 import sys
 import typing as typ
+import collections
 
 import z3
 from z3 import z3util
@@ -174,7 +175,60 @@ class ManualSatisfiesMetric(Metric):
             return self._build_leaf_literal(expr, expr.as_long())
         elif z3.is_const(expr):
             return self._build_leaf_symbol(expr)
+        elif z3.is_select(expr):
+            return self._build_array_select(expr)
         raise Exception(f"Unhandled: {expr}")
+
+    def _build_array(self, expr):
+        node_id = expr.get_id()
+        if self._statistics:
+            self._statistics.register_node(node_id, "array")
+
+        if z3.is_const(expr):
+            return self._build_array_leaf_symbol(expr)
+        elif z3.is_store(expr):
+            return self._build_array_store(expr)
+        raise Exception(f"Unhandled array: {expr}")
+
+    def _build_array_leaf_symbol(self, expr):
+        name = expr.decl().name()
+        node_id = expr.get_id()
+
+        def e(model):
+            value = model.get(name, collections.defaultdict(int))
+            if self._statistics:
+                self._statistics.evaluate_node(node_id, value)
+            return value
+
+        return e
+
+    def _build_array_store(self, expr):
+        node_id = expr.get_id()
+        array = self._build_array(expr.arg(0))
+        index = self._build_int(expr.arg(1))
+        store = self._build_int(expr.arg(2))
+
+        def e(model):
+            old_value = array(model)
+            value = collections.defaultdict(old_value.default_factory)
+            value[index(model)] = store(model)
+            if self._statistics:
+                self._statistics.evaluate_node(node_id, value)
+            return value
+        return e
+
+    def _build_array_select(self, expr):
+        node_id = expr.get_id()
+        array = self._build_array(expr.arg(0))
+        index = self._build_int(expr.arg(1))
+
+        def e(model):
+            value = array(model)[index(model)]
+            if self._statistics:
+                self._statistics.evaluate_node(node_id, value)
+            return value
+
+        return e
 
     def _build_nary(self, expr, op, subtype):
         children = [subtype(subexpr) for subexpr in expr.children()]
@@ -273,6 +327,8 @@ class WireCoverageStatistics(NodeStatistics):
             self._storage[node_id] = (False, False, sort)
         elif sort == "int":
             self._storage[node_id] = (0, 0, sort)
+        elif sort == "array":
+            self._storage[node_id] = (None, None, sort) # TODO: ???
         else:
             raise Exception(f"Unhandled: {sort}")
 
@@ -285,6 +341,8 @@ class WireCoverageStatistics(NodeStatistics):
             self._storage[node_id] = (old_true | (value & self.MASK), old_false
                                       | ((value & self.MASK) ^ self.MASK),
                                       sort)
+        elif sort == "array":
+            pass # TODO: ???
         else:
             raise Exception(f"Unhandled: {sort}")
 
@@ -300,6 +358,8 @@ class WireCoverageStatistics(NodeStatistics):
             elif sort == "int":
                 total += bin(self.MASK).count('1')
                 count += bin(true_count & false_count).count('1')
+            elif sort == "array":
+                pass # TODO: ???
             else:
                 raise Exception(f"Unhandled: {sort}")
 
@@ -317,9 +377,19 @@ def _apply_metric(metric: Metric, samples: typ.Iterator[list[tuple[str,
 
 
 def parse_samples(f: typ.TextIO) -> typ.Iterator[list[tuple[str, int]]]:
+    def parse_int(value):
+        return int(value.strip('()').replace(' ', ''))
+
+    def parse_array(value):
+        splitted = value.strip('[],').split(',')
+        default = int(splitted[1])
+        assert(len(splitted) - 2 == int(splitted[0]))
+        return collections.defaultdict(lambda: default,
+                                       ( x.split('->') for x in splitted[2:]))
+
     def to_tuple(sample):
         var, value = sample.split(':')
-        return var, int(value.strip('()').replace(' ', ''))
+        return var, parse_array(value) if value[0] == '[' else parse_int(value)
 
     for line in f:
         p = line.split(' ', maxsplit=1)[1].strip('; \n').split(';')

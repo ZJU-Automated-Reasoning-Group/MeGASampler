@@ -26,9 +26,9 @@ void SMTSampler::calculate_constraints(const std::string &m_string) {
     if (v.range().is_array()) {
       assert(m_string[pos] == '[');
       ++pos;
-      unsigned long long num = atoll(m_string.c_str() + pos); // array size
+      unsigned long long num = atoll(m_string.c_str() + pos);  // array size
       pos = m_string.find(';', pos) + 1;
-      z3::expr def = value(m_string.c_str () + pos);
+      z3::expr def = value(m_string.c_str() + pos);
       pos = m_string.find(';', pos) + 1;
 
       for (unsigned long long i = 0; i < num; ++i) {
@@ -36,7 +36,7 @@ void SMTSampler::calculate_constraints(const std::string &m_string) {
         pos = m_string.find(';', pos) + 1;
 
         z3::expr val = value(m_string.c_str() + pos);
-        pos = m_string.find(';',  pos) + 1;
+        pos = m_string.find(';', pos) + 1;
 
         add_constraints(z3::select(v(), arg), val, -1);
       }
@@ -139,34 +139,31 @@ void SMTSampler::find_neighboring_solutions(
 std::string SMTSampler::combine_function(std::string const &str_a,
                                          std::string const &str_b,
                                          std::string const &str_c,
-                                         size_t &pos_a,
-                                         size_t &pos_b,
-                                         size_t &pos_c,
-                                         int arity,
-                                         z3::sort s) {
+                                         size_t &pos_a, size_t &pos_b,
+                                         size_t &pos_c, int arity, z3::sort s) {
   std::stringstream ss;
   std::unordered_map<std::string, SMTSampler::Triple> values;
-  if (debug)
-    std::cerr << "combine_function" << s << '\n';
+  if (debug) std::cerr << "combine_function" << s << '\n';
   const std::string def_a = parse_function(str_a, pos_a, arity, values, 0);
   const std::string def_b = parse_function(str_b, pos_b, arity, values, 1);
   const std::string def_c = parse_function(str_c, pos_c, arity, values, 2);
 
   ss << (arity == 0 ? '[' : '(');
   ss << std::to_string(values.size()) << ';';
-  ss << std::to_string(combine_mutations(stoll(def_a), stoll(def_b), stoll(def_c))) << ';';
-  for (const auto& value : values) {
+  ss << std::to_string(
+            combine_mutations(stoll(def_a), stoll(def_b), stoll(def_c)))
+     << ';';
+  for (const auto &value : values) {
     std::string val_a = value.second.a[0];
-    if (val_a.empty())
-      val_a = def_a;
+    if (val_a.empty()) val_a = def_a;
     std::string val_b = value.second.a[1];
-    if (val_b.empty())
-      val_b = def_b;
+    if (val_b.empty()) val_b = def_b;
     std::string val_c = value.second.a[2];
-    if (val_c.empty())
-      val_c = def_c;
+    if (val_c.empty()) val_c = def_c;
     ss << value.first;
-    ss << std::to_string(combine_mutations(stoll(val_a), stoll(val_b), stoll(val_c))) << ';';
+    ss << std::to_string(
+              combine_mutations(stoll(val_a), stoll(val_b), stoll(val_c)))
+       << ';';
   }
   ss << (arity == 0 ? ']' : ')');
   return ss.str();
@@ -174,7 +171,7 @@ std::string SMTSampler::combine_function(std::string const &str_a,
 
 std::string SMTSampler::parse_function(
     std::string const &m_string, size_t &pos, int arity,
-    std::unordered_map<std::string, SMTSampler::Triple>& values, int index) {
+    std::unordered_map<std::string, SMTSampler::Triple> &values, int index) {
   size_t start;
   bool is_array = false;
   if (arity == 0) {
@@ -227,10 +224,10 @@ void SMTSampler::find_combined_solutions(
         std::string candidate;
         for (z3::func_decl &w : ind) {
           if (w.range().is_array()) {
-            const int arity = 0; // all we support?
-            z3::sort s = w.range().array_range(); // should always be int
-            candidate += combine_function(a_string, b_string, c_string, pos_a, pos_b, pos_c,
-                                          arity, s);
+            const int arity = 0;                   // all we support?
+            z3::sort s = w.range().array_range();  // should always be int
+            candidate += combine_function(a_string, b_string, c_string, pos_a,
+                                          pos_b, pos_c, arity, s);
           } else if (w.is_const()) {
             assert_is_int_var(w);
             const long long val_a = ll_value(a_string.c_str() + pos_a);
@@ -317,7 +314,7 @@ std::string SMTSampler::model_string(z3::model m,
       // case array
       z3::expr e = m.get_const_interp(v);
       const Z3_func_decl as_array = Z3_get_as_array_func_decl(c, e);
-      if (as_array) { // is this an "as_array" cmd
+      if (as_array) {  // is this an "as_array" cmd
         z3::func_interp f = m.get_func_interp(to_func_decl(c, as_array));
         ss << '[' << std::to_string(f.num_entries()) << ';';
         ss << f.else_value() << ';';
@@ -326,7 +323,7 @@ std::string SMTSampler::model_string(z3::model m,
           ss << f.entry(i).value() << ';';
         }
         ss << ']';
-      } else { // this is a list of stores
+      } else {  // this is a list of stores
         std::vector<std::string> args;
         std::vector<std::string> values;
         while (e.decl().name().str() == "store") {
@@ -341,7 +338,7 @@ std::string SMTSampler::model_string(z3::model m,
           }
           args.push_back(arg);
           values.push_back(std::to_string(e.arg(2)));
-          e = e.arg(0); // go to inner cmd
+          e = e.arg(0);  // go to inner cmd
         }
         ss << '[' << std::to_string(args.size()) << ';';
         ss << e.arg(0) << ';';
@@ -360,7 +357,7 @@ std::string SMTSampler::model_string(z3::model m,
       ss << ';';
     } else {
       // case uninterpreted functions
-      
+      assert(false);
     }
   }
   return ss.str();
@@ -407,8 +404,10 @@ z3::model SMTSampler::gen_model(const std::string &candidate,
       z3::expr def = value(candidate.c_str() + pos);
       pos = candidate.find(';', pos) + 1;
 
-      Z3_sort domain_sort[1] = { v.range().array_domain() };
-      Z3_func_decl cfd = Z3_mk_fresh_func_decl(c, "k", 1, domain_sort, v.range().array_range());
+      Z3_sort domain_sort[1] = {v.range().array_domain()};
+      Z3_func_decl cfd = Z3_mk_fresh_func_decl(c, "k", 1, domain_sort,
+                                               v.range().array_range());
+
       z3::func_decl fd(c, cfd);
       z3::func_interp f = m.add_func_interp(fd, def);
 

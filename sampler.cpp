@@ -10,6 +10,7 @@
 #include <capnp/serialize-packed.h>
 
 #include <filesystem>
+#include <fstream>
 
 Sampler::Sampler(std::string _input, std::string _output_dir, int _max_samples,
                  double _max_time, int _max_epoch_samples,
@@ -61,7 +62,7 @@ Sampler::Sampler(std::string _input, std::string _output_dir, int _max_samples,
     safe_exit(1);
   }
 
-  if (num_arrays > 0){
+  if (num_arrays > 0) {
     has_arrays = true;
   }
 
@@ -411,6 +412,7 @@ void Sampler::_compute_formula_stats_aux(z3::expr e, int depth) {
     if (var_names.find(name) == var_names.end()) {
       var_names.insert(name);
       variables.push_back(fd);
+      variable_names.push_back(name);
       if (fd.range().is_array()) {
         ++num_arrays;
       } else if (fd.is_const()) {
@@ -476,111 +478,102 @@ bool Sampler::save_and_output_sample_if_unique(const std::string &sample) {
 
 std::string Sampler::model_to_string(const z3::model &m) {
   std::string s;
-  for (z3::func_decl &v : variables) {
-      if (v.range().is_array()) {  // array case
-          continue;
-      } else if (v.is_const()) {  // BV, Int case
-          s += v.name().str() + ':';
-          z3::expr b = m.get_const_interp(v);
-          Z3_ast ast = b;
-          switch (v.range().sort_kind()) {
-              case Z3_BV_SORT: {
-                  if (!ast) {
-                      s += bv_string(c.bv_val(0, v.range().bv_size()), c) + ';';
-                  } else {
-                      s += bv_string(b, c) + ';';
-                  }
-                  break;
-              }
-              case Z3_BOOL_SORT: {
-                  if (!ast) {
-                      s += std::to_string(false) + ';';
-                  } else {
-                      s += std::to_string(b.bool_value() == Z3_L_TRUE) + ';';
-                  }
-                  break;
-              }
-              case Z3_INT_SORT: {
-                  if (!ast) {
-                      s += std::to_string(0) + ";";
-                  } else {
-                      s += b.to_string() + ";";
-                  }
-                  break;
-              }
-              default:
-                  std::cout << "Invalid sort\n";
-                  failure_cause = "Invalid sort.";
-                  safe_exit(1);
-          }
-      }
-  }
-  for (z3::func_decl &v : variables) {
-        if (v.range().is_array()) {  // array case
-            s += v.name().str() + ':';
-            z3::expr e = m.get_const_interp(v);
-            Z3_func_decl as_array = Z3_get_as_array_func_decl(c, e);
-            if (as_array) {
-                z3::func_interp f = m.get_func_interp(to_func_decl(c, as_array));
-                std::string num = "[";
-                num += std::to_string(f.num_entries());
-                s += num + ';';
-                std::string def = std::to_string(f.else_value());
-                s += def + ';';
-                for (size_t j = 0; j < f.num_entries(); ++j) {
-                    std::string arg = std::to_string(f.entry(j).arg(0));
-                    std::string val = std::to_string(f.entry(j).value());
-                    s += arg + ':';
-                    s += val + ',';
-                }
-                s += "];";
-            } else {
-                std::vector<std::string> args;
-                std::vector<std::string> values;
-                while (e.decl().name().str() == "store") {
-                    std::string arg = std::to_string(e.arg(1));
-                    if (std::find(args.begin(), args.end(), arg) != args.end()) {
-                        e = e.arg(0);
-                        continue;
-                    }
-                    args.push_back(arg);
-                    values.push_back(std::to_string(e.arg(2)));
-                    e = e.arg(0);
-                }
-                std::string num = "[";
-                num += std::to_string(args.size());
-                s += num + ';';
-                std::string def = std::to_string(e.arg(0));
-                s += def + ';';
-                for (int j = args.size() - 1; j >= 0; --j) {
-                    std::string arg = args[j];
-                    std::string val = values[j];
-                    s += arg + ':';
-                    s += val + ',';
-                }
-                s += "];";
-            }
-        } else if (v.is_const()) {  // BV, Int case
-            continue;
-        } else {  // Uninterpreted function case
-            s += v.name().str() + ':';
-            z3::func_interp f = m.get_func_interp(v);
-            std::string num = "(";
-            num += std::to_string(f.num_entries());
-            s += num + ';';
-            std::string def = std::to_string(f.else_value());
-            s += def + ';';
-            for (size_t j = 0; j < f.num_entries(); ++j) {
-                for (size_t k = 0; k < f.entry(j).num_args(); ++k) {
-                    std::string arg = std::to_string(f.entry(j).arg(k));
-                    s += arg + ':';
-                }
-                std::string val = std::to_string(f.entry(j).value());
-                s += val + ',';
-            }
-            s += ");";
+  s.reserve(10 + num_arrays * 25 + num_ints * 10);
+  for (const auto &v : variables) {
+    if (v.range().is_array()) {  // array case
+      s += v.name().str() + ':';
+      z3::expr e = m.get_const_interp(v);
+      Z3_func_decl as_array = Z3_get_as_array_func_decl(c, e);
+      if (as_array) {
+        z3::func_interp f = m.get_func_interp(to_func_decl(c, as_array));
+        s += "[";
+        s += std::to_string(f.num_entries());
+        s += ",";
+        s += std::to_string(f.else_value());
+        s += ',';
+        for (size_t j = 0; j < f.num_entries(); ++j) {
+          s += std::to_string(f.entry(j).arg(0)) + "->";
+          s += std::to_string(f.entry(j).value()) + ',';
         }
+        s += "];";
+      } else {
+        std::vector<std::string> args;
+        std::vector<std::string> values;
+        while (e.decl().name().str() == "store") {
+          std::string arg = std::to_string(e.arg(1));
+          if (std::find(args.begin(), args.end(), arg) != args.end()) {
+            e = e.arg(0);
+            continue;
+          }
+          args.push_back(arg);
+          values.push_back(std::to_string(e.arg(2)));
+          e = e.arg(0);
+        }
+        s += "[";
+        s += std::to_string(args.size());
+        s += ',';
+        s += std::to_string(e.arg(0));
+        s += ',';
+        for (int j = args.size() - 1; j >= 0; --j) {
+          s += args[j] + "->";
+          s += values[j] + ',';
+        }
+        s += "];";
+      }
+
+    } else if (v.is_const()) {  // BV, Int case
+      s += v.name().str() + ':';
+      z3::expr b = m.get_const_interp(v);
+      Z3_ast ast = b;
+      switch (v.range().sort_kind()) {
+        case Z3_BV_SORT:
+          if (!ast) {
+            s += bv_string(c.bv_val(0, v.range().bv_size()), c);
+          } else {
+            s += bv_string(b, c);
+          }
+          break;
+        case Z3_BOOL_SORT:
+          if (!ast) {
+            s += std::to_string(false);
+          } else {
+            s += std::to_string(b.bool_value() == Z3_L_TRUE);
+          }
+          break;
+        case Z3_INT_SORT:
+          if (!ast) {
+            s += std::to_string(0);
+          } else {
+            std::string number;
+            b.is_numeral(number);
+            s += number;
+          }
+          break;
+        default:
+          std::cout << "Invalid sort\n";
+          failure_cause = "Invalid sort.";
+          safe_exit(1);
+      }
+      s += ';';
+    } else {  // Uninterpreted function
+      s += v.name().str() + ':';
+      z3::func_interp f = m.get_func_interp(v);
+      std::string num = "(";
+      num += std::to_string(f.num_entries());
+      s += num + ';';
+      std::string def = std::to_string(f.else_value());
+      s += def + ';';
+      for (size_t j = 0; j < f.num_entries(); ++j) {
+        for (size_t k = 0; k < f.entry(j).num_args(); ++k) {
+          std::string arg = std::to_string(f.entry(j).arg(k));
+          s += arg + ':';
+        }
+        std::string val = std::to_string(f.entry(j).value());
+        s += val + ',';
+      }
+      s += ");";
     }
+  }
   return s;
 }
 

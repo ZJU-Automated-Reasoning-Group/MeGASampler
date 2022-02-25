@@ -59,6 +59,7 @@ class Sampler {
   int num_arrays = 0, num_bv = 0, num_bools = 0, num_bits = 0, num_uf = 0,
       num_ints = 0, num_reals = 0;
   std::vector<z3::func_decl> variables;
+  std::vector<std::string> variable_names; // used for model
   std::unordered_set<std::string> var_names = {
       "bv", "Int", "true",
       "false"};  // initialize with constant names so that

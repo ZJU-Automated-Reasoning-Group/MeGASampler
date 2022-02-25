@@ -62,18 +62,13 @@ class SMTSampler : public Sampler {
 
   std::string parse_function(std::string const &m_string, size_t &pos,
                              int arity,
-                             std::unordered_map<std::string, Triple>& values,
+                             std::unordered_map<std::string, Triple> &values,
                              int index);
   std::string combine_function(std::string const &str_a,
                                std::string const &str_b,
-                               std::string const &str_c,
-                               size_t &pos_a,
-                               size_t &pos_b,
-                               size_t &pos_c,
-                               int arity,
+                               std::string const &str_c, size_t &pos_a,
+                               size_t &pos_b, size_t &pos_c, int arity,
                                z3::sort s);
-
-
 };
 
 #endif /* SMTSAMPLER_H_ */

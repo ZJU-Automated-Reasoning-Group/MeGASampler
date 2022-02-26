@@ -66,7 +66,8 @@ Sampler::Sampler(std::string _input, std::string _output_dir, int _max_samples,
     has_arrays = true;
   }
 
-  if (num_bools > 0) {
+  if (false && num_bools > 0) {
+    // Are boolean vars actually fine ... ?
     std::cout << "Currently not supporting boolean vars in formula.\n";
     failure_cause = "Bool vars in formula.";
     safe_exit(1);

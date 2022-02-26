@@ -56,13 +56,13 @@ class StrengthenedFormula():
         self.interval_set.add_interval(var, interval)
 
     def _strengthen_conjunct(self, conjunct, model):
-        if is_bool(conjunct) and is_const(
-                conjunct):  # case e=true/false/b/!b (where b is a boolean var)
+        if is_bool(conjunct) and is_const(conjunct):
+            # case e=true/false/b/!b (where b is a boolean var)
             return  # ignore boolean literals, they are not part of the intervals
         elif is_not(conjunct):  # case Not(e)
             argument = conjunct.arg(0)
-            if is_const(argument
-                        ):  # case e=true/false/b/!b (where b is a boolean var)
+            if is_const(argument):
+                # case e=true/false/b/!b (where b is a boolean var)
                 return  # ignore boolean literals, they are not part of the intervals
             else:
                 neg_cond = negate_condition(argument)
@@ -484,6 +484,7 @@ def strengthen(f, model, isAUF=False, debug=False):
 def nnf_simplify_and_remove_or(f, guiding_model, debug=False):
     nnf_formula = nnf_simplify(f)
     if debug:
+        print(f"guiding model: {guiding_model}")
         print(f"f after nnf+simplification: {nnf_formula}")
     return And(remove_or(nnf_formula, guiding_model))
 

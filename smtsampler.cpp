@@ -43,8 +43,7 @@ void SMTSampler::calculate_constraints(const std::string &m_string) {
       assert(m_string.c_str()[pos] == ']');
       ++pos;
     } else if (v.is_const()) {
-      assert_is_int_var(v);
-      z3::expr a = value(m_string.c_str() + pos);
+      z3::expr a = value(m_string.c_str() + pos, v.range());
       pos = m_string.find(';', pos) + 1;
       add_constraints(v(), a, count);
     } else {
@@ -348,13 +347,20 @@ std::string SMTSampler::model_string(z3::model m,
         ss << ']';
       }
     } else if (v.is_const()) {
-      // case const, i.e., int sorts
-      assert_is_int_var(v);
+      // case const, i.e., int or bool sorts
       z3::expr b = m.get_const_interp(v);
       Z3_ast ast = b;
       assert(ast);  // model should have an interpretation for all variables
-      ss << b;
-      ss << ';';
+      switch (v.range().sort_kind()) {
+      case Z3_INT_SORT:
+        ss << b << ';';
+        break;
+      case Z3_BOOL_SORT:
+        ss << std::to_string(b.bool_value() == Z3_L_TRUE) << ';';
+        break;
+      default:
+        assert_is_int_var(v);
+      }
     } else {
       // case uninterpreted functions
       assert(false);
@@ -365,6 +371,17 @@ std::string SMTSampler::model_string(z3::model m,
 
 z3::expr SMTSampler::value(char const *n) {
   return c.int_val((int64_t)ll_value(n));
+}
+
+z3::expr SMTSampler::value(char const *n, z3::sort s) {
+  switch (s.sort_kind()) {
+  case Z3_INT_SORT:
+    return value(n);
+  case Z3_BOOL_SORT:
+    return c.bool_val(ll_value(n) == 1);
+  default:
+    assert(false);
+  }
 }
 
 // (exp == val) is added as soft constraint (to opt)
@@ -425,8 +442,7 @@ z3::model SMTSampler::gen_model(const std::string &candidate,
       assert(candidate[pos] == ']');
       ++pos;
     } else if (v.is_const()) {
-      assert_is_int_var(v);
-      z3::expr a = value(candidate.c_str() + pos);
+      z3::expr a = value(candidate.c_str() + pos, v.range());
       pos = candidate.find(';', pos) + 1;
       m.add_const_interp(v, a);
     } else {

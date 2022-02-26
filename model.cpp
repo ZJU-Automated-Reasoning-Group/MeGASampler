@@ -79,7 +79,9 @@ std::string Model::toString() {
       res += "];";
       continue;
     }
-    assert(false);
+    //if (debug)
+    //  std::cerr << "Variable named " << name << " not found in model.";
+    // assert(false);
   }
   return res;
 }

@@ -543,9 +543,9 @@ def is_uninterpreted_function(expr):
 
 def model_evaluate_to_const(expr, model):
     if is_bool(expr):
-        res_true = is_true(model.evaluate(expr))
-        res_false = is_false(model.evaluate(expr))
-        assert res_false or res_true
+        res_true = is_true(model.evaluate(expr, model_completion=True))
+        res_false = is_false(model.evaluate(expr, model_completion=True))
+        assert res_false or res_true, f"expr is: {expr}"
         return res_true
     else:
         if is_array(expr):

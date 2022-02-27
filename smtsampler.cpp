@@ -352,14 +352,14 @@ std::string SMTSampler::model_string(z3::model m,
       Z3_ast ast = b;
       assert(ast);  // model should have an interpretation for all variables
       switch (v.range().sort_kind()) {
-      case Z3_INT_SORT:
-        ss << b << ';';
-        break;
-      case Z3_BOOL_SORT:
-        ss << std::to_string(b.bool_value() == Z3_L_TRUE) << ';';
-        break;
-      default:
-        assert_is_int_var(v);
+        case Z3_INT_SORT:
+          ss << b << ';';
+          break;
+        case Z3_BOOL_SORT:
+          ss << std::to_string(b.bool_value() == Z3_L_TRUE) << ';';
+          break;
+        default:
+          assert_is_int_var(v);
       }
     } else {
       // case uninterpreted functions
@@ -375,18 +375,19 @@ z3::expr SMTSampler::value(char const *n) {
 
 z3::expr SMTSampler::value(char const *n, z3::sort s) {
   switch (s.sort_kind()) {
-  case Z3_INT_SORT:
-    return value(n);
-  case Z3_BOOL_SORT:
-    return c.bool_val(ll_value(n) == 1);
-  default:
-    assert(false);
+    case Z3_INT_SORT:
+      return value(n);
+    case Z3_BOOL_SORT:
+      return c.bool_val(ll_value(n) == 1);
+    default:
+      assert(false);
   }
 }
 
 // (exp == val) is added as soft constraint (to opt)
 void SMTSampler::add_constraints(z3::expr exp, z3::expr val, int count) {
-  assert(val.get_sort().sort_kind() == Z3_INT_SORT);
+  assert(val.get_sort().sort_kind() == Z3_INT_SORT ||
+         val.get_sort().sort_kind() == Z3_BOOL_SORT);
   all_ind_count += (count >= 0);
   cons_to_ind.emplace_back(count, 0);
   constraints.push_back(exp == val);

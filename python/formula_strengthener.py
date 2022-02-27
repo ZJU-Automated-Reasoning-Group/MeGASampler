@@ -482,7 +482,8 @@ def strengthen(f, model, isAUF=False, debug=False):
 
 
 def nnf_simplify_and_remove_or(f, guiding_model, debug=False):
-    nnf_formula = nnf_simplify(f)
+    #nnf_formula = nnf_simplify(f)
+    nnf_formula = f # Formula is simplified in C++ side
     if debug:
         print(f"guiding model: {guiding_model}")
         print(f"f after nnf+simplification: {nnf_formula}")

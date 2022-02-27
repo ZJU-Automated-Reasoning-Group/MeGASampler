@@ -25,6 +25,30 @@ static int count_selects(const z3::expr& e) {
   return count;
 }
 
+z3::model MEGASampler::start_epoch() {
+  z3::goal g(c);
+  g.add(original_formula);
+
+  const z3::tactic nnf_t(c, "nnf");
+  const auto nnf_ar = nnf_t(g);
+  assert(nnf_ar.size() == 1);
+  const auto nnf_formula = nnf_ar[0].as_expr();
+
+  g = z3::goal(c);
+  g.add(nnf_formula);
+
+  z3::params simplify_params(c);
+  simplify_params.set("arith_lhs", true);
+  simplify_params.set("blast_select_store", true);
+
+  const auto simp_ar = z3::with(z3::tactic(c, "simplify"), simplify_params)(g);
+  assert(simp_ar.size() == 1);
+  auto simp_formula = simp_ar[0].as_expr();
+
+  original_formula = simp_formula;
+  return Sampler::start_epoch();
+}
+
 MEGASampler::MEGASampler(std::string _input, std::string _output_dir,
                          int _max_samples, double _max_time,
                          int _max_epoch_samples, double _max_epoch_time,

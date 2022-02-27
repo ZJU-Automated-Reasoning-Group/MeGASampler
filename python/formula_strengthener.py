@@ -439,7 +439,7 @@ class AUFStrengthenedFormula(StrengthenedFormula):
     def _strengthen_conjunct(self, conjunct, model):
         if is_binary_boolean(conjunct) and is_array_equality(conjunct):
             self.array_equalities.append(conjunct)
-            return
+            raise NoRuleForOp(conjunct)
         StrengthenedFormula._strengthen_conjunct(self, conjunct, model)
 
     def _strengthen_binary_boolean_conjunct(self, lhs, lhs_value, rhs_value,

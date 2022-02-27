@@ -316,7 +316,9 @@ std::string SMTSampler::model_string(z3::model m,
       if (as_array) {  // is this an "as_array" cmd
         z3::func_interp f = m.get_func_interp(to_func_decl(c, as_array));
         ss << '[' << std::to_string(f.num_entries()) << ';';
-        ss << f.else_value() << ';';
+        std::string else_value_str;
+        assert(f.else_value().is_numeral(else_value_str));
+        ss << else_value_str << ';';
         for (unsigned int i = 0; i < f.num_entries(); ++i) {
           ss << f.entry(i).arg(0) << ';';
           ss << f.entry(i).value() << ';';
@@ -329,14 +331,17 @@ std::string SMTSampler::model_string(z3::model m,
           if (debug) {
             std::cerr << "model_string found store: " << e << '\n';
           }
-          std::string arg = std::to_string(e.arg(1));
+          std::string arg;
+          e.arg(1).is_numeral(arg);
           // TODO: seems inefficient, use a set?
           if (std::find(args.begin(), args.end(), arg) != args.end()) {
             e = e.arg(0);
             continue;
           }
+          std::string value;
+          e.arg(2).is_numeral(value);
           args.push_back(arg);
-          values.push_back(std::to_string(e.arg(2)));
+          values.push_back(value);
           e = e.arg(0);  // go to inner cmd
         }
         ss << '[' << std::to_string(args.size()) << ';';

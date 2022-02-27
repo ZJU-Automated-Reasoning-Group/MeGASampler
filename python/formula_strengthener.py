@@ -439,13 +439,13 @@ class AUFStrengthenedFormula(StrengthenedFormula):
     def _strengthen_conjunct(self, conjunct, model):
         if is_binary_boolean(conjunct) and is_array_equality(conjunct):
             self.array_equalities.append(conjunct)
-            raise NoRuleForOp(conjunct)
+            raise NoRuleForOp(conjunct, "==", 2)
         StrengthenedFormula._strengthen_conjunct(self, conjunct, model)
 
     def _strengthen_binary_boolean_conjunct(self, lhs, lhs_value, rhs_value,
                                             op, model):
         if is_uninterpreted_function(lhs):
-            raise NoRuleForOp(lhs)
+            raise NoRuleForOp(lhs, op_to_string(op), 2)
         if is_select(lhs):
             array = lhs.arg(0)
             index = lhs.arg(1)

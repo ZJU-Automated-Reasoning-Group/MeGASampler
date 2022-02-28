@@ -161,7 +161,7 @@ class ManualSatisfiesMetric(Metric):
                 sub_op = self._build_array
             else:
                 raise NotImplementedError(f"What is this? {expr}")
-            return self._build_binary(expr, operator.eq, self._build_int)
+            return self._build_binary(expr, operator.eq, sub_op)
         elif z3.is_const(expr):
             return self._build_leaf_literal(expr, bool(expr))
         raise Exception(f"Unhandled: {expr}")

@@ -57,7 +57,7 @@ do
   pushd ${sampler_dir}
   sem -j${JOBS} --id "$0" -- \
       timeout --foreground -k${KILL_AFTER} -sHUP ${EXTERNAL_TIMEOUT} \
-      ./smtsampler --json -o ${cur_output_dir} "${@:3}" "${f}"
+      ./megasampler --json -o ${cur_output_dir} "${@:3}" "${f}"
   popd
 done
 sem --id "$0" --wait

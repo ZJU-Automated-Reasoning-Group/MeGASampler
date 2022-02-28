@@ -135,9 +135,9 @@ void SMTSampler::find_neighboring_solutions(
   if (debug) std::cout << '\n';
 }
 
-std::string SMTSampler::combine_function(std::string const &str_a,
-                                         std::string const &str_b,
-                                         std::string const &str_c,
+std::string SMTSampler::combine_function(const std::string &str_a,
+                                         const std::string &str_b,
+                                         const std::string &str_c,
                                          size_t &pos_a, size_t &pos_b,
                                          size_t &pos_c, int arity, z3::sort s) {
   std::stringstream ss;
@@ -149,8 +149,9 @@ std::string SMTSampler::combine_function(std::string const &str_a,
 
   ss << (arity == 0 ? '[' : '(');
   ss << std::to_string(values.size()) << ';';
-  ss << std::to_string(combine_mutations(ll_value(def_a), ll_value(def_b),
-                                         ll_value(def_c)))
+  ss << std::to_string(combine_mutations(ll_value(def_a.c_str()),
+                                         ll_value(def_b.c_str()),
+                                         ll_value(def_c.c_str())))
      << ';';
   for (const auto &value : values) {
     std::string val_a = value.second.a[0];
@@ -160,8 +161,9 @@ std::string SMTSampler::combine_function(std::string const &str_a,
     std::string val_c = value.second.a[2];
     if (val_c.empty()) val_c = def_c;
     ss << value.first;
-    ss << std::to_string(combine_mutations(ll_value(val_a), ll_value(val_b),
-                                           ll_value(val_c)))
+    ss << std::to_string(combine_mutations(ll_value(val_a.c_str()),
+                                           ll_value(val_b.c_str()),
+                                           ll_value(val_c.c_str())))
        << ';';
   }
   ss << (arity == 0 ? ']' : ')');
@@ -311,7 +313,7 @@ std::string SMTSampler::model_string(z3::model m,
   for (z3::func_decl &v : _ind) {
     if (v.range().is_array()) {
       // case array
-      z3::expr e = m.get_const_interp(v);
+      z3::expr e = m.eval(v(), true);
       const Z3_func_decl as_array = Z3_get_as_array_func_decl(c, e);
       if (as_array) {  // is this an "as_array" cmd
         z3::func_interp f = m.get_func_interp(to_func_decl(c, as_array));
@@ -353,7 +355,7 @@ std::string SMTSampler::model_string(z3::model m,
       }
     } else if (v.is_const()) {
       // case const, i.e., int or bool sorts
-      z3::expr b = m.get_const_interp(v);
+      z3::expr b = m.eval(v(), true);
       Z3_ast ast = b;
       assert(ast);  // model should have an interpretation for all variables
       switch (v.range().sort_kind()) {

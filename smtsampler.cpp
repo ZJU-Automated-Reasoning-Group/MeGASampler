@@ -149,8 +149,8 @@ std::string SMTSampler::combine_function(std::string const &str_a,
 
   ss << (arity == 0 ? '[' : '(');
   ss << std::to_string(values.size()) << ';';
-  ss << std::to_string(
-            combine_mutations(stoll(def_a), stoll(def_b), stoll(def_c)))
+  ss << std::to_string(combine_mutations(ll_value(def_a), ll_value(def_b),
+                                         ll_value(def_c)))
      << ';';
   for (const auto &value : values) {
     std::string val_a = value.second.a[0];
@@ -160,8 +160,8 @@ std::string SMTSampler::combine_function(std::string const &str_a,
     std::string val_c = value.second.a[2];
     if (val_c.empty()) val_c = def_c;
     ss << value.first;
-    ss << std::to_string(
-              combine_mutations(stoll(val_a), stoll(val_b), stoll(val_c)))
+    ss << std::to_string(combine_mutations(ll_value(val_a), ll_value(val_b),
+                                           ll_value(val_c)))
        << ';';
   }
   ss << (arity == 0 ? ']' : ')');
@@ -409,7 +409,10 @@ static inline long long add_safe(long long a, long long b) {
 
 int SMTSampler::combine_mutations(long long val_orig, long long val_b,
                                   long long val_c) {
-  return add_safe(val_orig, add_safe(val_b, val_c));
+  if (val_b == LLONG_MIN) val_b++;
+  if (val_c == LLONG_MIN) val_c++;
+  return add_safe(val_orig, add_safe(add_safe(val_orig, -val_b),
+                                     add_safe(val_orig, -val_c)));
 }
 
 z3::model SMTSampler::gen_model(const std::string &candidate,

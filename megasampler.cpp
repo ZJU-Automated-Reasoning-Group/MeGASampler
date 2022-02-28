@@ -148,10 +148,12 @@ void MEGASampler::sample_intervals_in_rounds(
       coeff += 32;
       continue;
     }
-    coeff = safe_mul(coeff, ilog2(1 + ilog2(1 + i.getHigh() - i.getLow())));
+    coeff = safe_mul(coeff, 1 + ilog2(1 + ilog2(1 + i.getHigh() - i.getLow())));
   }
-  if (use_blocking) coeff = safe_mul(coeff, intervalmap.size());
-  const uint64_t MAX_ROUNDS = std::max(use_blocking ? 50UL : 10UL, coeff);
+  if (use_blocking) coeff = coeff + intervalmap.size();
+  const uint64_t MAX_ROUNDS =
+      std::min(std::max(use_blocking ? 50UL : 10UL, coeff),
+               (long unsigned)max_samples >> 7UL);
   const unsigned int MAX_SAMPLES = 30;
   const float MIN_RATE = 0.75;
   uint64_t debug_samples = 0;

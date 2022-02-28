@@ -145,10 +145,11 @@ z3::check_result Sampler::solve(const std::string &timer_category) {
   z3::check_result res = z3::unknown;
   try {
     max_smt_calls++;
-    params.set(":timeout",
-               static_cast<unsigned>(1000 * get_time_left(timer_category)));
-    params.set("timeout",
-               static_cast<unsigned>(1000 * get_time_left(timer_category)));
+    const unsigned timeout = std::min<unsigned>(
+        1000 * 60 * 5,
+        static_cast<unsigned>(800 * get_time_left(timer_category)));
+    params.set(":timeout", timeout);
+    params.set("timeout", timeout);
 
     opt.set(params);
     res = opt.check();  // bat: first, solve a MAX-SMT instance
@@ -165,10 +166,10 @@ z3::check_result Sampler::solve(const std::string &timer_category) {
     is_time_limit_reached();
     try {
       smt_calls++;
-      params.set(":timeout",
-                 static_cast<unsigned>(1000 * get_time_left(timer_category)));
-      params.set("timeout",
-                 static_cast<unsigned>(1000 * get_time_left(timer_category)));
+      const unsigned timeout =
+          static_cast<unsigned>(1000 * get_time_left(timer_category));
+      params.set(":timeout", timeout);
+      params.set("timeout", timeout);
 
       solver.set(params);
       res = solver.check();  // bat: if too long, solve a regular SMT instance
@@ -180,7 +181,7 @@ z3::check_result Sampler::solve(const std::string &timer_category) {
       failure_cause = "SMT (z3) exception: " + ss.str();
       safe_exit(1);
     }
-    if (debug) std::cout << "SMT result: " << result << "\n";
+    if (debug) std::cout << "SMT result: " << res << "\n";
     if (res == z3::sat) {
       model = solver.get_model();
     }
@@ -308,7 +309,7 @@ z3::model Sampler::start_epoch() {
   epochs++;
   total_samples++;
 
-  save_and_output_sample_if_unique(model_to_string(model));
+  if (res == z3::sat) save_and_output_sample_if_unique(model_to_string(model));
 
   return model;
 }

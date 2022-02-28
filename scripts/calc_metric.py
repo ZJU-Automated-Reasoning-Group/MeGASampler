@@ -162,8 +162,10 @@ class ManualSatisfiesMetric(Metric):
             else:
                 raise NotImplementedError(f"What is this? {expr}")
             return self._build_binary(expr, operator.eq, sub_op)
-        elif z3.is_const(expr):
+        elif z3.is_true(expr) or z3.is_false(expr):
             return self._build_leaf_literal(expr, bool(expr))
+        elif z3.is_const(expr):
+            return self._build_leaf_symbol(expr)
         raise Exception(f"Unhandled: {expr}")
 
     def _build_int(self, expr):

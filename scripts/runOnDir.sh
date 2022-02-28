@@ -49,7 +49,8 @@ for f in "${input_dir}"/**/*.smt2
 do
   # Process benchmarks that are marked as satisfiable (not unsat or unknown)
   grep ":status" ${f} | grep unsat > /dev/null && continue
-  grep ":status" ${f} | grep sat > /dev/null || continue
+  # X: Actually unknowns are fine 
+  # grep ":status" ${f} | grep sat > /dev/null || continue
   echo "Processing: ${f}"
   cur_output_dir="${newdir}$(dirname ${f#$input_dir})"
   echo "Output to: ${cur_output_dir}"
@@ -59,7 +60,7 @@ do
       ./smtsampler --json -o ${cur_output_dir} "${@:3}" "${f}"
   popd
 done
-# sem --id "$0-$$" --wait
+sem --id "$0" --wait
 
 cat >> "${newdir}/README.rst" <<EOF
 Finished run at $(date -Iseconds)

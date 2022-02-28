@@ -153,6 +153,14 @@ class ManualSatisfiesMetric(Metric):
         elif z3.is_ge(expr):
             return self._build_binary(expr, operator.ge, self._build_int)
         elif z3.is_eq(expr):
+            if z3.is_bool(expr.children()[0]):
+                sub_op = self._build_bool
+            elif z3.is_int(expr.children()[0]):
+                sub_op = self._build_int
+            elif z3.is_array(expr.children()[0]):
+                sub_op = self._build_array
+            else:
+                raise NotImplementedError(f"What is this? {expr}")
             return self._build_binary(expr, operator.eq, self._build_int)
         elif z3.is_const(expr):
             return self._build_leaf_literal(expr, bool(expr))

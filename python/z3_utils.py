@@ -551,6 +551,7 @@ def model_evaluate_to_const(expr, model):
         if is_array(expr):
             return
         assert is_int(expr) or is_bv(expr), f"expr is: {expr}"
+        assert is_int_value(model.evaluate(expr)) or is_bv_value(model.evaluate(expr)), f"expr is: {expr}\n model is: {model}"
         return model.evaluate(expr).as_long()
 
 

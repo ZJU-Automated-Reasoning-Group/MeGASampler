@@ -6,6 +6,7 @@
 #include <cstdint>
 #include <iostream>
 #include <random>
+#include <set>
 
 #include "model.h"
 #include "pythonfuncs.h"
@@ -138,19 +139,48 @@ MEGASampler::MEGASampler(std::string _input, std::string _output_dir,
   std::cout << "starting MeGASampler" << std::endl;
 }
 
+static inline void collect_z3_names(z3::expr& formula, std::set<std::string>& z3names_set, z3::expr_vector& z3var_vector){
+    if (formula.is_const()){
+        std::string const_name = formula.decl().name().str();
+        if (const_name.rfind("z3name!",0) == 0 ){
+            auto res = z3names_set.insert(const_name);
+            if (res.second){
+                z3var_vector.push_back(formula);
+            }
+        }
+    } else {
+        for (z3::expr child : formula){
+            collect_z3_names(child, z3names_set, z3var_vector);
+        }
+    }
+}
+
+z3::expr MEGASampler::rename_z3_names(z3::expr& formula){
+    std::set<std::string> z3_names_set;
+    z3::expr_vector z3_var_vector(c);
+    collect_z3_names(formula, z3_names_set, z3_var_vector);
+    assert(z3_names_set.size() == z3_var_vector.size());
+    std::cout << "names found: ";
+    for (const auto name_var : z3_names_set){
+        std::cout << name_var << ",";
+    }
+    std::cout << "\n";
+    z3::expr_vector new_vars_vector(c);
+    for (auto var : z3_var_vector){
+        assert(var.is_const());
+        std::string name = var.to_string();
+        std::string new_name = "mega!" + name;
+        z3::expr new_var = c.constant(new_name.c_str(), var.get_sort());
+        new_vars_vector.push_back(new_var);
+    }
+    return formula.substitute(z3_var_vector, new_vars_vector);
+}
+
 void MEGASampler::simplify_formula(){
-    // nnf conversion
-    z3::goal g(c);
-    g.add(original_formula);
-    const z3::tactic nnf_t(c, "nnf");
-    const auto nnf_ar = nnf_t(g);
-    assert(nnf_ar.size() == 1);
-    const auto nnf_formula = nnf_ar[0].as_expr();
-    original_formula = nnf_formula; // TODO: don't change original formula and pass result to eliminate_eq
 
     // lose array equalities
-    eliminate_eq_of_different_arrays(); // reads and changes original_formula
-    g = z3::goal(c);
+    z3::goal g(c);
+    eliminate_eq_of_different_arrays(); // reads and changes original_formula //TODO: avoid changing original_formula
     g.add(original_formula);
     z3::params simplify_params(c);
     simplify_params.set("expand_store_eq", true);
@@ -158,7 +188,7 @@ void MEGASampler::simplify_formula(){
     assert(simp_ar.size() == 1);
     auto simp_formula = simp_ar[0].as_expr();
     //  TODO: make sure it removes store(a,..)=a, a=a, and nested stores;
-  std::cout << "simplified formulas is: " << simp_formula.to_string() << "\n";
+    std::cout << "after losing array eq: " << simp_formula.to_string() << "\n";
 
     // arith_lhs + lose select(store())
     g = z3::goal(c);
@@ -169,9 +199,20 @@ void MEGASampler::simplify_formula(){
     simp_ar = z3::with(z3::tactic(c, "simplify"), simplify_params)(g);
     assert(simp_ar.size() == 1);
     simp_formula = simp_ar[0].as_expr();
-    std::cout << "simplified formulas is: " << simp_formula.to_string() << "\n";
+    std::cout << "after arith_lhs+blast_select_store: " << simp_formula.to_string() << "\n";
 
-    simpl_formula = simp_formula;
+    // nnf conversion
+    g = z3::goal(c);
+    g.add(simp_formula);
+    const z3::tactic nnf_t(c, "nnf");
+    const auto nnf_ar = nnf_t(g);
+    assert(nnf_ar.size() == 1);
+    auto nnf_formula = nnf_ar[0].as_expr();
+    std::cout << "after nnf conversion: " << nnf_formula.to_string() << "\n";
+
+    // final step - rename z3!name to mega!z3!name
+    simpl_formula = rename_z3_names(nnf_formula);
+    std::cout << "after z3 renaming: " << simpl_formula.to_string() << "\n";
 }
 
 void MEGASampler::initialize_solvers() {

@@ -69,6 +69,10 @@ class MEGASampler : public Sampler {
    * simplifies original_formula and saves the result in simpl_fomrula
    */
   void simplify_formula();
+  /*
+   * return formula.substitute(z3!name,mega!z3!name) for all z3!names
+   */
+  z3::expr rename_z3_names(z3::expr& formula);
 };
 
 #endif /* MEGASAMPLER_H_ */

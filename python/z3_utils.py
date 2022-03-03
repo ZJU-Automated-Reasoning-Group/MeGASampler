@@ -117,7 +117,7 @@ def get_vars_and_coefficients(f):
 # For more details, see https://github.com/Z3Prover/z3/issues/5434
 def negate_condition(cond):
     if cond.num_args() < 2:
-        print("WARNING: could not negate condition "+str(cond))
+        raise UnsupportedOperator(f"could not negate condition {cond}")
         return cond
     else:
         arg0 = cond.arg(0)
@@ -135,7 +135,7 @@ def negate_condition(cond):
         if is_distinct_or_sdistinct(cond):
             return arg0.__eq__(arg1)
         else:
-            print("WARNING: could not negate condition " + str(cond))
+            raise UnsupportedOperator(f"could not negate condition {cond}")
             return cond
 
 

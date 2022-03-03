@@ -484,7 +484,12 @@ std::string Sampler::model_to_string(const z3::model &m) {
   for (const auto &v : variables) {
     if (v.range().is_array()) {  // array case
       s += v.name().str() + ':';
+      if (!m.has_interp(v)){
+          failure_cause = "variable not in model";
+          safe_exit(1);
+      }
       z3::expr e = m.get_const_interp(v);
+      assert(e);
       Z3_func_decl as_array = Z3_get_as_array_func_decl(c, e);
       if (as_array) {
         z3::func_interp f = m.get_func_interp(to_func_decl(c, as_array));

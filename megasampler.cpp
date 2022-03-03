@@ -127,11 +127,13 @@ void MEGASampler::eliminate_eq_of_different_arrays(){
         // find another eq (loop progress)
         res = find_eq_of_different_arrays(original_formula, a, b, e);
     }
-    std::cout << "array_renaming_vec: ";
-    for (auto ar : array_renaming_vec){
-        std::cout << ar.aux_name << ":(" << ar.a_name << "," << ar.b_name << ")   ";
+    if (debug) {
+        std::cout << "array_renaming_vec: ";
+        for (auto ar: array_renaming_vec) {
+            std::cout << ar.aux_name << ":(" << ar.a_name << "," << ar.b_name << ")   ";
+        }
+        std::cout << "\n";
     }
-    std::cout << "\n";
 }
 
 MEGASampler::MEGASampler(std::string _input, std::string _output_dir,
@@ -167,11 +169,13 @@ z3::expr MEGASampler::rename_z3_names(z3::expr& formula){
     z3::expr_vector z3_var_vector(c);
     collect_z3_names(formula, z3_names_set, z3_var_vector);
     assert(z3_names_set.size() == z3_var_vector.size());
-    std::cout << "names found: ";
-    for (const auto name_var : z3_names_set){
-        std::cout << name_var << ",";
+    if (debug) {
+        std::cout << "names found: ";
+        for (const auto name_var: z3_names_set) {
+            std::cout << name_var << ",";
+        }
+        std::cout << "\n";
     }
-    std::cout << "\n";
     z3::expr_vector new_vars_vector(c);
     for (auto var : z3_var_vector){
         assert(var.is_const());
@@ -195,7 +199,7 @@ void MEGASampler::simplify_formula(){
     assert(simp_ar.size() == 1);
     auto simp_formula = simp_ar[0].as_expr();
     //  TODO: make sure it removes store(a,..)=a, a=a, and nested stores;
-    std::cout << "after losing array eq: " << simp_formula.to_string() << "\n";
+    if (debug) std::cout << "after losing array eq: " << simp_formula.to_string() << "\n";
 
     // arith_lhs + lose select(store())
     g = z3::goal(c);
@@ -206,7 +210,7 @@ void MEGASampler::simplify_formula(){
     simp_ar = z3::with(z3::tactic(c, "simplify"), simplify_params)(g);
     assert(simp_ar.size() == 1);
     simp_formula = simp_ar[0].as_expr();
-    std::cout << "after arith_lhs+blast_select_store: " << simp_formula.to_string() << "\n";
+    if (debug) std::cout << "after arith_lhs+blast_select_store: " << simp_formula.to_string() << "\n";
 
     // nnf conversion
     g = z3::goal(c);
@@ -215,11 +219,11 @@ void MEGASampler::simplify_formula(){
     const auto nnf_ar = nnf_t(g);
     assert(nnf_ar.size() == 1);
     auto nnf_formula = nnf_ar[0].as_expr();
-    std::cout << "after nnf conversion: " << nnf_formula.to_string() << "\n";
+    if (debug) std::cout << "after nnf conversion: " << nnf_formula.to_string() << "\n";
 
     // final step - rename z3!name to mega!z3!name
     simpl_formula = rename_z3_names(nnf_formula);
-    std::cout << "after z3 renaming: " << simpl_formula.to_string() << "\n";
+    if (debug) std::cout << "after z3 renaming: " << simpl_formula.to_string() << "\n";
 }
 
 void MEGASampler::initialize_solvers() {

@@ -12,6 +12,8 @@ class MEGASampler : public Sampler {
 
  private:
   z3::expr simpl_formula;
+  int aux_array_index = 0;
+  std::map<std::string,std::pair<std::string,std::string>> aux_array_map;
   struct arrayAccessData {
     capnpVarInterval entryInCapnpMap;
     z3::expr indexExpr;
@@ -42,6 +44,15 @@ class MEGASampler : public Sampler {
   }
 
  private:
+    /*
+     * Changes the formula being solved by getting rid of array equalities over different arrays.
+     * An equality store(... store(a,i1,t1)..in,tn)=store(...store(b,j1,s1)...jm,sm)
+     * is replaced with same equality over auxiliary array variable named aux_a_<aux_array_index>.
+     * In addition, a is replaced anywhere else in the formula with store(... store(aux_a,i1,select(a,i1))..in,select(a,in))
+     * and similarily for b.
+     * The entry aux_a->(a,b) is inserted to aux_array_map.
+     */
+  void eliminate_eq_of_different_arrays();
   void sample_intervals_in_rounds(
       const capnpIntervalMap& intervalmap,
       const std::vector<arrayAccessData>& index_vec);

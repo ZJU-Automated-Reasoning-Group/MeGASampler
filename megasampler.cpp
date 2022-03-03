@@ -25,27 +25,142 @@ static int count_selects(const z3::expr& e) {
   return count;
 }
 
+static inline void extract_array_from_store(const z3::expr& e, z3::expr& array){
+    assert(e.is_array());
+    if (e.is_const()){
+        array = e;
+    } else if (e.is_app() && e.decl().decl_kind() == Z3_OP_STORE){
+        extract_array_from_store(e.arg(0), array);
+    } else {
+        assert(false);
+    }
+}
+
+/*
+ * search for a sub-expr e of the form store(..(store(a,..))=store(..(store(b,..)) in f.
+ * return a,b and e
+ */
+static inline bool find_eq_of_different_arrays(z3::expr& f, z3::expr& a, z3::expr& b, z3::expr& e){
+    if (f.is_eq() && f.arg(0).is_array()) {
+//        std::cout << "array eq found: " << f.to_string() << "\n";
+        z3::expr left_a = f.arg(0);
+        z3::expr right_a = f.arg(1);
+        extract_array_from_store(left_a, a);
+        extract_array_from_store(right_a, b);
+        e = f;
+        return (a.to_string() != b.to_string());
+    } else {
+        for (auto child : f){
+            bool res = find_eq_of_different_arrays(child, a, b, e);
+            if (res) return res;
+        }
+        return false;
+    }
+}
+
+static inline z3::expr store_substitute(z3::expr& store_e, z3::expr& array_e, z3::expr& aux_array_e){
+    if (store_e.is_app() && store_e.decl().decl_kind() == Z3_OP_STORE){
+        z3::expr smaller_array_e = store_e.arg(0);
+        z3::expr index_e = store_e.arg(1);
+        z3::expr value_e = store_e.arg(2);
+        z3::expr smaller_array_prime = store_substitute(smaller_array_e, array_e, aux_array_e);
+        z3::expr_vector src_e(store_e.ctx());
+        z3::expr_vector dst_e(store_e.ctx());
+        src_e.push_back(smaller_array_e);
+        dst_e.push_back(smaller_array_prime);
+        src_e.push_back(value_e);
+        dst_e.push_back(z3::select(array_e, index_e));
+        return store_e.substitute(src_e,dst_e);
+    } else {
+        assert(store_e == array_e);
+        return aux_array_e;
+    }
+}
+
+void MEGASampler::eliminate_eq_of_different_arrays(){
+    // looking for an expr e of the form store(..(store(a,i,t_i))=store(..(store(b,j,s_j)) where a and b are distinct
+    z3::expr a(c);
+    z3::expr b(c);
+    z3::expr e(c);
+    bool res = find_eq_of_different_arrays(original_formula, a, b, e);
+    while (res) {
+//        std::cout << "found eq of different arays: " << e.to_string() << "\n";
+//        std::cout << "first array name: " << a.to_string() << "\n";
+//        std::cout << "second array name: " << b.to_string() << "\n";
+        // declare auxiliary array variable aux_a
+        std::string aux_a_name = "aux_a_" + std::to_string(aux_array_index);
+        aux_array_index++;
+        z3::expr aux_a = c.constant(aux_a_name.c_str(), c.array_sort(c.int_sort(),c.int_sort()));
+        // substitute a and b for a_aux in e to form e'
+        z3::expr_vector src_exprs(c), dst_exprs(c);
+        src_exprs.push_back(a);
+        src_exprs.push_back(b);
+        dst_exprs.push_back(aux_a);
+        dst_exprs.push_back(aux_a);
+        z3::expr e_prime = e.substitute(src_exprs, dst_exprs);
+//        std::cout << "e' is: " << e_prime.to_string() << "\n";
+        // substitute e for e' in the formula
+        z3::expr_vector src_exprs2(c), dst_exprs2(c);
+        src_exprs2.push_back(e);
+        dst_exprs2.push_back(e_prime);
+        original_formula = original_formula.substitute(src_exprs2, dst_exprs2);
+//        std::cout << "formula after e to e' substitution: " << original_formula.to_string() << "\n";
+        // custom-substitute a for a_aux and t_i for select(a,t_i) in left_array, to form a'. same for b
+        z3::expr left_array = e.arg(0);
+        z3::expr a_prime = store_substitute(left_array, a, aux_a);
+//        std::cout << "a' is: " << a_prime.to_string() << "\n";
+        z3::expr right_array = e.arg(1);
+        z3::expr b_prime = store_substitute(right_array, b, aux_a);
+//        std::cout << "b' is: " << b_prime.to_string() << "\n";
+        // substitute a for a' and b for b' in the formula
+        src_exprs = z3::expr_vector(c);
+        dst_exprs = z3::expr_vector(c);
+        src_exprs.push_back(a);
+        dst_exprs.push_back(a_prime);
+        src_exprs.push_back(b);
+        dst_exprs.push_back(b_prime);
+        original_formula = original_formula.substitute(src_exprs, dst_exprs);
+//        std::cout << "formula after a,b to a',b' substitution: " << original_formula.to_string() << "\n";
+        // find another eq (loop progress)
+        res = find_eq_of_different_arrays(original_formula, a, b, e);
+    }
+}
+
 z3::model MEGASampler::start_epoch() {
+
+  // nnf conversion
   z3::goal g(c);
   g.add(original_formula);
-
   const z3::tactic nnf_t(c, "nnf");
   const auto nnf_ar = nnf_t(g);
   assert(nnf_ar.size() == 1);
   const auto nnf_formula = nnf_ar[0].as_expr();
+  original_formula = nnf_formula;
 
+  // lose array equalities
+  eliminate_eq_of_different_arrays(); // changes original_formula
   g = z3::goal(c);
-  g.add(nnf_formula);
-
+  g.add(original_formula);
   z3::params simplify_params(c);
-  simplify_params.set("arith_lhs", true);
-  simplify_params.set("blast_select_store", true);
-
-  const auto simp_ar = z3::with(z3::tactic(c, "simplify"), simplify_params)(g);
+  simplify_params.set("expand_store_eq", true);
+  auto simp_ar = z3::with(z3::tactic(c, "simplify"), simplify_params)(g);
   assert(simp_ar.size() == 1);
   auto simp_formula = simp_ar[0].as_expr();
+  //  TODO: make sure it removes store(a,..)=a, a=a, and nested stores;
+//  std::cout << "simplified formulas is: " << simp_formula.to_string() << "\n";
+
+  // arith_lhs + lose select(store())
+  g = z3::goal(c);
+  g.add(simp_formula);
+  simplify_params = z3::params(c);
+  simplify_params.set("arith_lhs", true);
+  simplify_params.set("blast_select_store", true);
+  simp_ar = z3::with(z3::tactic(c, "simplify"), simplify_params)(g);
+  assert(simp_ar.size() == 1);
+  simp_formula = simp_ar[0].as_expr();
 
   original_formula = simp_formula;
+
   return Sampler::start_epoch();
 }
 
@@ -232,6 +347,7 @@ std::string MEGASampler::get_random_sample_from_array_intervals(
       }
     }
     if (valid_model) {
+//    remove_aux_arrays(m_out, aux_list)
       return m_out.toString();
     }
   }

@@ -37,9 +37,9 @@ class MEGASampler : public Sampler {
   /*
    * Override from sampler
    */
-  z3::model start_epoch();
   void do_epoch(const z3::model& model);
   void finish();
+  void initialize_solvers(); // for MEGA, solve simpl_formula, not original_formula
   virtual void add_blocking_soft_constraints() { /* do nothing */
   }
 
@@ -65,6 +65,10 @@ class MEGASampler : public Sampler {
       const capnpIntervalMap& intervalmap,
       const std::vector<arrayAccessData>& index_vec);
   z3::expr deserialise_expr(const std::string& str);
+  /*
+   * simplifies original_formula and saves the result in simpl_fomrula
+   */
+  void simplify_formula();
 };
 
 #endif /* MEGASAMPLER_H_ */

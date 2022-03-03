@@ -126,44 +126,6 @@ void MEGASampler::eliminate_eq_of_different_arrays(){
     }
 }
 
-z3::model MEGASampler::start_epoch() {
-
-  // nnf conversion
-  z3::goal g(c);
-  g.add(original_formula);
-  const z3::tactic nnf_t(c, "nnf");
-  const auto nnf_ar = nnf_t(g);
-  assert(nnf_ar.size() == 1);
-  const auto nnf_formula = nnf_ar[0].as_expr();
-  original_formula = nnf_formula;
-
-  // lose array equalities
-  eliminate_eq_of_different_arrays(); // changes original_formula
-  g = z3::goal(c);
-  g.add(original_formula);
-  z3::params simplify_params(c);
-  simplify_params.set("expand_store_eq", true);
-  auto simp_ar = z3::with(z3::tactic(c, "simplify"), simplify_params)(g);
-  assert(simp_ar.size() == 1);
-  auto simp_formula = simp_ar[0].as_expr();
-  //  TODO: make sure it removes store(a,..)=a, a=a, and nested stores;
-//  std::cout << "simplified formulas is: " << simp_formula.to_string() << "\n";
-
-  // arith_lhs + lose select(store())
-  g = z3::goal(c);
-  g.add(simp_formula);
-  simplify_params = z3::params(c);
-  simplify_params.set("arith_lhs", true);
-  simplify_params.set("blast_select_store", true);
-  simp_ar = z3::with(z3::tactic(c, "simplify"), simplify_params)(g);
-  assert(simp_ar.size() == 1);
-  simp_formula = simp_ar[0].as_expr();
-
-  original_formula = simp_formula;
-
-  return Sampler::start_epoch();
-}
-
 MEGASampler::MEGASampler(std::string _input, std::string _output_dir,
                          int _max_samples, double _max_time,
                          int _max_epoch_samples, double _max_epoch_time,
@@ -171,13 +133,56 @@ MEGASampler::MEGASampler(std::string _input, std::string _output_dir,
     : Sampler(_input, _output_dir, _max_samples, _max_time, _max_epoch_samples,
               _max_epoch_time, _strategy, _json, _blocking),
       simpl_formula(c) {
+  simplify_formula();
   initialize_solvers();
-  std::cout << "starting MEGA" << std::endl;
+  std::cout << "starting MeGASampler" << std::endl;
+}
+
+void MEGASampler::simplify_formula(){
+    // nnf conversion
+    z3::goal g(c);
+    g.add(original_formula);
+    const z3::tactic nnf_t(c, "nnf");
+    const auto nnf_ar = nnf_t(g);
+    assert(nnf_ar.size() == 1);
+    const auto nnf_formula = nnf_ar[0].as_expr();
+    original_formula = nnf_formula; // TODO: don't change original formula and pass result to eliminate_eq
+
+    // lose array equalities
+    eliminate_eq_of_different_arrays(); // reads and changes original_formula
+    g = z3::goal(c);
+    g.add(original_formula);
+    z3::params simplify_params(c);
+    simplify_params.set("expand_store_eq", true);
+    auto simp_ar = z3::with(z3::tactic(c, "simplify"), simplify_params)(g);
+    assert(simp_ar.size() == 1);
+    auto simp_formula = simp_ar[0].as_expr();
+    //  TODO: make sure it removes store(a,..)=a, a=a, and nested stores;
+  std::cout << "simplified formulas is: " << simp_formula.to_string() << "\n";
+
+    // arith_lhs + lose select(store())
+    g = z3::goal(c);
+    g.add(simp_formula);
+    simplify_params = z3::params(c);
+    simplify_params.set("arith_lhs", true);
+    simplify_params.set("blast_select_store", true);
+    simp_ar = z3::with(z3::tactic(c, "simplify"), simplify_params)(g);
+    assert(simp_ar.size() == 1);
+    simp_formula = simp_ar[0].as_expr();
+    std::cout << "simplified formulas is: " << simp_formula.to_string() << "\n";
+
+    simpl_formula = simp_formula;
+}
+
+void MEGASampler::initialize_solvers() {
+    opt.add(simpl_formula);  // adds formula as hard constraint to optimization
+    // solver (no weight specified for it)
+    solver.add(simpl_formula);  // adds formula as constraint to normal solver
 }
 
 void MEGASampler::do_epoch(const z3::model& m) {
   is_time_limit_reached();
-  struct buflen ret = call_strengthen(original_formula, m, has_arrays, debug);
+  struct buflen ret = call_strengthen(simpl_formula, m, has_arrays, debug);
   const auto view = kj::arrayPtr(reinterpret_cast<const capnp::word*>(ret.buf),
                                  ret.len / sizeof(capnp::word));
   // Disable the security measure, we trust ourselves

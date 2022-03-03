@@ -13,7 +13,13 @@ class MEGASampler : public Sampler {
  private:
   z3::expr simpl_formula;
   int aux_array_index = 0;
-  std::map<std::string,std::pair<std::string,std::string>> aux_array_map;
+    struct arrayRenaming{
+        std::string aux_name;
+        std::string a_name;
+        std::string b_name;
+        arrayRenaming(std::string aux_n, std::string a_n, std::string b_n): aux_name(aux_n), a_name(a_n), b_name(b_n) {}
+    };
+  std::vector<arrayRenaming> array_renaming_vec;
   struct arrayAccessData {
     capnpVarInterval entryInCapnpMap;
     z3::expr indexExpr;

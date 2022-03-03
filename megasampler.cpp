@@ -92,6 +92,8 @@ void MEGASampler::eliminate_eq_of_different_arrays(){
         std::string aux_a_name = "aux_a_" + std::to_string(aux_array_index);
         aux_array_index++;
         z3::expr aux_a = c.constant(aux_a_name.c_str(), c.array_sort(c.int_sort(),c.int_sort()));
+        // record name substitution for future model reconstruction
+        array_renaming_vec.push_back(arrayRenaming(aux_a_name, a.to_string(), b.to_string()));
         // substitute a and b for a_aux in e to form e'
         z3::expr_vector src_exprs(c), dst_exprs(c);
         src_exprs.push_back(a);
@@ -125,6 +127,11 @@ void MEGASampler::eliminate_eq_of_different_arrays(){
         // find another eq (loop progress)
         res = find_eq_of_different_arrays(original_formula, a, b, e);
     }
+    std::cout << "array_renaming_vec: ";
+    for (auto ar : array_renaming_vec){
+        std::cout << ar.aux_name << ":(" << ar.a_name << "," << ar.b_name << ")   ";
+    }
+    std::cout << "\n";
 }
 
 MEGASampler::MEGASampler(std::string _input, std::string _output_dir,

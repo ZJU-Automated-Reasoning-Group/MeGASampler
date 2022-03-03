@@ -442,6 +442,24 @@ class AUFStrengthenedFormula(StrengthenedFormula):
             raise NoRuleForOp(conjunct, "==", 2)
         StrengthenedFormula._strengthen_conjunct(self, conjunct, model)
 
+    def _strengthen_bool_ite(self, ite_expr, model):
+        ite_expr_nnf_simpl = nnf_simplify(ite_expr)
+        ite_expr_as_and = remove_or(ite_expr_nnf_simpl, model)
+        for c in ite_expr_as_and:
+            self._strengthen_conjunct(c, model)
+        # assert (len(ite_expr.children()) == 3)
+        # cond = ite_expr.arg(0)
+        # e_true = ite_expr.arg(1)
+        # e_false = ite_expr.arg(2)
+        # if model_evaluate_to_const(cond, model):
+        #     self._strengthen_conjunct(e_true, model)
+        #     satisfied_cond_as_and = nnf_simplify_and_remove_or(cond, model)
+        # else:
+        #     self._strengthen_conjunct(e_false, model)
+        #     satisfied_cond_as_and = nnf_simplify_and_remove_or(Not(cond), model)
+        # for c in satisfied_cond_as_and.children():
+        #     self._strengthen_conjunct(c, model)
+
     def _strengthen_binary_boolean_conjunct(self, lhs, lhs_value, rhs_value,
                                             op, model):
         if is_uninterpreted_function(lhs):
@@ -474,6 +492,7 @@ def strengthen(f, model, isAUF=False, debug=False):
         print("f_as_and: " + str(f_as_and))
     if get_op(f_as_and) in Z3_AND_OPS:
         # TODO: consider applying z3 propagate ineqs tactic here
+        # TODO: no_aux_f_as_and = remove-aux_vars(f_as_and.children())
         for c in f_as_and.children():
             res._strengthen_conjunct(c, model)
     else:  # f_is_and is an atomic boolean constraint

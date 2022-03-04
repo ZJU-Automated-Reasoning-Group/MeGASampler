@@ -485,8 +485,9 @@ std::string Sampler::model_to_string(const z3::model &m) {
     if (v.range().is_array()) {  // array case
       s += v.name().str() + ':';
       if (!m.has_interp(v)){
-          failure_cause = "variable not in model";
-          safe_exit(1);
+//          failure_cause = "variable not in model";
+//          safe_exit(1);
+        continue;
       }
       z3::expr e = m.get_const_interp(v);
       assert(e);

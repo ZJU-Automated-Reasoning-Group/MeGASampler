@@ -16,6 +16,9 @@ class Model {
  public:
   Model(const std::vector<std::string>& _var_names)
       : var_names(_var_names), variable_map(), array_map() {}
+  Model(const z3::model& m, const std::vector<std::string>& _var_names, const std::vector<z3::func_decl>& variables);
+
+  struct UnsupportedOpInZ3Model : public std::exception{};
 
   /* Returns true iff assignment was successful (i.e, var was not previously
    * assigned).
@@ -46,6 +49,11 @@ class Model {
    */
   std::pair<int64_t, bool> evalIntExpr(const z3::expr& e, bool debug = false,
                                        bool model_completion = false);
+  /*
+   * If array has a value in the model (a function from int to int) - that function is returned as a map, along with true.
+   * Otherwise, an empty map is returned along with false.
+   */
+  std::pair<std::map<int64_t, int64_t>,bool> evalArrayVarAsFunc(const std::string& array);
 };
 
 #endif  // MEGASAMPLER_MODEL_H

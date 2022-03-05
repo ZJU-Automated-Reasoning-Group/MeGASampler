@@ -226,3 +226,74 @@ std::pair<int64_t, bool> Model::evalIntExpr(const z3::expr& e, bool debug,
     }
   }
 }
+
+std::pair<std::map<int64_t, int64_t>,bool> Model::evalArrayVarAsFunc(const std::string& array){
+    if (array_map.find(array)!= array_map.end()){
+        return std::pair<std::map<int64_t, int64_t>,bool>(array_map[array], true);
+    } else {
+        return std::pair<std::map<int64_t, int64_t>,bool>(std::map<int64_t, int64_t>(), false);
+    }
+}
+Model::Model(const z3::model& m, const std::vector<std::string>& _var_names, const std::vector<z3::func_decl>& variables):var_names(_var_names){
+  for (const auto &v : variables) {
+    z3::context& c = v.ctx();
+    if (v.range().is_array()) {  // array case
+      if (!m.has_interp(v)){
+        continue;
+      }
+      z3::expr e = m.get_const_interp(v);
+      assert(e);
+      Z3_func_decl as_array = Z3_get_as_array_func_decl(c, e);
+      if (as_array) {
+        z3::func_interp f = m.get_func_interp(to_func_decl(c, as_array));
+        for (size_t j = 0; j < f.num_entries(); ++j) {
+          //TODO: replace z3exprs with ints?
+          addArrayAssignment(v.name().str(),f.entry(j).arg(0),f.entry(j).value());
+        }
+      } else {
+        std::vector<std::string> arg_names;
+        z3::expr_vector args(c);
+        z3::expr_vector values(c);
+        while (e.decl().name().str() == "store") {
+          std::string arg_name = std::to_string(e.arg(1));
+          z3::expr arg = e.arg(1);
+          if (std::find(arg_names.begin(), arg_names.end(), arg_name) != arg_names.end()) {
+            e = e.arg(0);
+            continue;
+          }
+          args.push_back(arg);
+          values.push_back(e.arg(2));
+          e = e.arg(0);
+        }
+        for (int j = args.size() - 1; j >= 0; --j) {
+          //TODO: replace z3exprs with ints?
+          addArrayAssignment(v.name().str(),args[j],values[j]);
+        }
+      }
+    } else if (v.is_const()) {  // BV, Int case
+      std::string var_name = v.name().str();
+      z3::expr b = m.get_const_interp(v);
+      Z3_ast ast = b;
+      switch (v.range().sort_kind()) {
+        case Z3_BV_SORT:
+          break;
+        case Z3_BOOL_SORT:
+          // TODO: add bool support in model
+          break;
+        case Z3_INT_SORT:
+          if (!ast) {
+            continue;
+          } else {
+            int64_t num;
+            b.is_numeral_i64(num);
+            addIntAssignment(var_name, num);
+          }
+          break;
+        default:
+          throw UnsupportedOpInZ3Model();
+      }
+    } else {  // Uninterpreted function
+      continue;
+    }
+  }
+}

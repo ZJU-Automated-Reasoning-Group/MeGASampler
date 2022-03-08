@@ -538,7 +538,7 @@ def remove_or(nnf_formula, guiding_model):
     if nnf_op in Z3_OR_OPS:
         l = []
         for c in nnf_formula.children():
-            if model_evaluate_to_const(c, guiding_model):
+            if model_evaluate_to_const(c, guiding_model, model_completion=True):
                 l.append(remove_or(c, guiding_model))
         assert l
         return random.choice(l)

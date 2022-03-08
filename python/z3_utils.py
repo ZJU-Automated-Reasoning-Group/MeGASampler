@@ -541,18 +541,18 @@ def is_ite(expr):
 def is_uninterpreted_function(expr):
     return (True in [is_app_of(expr, op) for op in Z3_UNINTERPRETED_OPS]) and len(expr.children()) > 0
 
-def model_evaluate_to_const(expr, model):
+def model_evaluate_to_const(expr, model, model_completion=False):
     if is_bool(expr):
-        res_true = is_true(model.evaluate(expr))
-        res_false = is_false(model.evaluate(expr))
-        assert res_false or  res_true, f"expr is: {expr}"
+        res_true = is_true(model.evaluate(expr, model_completion))
+        res_false = is_false(model.evaluate(expr, model_completion))
+        assert res_false or res_true, f"expr is: {expr}, eval res is: {model.evaluate(expr, model_completion)}"
         return res_true
     else:
         if is_array(expr):
             return
         assert is_int(expr) or is_bv(expr), f"expr is: {expr}"
-        assert is_int_value(model.evaluate(expr)) or is_bv_value(model.evaluate(expr)), f"expr is: {expr}\n model is: {model}"
-        return model.evaluate(expr).as_long()
+        assert is_int_value(model.evaluate(expr, model_completion)) or is_bv_value(model.evaluate(expr, model_completion)), f"expr is: {expr}\n model is: {model}"
+        return model.evaluate(expr, model_completion).as_long()
 
 
 def strict_to_nonstrict_bool_op(op):

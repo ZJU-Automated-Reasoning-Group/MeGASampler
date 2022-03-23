@@ -12,6 +12,7 @@ class MEGASampler : public Sampler {
 
  private:
   z3::expr simpl_formula;
+  z3::expr implicant;
   int aux_array_index = 0;
     struct arrayRenaming{
         std::string aux_name;

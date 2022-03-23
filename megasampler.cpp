@@ -142,7 +142,7 @@ MEGASampler::MEGASampler(std::string _input, std::string _output_dir,
                          int _strategy, bool _json, bool _blocking)
     : Sampler(_input, _output_dir, _max_samples, _max_time, _max_epoch_samples,
               _max_epoch_time, _strategy, _json, _blocking),
-      simpl_formula(c) {
+      simpl_formula(c), implicant(c) {
   simplify_formula();
   initialize_solvers();
   std::cout << "starting MeGASampler" << std::endl;
@@ -232,9 +232,46 @@ void MEGASampler::initialize_solvers() {
     solver.add(simpl_formula);  // adds formula as constraint to normal solver
 }
 
+static void remove_or(z3::expr& formula, const z3::model& m, z3::expr_vector& res){
+  if (formula.decl().decl_kind() != Z3_OP_OR && formula.decl().decl_kind() != Z3_OP_AND){
+    res.push_back(formula);
+  } else if (formula.decl().decl_kind() == Z3_OP_OR){
+    std::vector<int> satisfied_disjncts_distances;
+    int i = 0;
+    for (const auto& child: formula){
+      if (m.eval(child, true)){
+        satisfied_disjncts_distances.push_back(i);
+      }
+      i++;
+    }
+    std::random_shuffle(satisfied_disjncts_distances.begin(), satisfied_disjncts_distances.end());
+    i = *satisfied_disjncts_distances.begin();
+    int j = 0;
+    for (auto child: formula) {
+      if (j == i) {
+        remove_or(child, m, res);
+        break;
+      }
+      j++;
+    }
+  } else {
+    assert(formula.decl().decl_kind() == Z3_OP_AND);
+    for (auto child: formula) {
+      remove_or(child, m, res);
+    }
+  }
+}
+
 void MEGASampler::do_epoch(const z3::model& m) {
   is_time_limit_reached();
-  struct buflen ret = call_strengthen(simpl_formula, m, has_arrays, debug);
+
+  z3::expr_vector implicant_conjuncts(c);
+  remove_or(simpl_formula, m, implicant_conjuncts);
+  implicant = z3::mk_and(implicant_conjuncts);
+  if (debug)
+    std::cout << "after remove or: " << implicant << "\n";
+
+  struct buflen ret = call_strengthen(implicant, m, has_arrays, debug);
   const auto view = kj::arrayPtr(reinterpret_cast<const capnp::word*>(ret.buf),
                                  ret.len / sizeof(capnp::word));
   // Disable the security measure, we trust ourselves

@@ -500,9 +500,19 @@ def strengthen(f, model, isAUF=False, debug=False):
     return res
 
 
+def strengthen_and_formula(f, model, isAUF=False, debug=False):
+    assert get_op(f) in Z3_AND_OPS
+    if isAUF:
+        res = AUFStrengthenedFormula(debug)
+    else:
+        res = StrengthenedFormula(debug)
+    for c in f.children():
+        res._strengthen_conjunct(c, model)
+    return res
+
+
 def nnf_simplify_and_remove_or(f, guiding_model, debug=False):
-    #nnf_formula = nnf_simplify(f)
-    nnf_formula = f # Formula is simplified in C++ side
+    nnf_formula = nnf_simplify(f)
     if debug:
         print(f"guiding model: {guiding_model}")
         print(f"f after nnf+simplification: {nnf_formula}")
@@ -559,8 +569,8 @@ def strengthen_create_message(f, model, isAUF=False, debug=False):
     b = strengthen_capnp.StrengthenResult.new_message()
     try:
         if debug:
-            print(f"Calling strengthen with expr: {f}, model: {model}")
-        res = strengthen(f, model, isAUF, debug)
+            print(f"Calling strengthen_and_formula with expr: {f}, model: {model}")
+        res = strengthen_and_formula(f, model, isAUF, debug)
     except NoRuleForOp as e:
         b.res = False
         b.failuredecription = f"Operator {e.op_string} ({e.op_number}) with arity {e.op_arity} found, " \

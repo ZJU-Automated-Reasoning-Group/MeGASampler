@@ -36,6 +36,23 @@ class MEGASampler : public Sampler {
       return numSelecetsInIndex < d.numSelecetsInIndex;
     }
   };
+  struct storeEquality {
+    int store_id;
+    z3::expr_vector a_indices;
+    z3::expr_vector a_values;
+    z3::expr_vector b_indices;
+    z3::expr_vector b_values;
+    z3::expr a;
+    z3::expr b;
+    storeEquality(z3::context& c): a_indices(c), a_values(c), b_indices(c), b_values(c), a(c), b(c) {}
+    std::string toString() {
+      return "store with id " + std::to_string(store_id) + ":\n" +
+      a.to_string() + ": indices:" + a_indices.to_string() + "; values:" + a_values.to_string() +
+      "\nand\n" +
+      b.to_string() + ": indices:" + b_indices.to_string() + "; values:" + b_values.to_string();
+    }
+  };
+  std::vector<storeEquality> store_eqs;
 
  public:
   MEGASampler(std::string input, std::string output_dir, int max_samples,
@@ -80,6 +97,7 @@ class MEGASampler : public Sampler {
    * return formula.substitute(z3!name,mega!z3!name) for all z3!names
    */
   z3::expr rename_z3_names(z3::expr& formula);
+  void register_store_eq(z3::expr& f);
 };
 
 #endif /* MEGASAMPLER_H_ */

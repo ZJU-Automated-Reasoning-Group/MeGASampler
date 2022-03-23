@@ -26,6 +26,20 @@ static int count_selects(const z3::expr& e) {
   return count;
 }
 
+static inline void save_store_index_and_value(const z3::expr& e, z3::expr_vector& indices, z3::expr_vector& values, z3::expr& a){
+  assert(e.is_array());
+  if (e.is_const()){
+    a = e;
+  } else if (e.is_app() && e.decl().decl_kind() == Z3_OP_STORE){
+    indices.push_back(e.arg(1));
+    values.push_back(e.arg(2));
+    save_store_index_and_value(e.arg(0), indices, values, a);
+  } else {
+    std::cout << e.to_string() << "\n";
+    assert(false);
+  }
+}
+
 static inline void extract_array_from_store(const z3::expr& e, z3::expr& array){
     assert(e.is_array());
     if (e.is_const()){
@@ -33,8 +47,25 @@ static inline void extract_array_from_store(const z3::expr& e, z3::expr& array){
     } else if (e.is_app() && e.decl().decl_kind() == Z3_OP_STORE){
         extract_array_from_store(e.arg(0), array);
     } else {
-        assert(false);
+      std::cout << e.to_string() << "\n";
+      assert(false);
     }
+}
+
+void MEGASampler::register_store_eq(z3::expr& f){
+  if (f.is_eq() && f.arg(0).is_array()) {
+    const z3::expr& left_a = f.arg(0);
+    const z3::expr& right_a = f.arg(1);
+    storeEquality st_eq(c);
+    st_eq.store_id = f.id();
+    save_store_index_and_value(left_a, st_eq.a_indices, st_eq.a_values, st_eq.a);
+    save_store_index_and_value(right_a, st_eq.b_indices, st_eq.b_values, st_eq.b);
+    store_eqs.push_back(st_eq);
+  } else {
+    for (auto child : f){
+      register_store_eq(child);
+    }
+  }
 }
 
 /*
@@ -187,43 +218,75 @@ z3::expr MEGASampler::rename_z3_names(z3::expr& formula){
     return formula.substitute(z3_var_vector, new_vars_vector);
 }
 
+//TODO: implement these missing funtions here
+//assert(is_lhs(simpl_formula));
+//assert(no_select_store(simpl_formula));
+//assert(is_nnf(simpl_formula));
+//assert(no_z3_name(simpl_formula));
+
 void MEGASampler::simplify_formula(){
 
-    // lose array equalities
-    z3::goal g(c);
-    eliminate_eq_of_different_arrays(); // reads and changes original_formula //TODO: avoid changing original_formula
-    g.add(original_formula);
-    z3::params simplify_params(c);
-    simplify_params.set("expand_store_eq", true);
-    auto simp_ar = z3::with(z3::tactic(c, "simplify"), simplify_params)(g);
-    assert(simp_ar.size() == 1);
-    auto simp_formula = simp_ar[0].as_expr();
-    //  TODO: make sure it removes store(a,..)=a, a=a, and nested stores;
-    if (debug) std::cout << "after losing array eq: " << simp_formula.to_string() << "\n";
+//  // first nnf conversion - to get rid of ite in expr for eliminate_array_eq
+//  z3::goal g(c);
+//  g.add(original_formula);
+//  const z3::tactic nnf_t(c, "nnf");
+//  const auto nnf_ar = nnf_t(g);
+//  assert(nnf_ar.size() == 1);
+//  auto nnf_formula = nnf_ar[0].as_expr();
+//  if (debug) std::cout << "after first nnf conversion: " << nnf_formula.to_string() << "\n";
+//  original_formula = nnf_formula; // for next stage. TODO: change this once next stage doesn't need it
+//
+//  // lose array equalities
+//  g = z3::goal(c);
+//  eliminate_eq_of_different_arrays(); // reads and changes original_formula //TODO: avoid changing original_formula
+//  g.add(original_formula);
+//  z3::params simplify_params(c);
+//  simplify_params.set("expand_store_eq", true);
+//  auto simp_ar = z3::with(z3::tactic(c, "simplify"), simplify_params)(g);
+//  assert(simp_ar.size() == 1);
+//  auto simp_formula = simp_ar[0].as_expr();
+//  //  TODO: make sure it removes store(a,..)=a, a=a, and nested stores;
+//  if (debug) std::cout << "after losing array eq: " << simp_formula.to_string() << "\n";
 
-    // arith_lhs + lose select(store())
-    g = z3::goal(c);
-    g.add(simp_formula);
-    simplify_params = z3::params(c);
-    simplify_params.set("arith_lhs", true);
-    simplify_params.set("blast_select_store", true);
-    simp_ar = z3::with(z3::tactic(c, "simplify"), simplify_params)(g);
-    assert(simp_ar.size() == 1);
-    simp_formula = simp_ar[0].as_expr();
-    if (debug) std::cout << "after arith_lhs+blast_select_store: " << simp_formula.to_string() << "\n";
+  register_store_eq(original_formula);
+  for (auto store_eq : store_eqs){
+    std::cout << "\n";
+    std::cout << store_eq.toString();
+    std::cout << "\n";
+  }
 
-    // nnf conversion
-    g = z3::goal(c);
-    g.add(simp_formula);
-    const z3::tactic nnf_t(c, "nnf");
-    const auto nnf_ar = nnf_t(g);
-    assert(nnf_ar.size() == 1);
-    auto nnf_formula = nnf_ar[0].as_expr();
-    if (debug) std::cout << "after nnf conversion: " << nnf_formula.to_string() << "\n";
+  // arith_lhs + lose select(store())
+  z3::goal g(c);
+  g.add(original_formula);
+  z3::params simplify_params(c);
+//  simplify_params = z3::params(c);
+  simplify_params.set("arith_lhs", true);
+  simplify_params.set("blast_select_store", true);
+  auto simp_ar = z3::with(z3::tactic(c, "simplify"), simplify_params)(g);
+//  simp_ar = z3::with(z3::tactic(c, "simplify"), simplify_params)(g);
+  assert(simp_ar.size() == 1);
+  auto simp_formula = simp_ar[0].as_expr();
+  if (debug) std::cout << "after arith_lhs+blast_select_store: " << simp_formula.to_string() << "\n";
 
-    // final step - rename z3!name to mega!z3!name
-    simpl_formula = rename_z3_names(nnf_formula);
-    if (debug) std::cout << "after z3 renaming: " << simpl_formula.to_string() << "\n";
+  // nnf conversion- to make sure its nnf + get rid of ite in expr
+  g = z3::goal(c);
+  g.add(simp_formula);
+  const z3::tactic nnf_t2(c, "nnf");
+  const auto nnf_ar2 = nnf_t2(g);
+  assert(nnf_ar2.size() == 1);
+  auto nnf_formula2 = nnf_ar2[0].as_expr();
+  if (debug) std::cout << "after nnf conversion: " << nnf_formula2.to_string() << "\n";
+
+  // final step - rename z3!name to mega!z3!name
+  simpl_formula = rename_z3_names(nnf_formula2);
+  if (debug) {
+    std::cout << "after z3 renaming: " << simpl_formula.to_string() << "\n";
+//    TODO: implement asserts
+//    assert(is_lhs(simpl_formula));
+//    assert(no_select_store(simpl_formula));
+//    assert(is_nnf(simpl_formula));
+//    assert(no_z3_name(simpl_formula));
+  }
 }
 
 void MEGASampler::initialize_solvers() {

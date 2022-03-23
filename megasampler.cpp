@@ -12,6 +12,10 @@
 #include "pythonfuncs.h"
 #include "strengthen.capnp.h"
 
+static inline bool is_array_eq(const z3::expr& e){
+  return e.is_eq() && e.arg(0).is_array();
+}
+
 static inline bool check_if_in_interval(
     int64_t val, const MEGASampler::capnpInterval& interval) {
   return (val >= interval.getLow() && val <= interval.getHigh());
@@ -53,7 +57,7 @@ static inline void extract_array_from_store(const z3::expr& e, z3::expr& array){
 }
 
 void MEGASampler::register_store_eq(z3::expr& f){
-  if (f.is_eq() && f.arg(0).is_array()) {
+  if (is_array_eq(f)) {
     const z3::expr& left_a = f.arg(0);
     const z3::expr& right_a = f.arg(1);
     storeEquality st_eq(c);
@@ -73,7 +77,7 @@ void MEGASampler::register_store_eq(z3::expr& f){
  * return a,b and e
  */
 static inline bool find_eq_of_different_arrays(z3::expr& f, z3::expr& a, z3::expr& b, z3::expr& e){
-    if (f.is_eq() && f.arg(0).is_array()) {
+    if (is_array_eq(f)) {
 //        std::cout << "array eq found: " << f.to_string() << "\n";
         z3::expr left_a = f.arg(0);
         z3::expr right_a = f.arg(1);

@@ -98,6 +98,7 @@ class MEGASampler : public Sampler {
    */
   z3::expr rename_z3_names(z3::expr& formula);
   void register_store_eq(z3::expr& f);
+  void remove_array_equalities(std::vector<z3::expr>& conjuncts);
 };
 
 #endif /* MEGASAMPLER_H_ */

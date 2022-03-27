@@ -299,7 +299,7 @@ void MEGASampler::initialize_solvers() {
     solver.add(simpl_formula);  // adds formula as constraint to normal solver
 }
 
-static void remove_or(z3::expr& formula, const z3::model& m, z3::expr_vector& res){
+static void remove_or(z3::expr& formula, const z3::model& m, std::vector<z3::expr>& res){
   if (formula.decl().decl_kind() != Z3_OP_OR && formula.decl().decl_kind() != Z3_OP_AND){
     res.push_back(formula);
   } else if (formula.decl().decl_kind() == Z3_OP_OR){
@@ -329,15 +329,47 @@ static void remove_or(z3::expr& formula, const z3::model& m, z3::expr_vector& re
   }
 }
 
+void MEGASampler::remove_array_equalities(std::vector<z3::expr>& conjuncts){
+  for (auto it = conjuncts.begin(); it != conjuncts.end(); it++){
+    const z3::expr& conjunct = *it;
+    if (is_array_eq(conjunct)){
+      // remove it from imlicant_conjuncts
+      conjuncts.erase(it);
+      // find store_eq in store_eqs
+      // build a list of tuples (index_val, index_e, value_e, in_left_array)
+      // sort this list according to index_val
+      // add index relationship conatraints
+      // add value constraints for store indices
+      // replace selects over indices not in I or J inside implicant_conjuncts
+    }
+  }
+  std::cout << "after removing array eqs: ";
+  for (auto conjunct : conjuncts){
+    std::cout << conjunct.to_string() << ",";
+  }
+  std::cout << "\n";
+}
+
 void MEGASampler::do_epoch(const z3::model& m) {
   is_time_limit_reached();
 
-  z3::expr_vector implicant_conjuncts(c);
-  remove_or(simpl_formula, m, implicant_conjuncts);
-  implicant = z3::mk_and(implicant_conjuncts);
-  if (debug)
-    std::cout << "after remove or: " << implicant << "\n";
+  std::vector<z3::expr> implicant_conjuncts_vec;
+  remove_or(simpl_formula, m, implicant_conjuncts_vec);
+  if (debug) {
+    std::cout << "after remove or: ";
+    for (auto conj: implicant_conjuncts_vec){
+      assert(conj);
+      std::cout << conj.to_string() << ",";
+    }
+    std::cout << "\n";
+  }
+  remove_array_equalities(implicant_conjuncts_vec);
 
+  z3::expr_vector implicant_conjuncts(c);
+  for (auto conj: implicant_conjuncts_vec){
+    implicant_conjuncts.push_back(conj);
+  }
+  implicant = z3::mk_and(implicant_conjuncts);
   struct buflen ret = call_strengthen(implicant, m, has_arrays, debug);
   const auto view = kj::arrayPtr(reinterpret_cast<const capnp::word*>(ret.buf),
                                  ret.len / sizeof(capnp::word));

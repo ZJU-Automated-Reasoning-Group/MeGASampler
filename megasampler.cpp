@@ -61,7 +61,7 @@ void MEGASampler::register_store_eq(z3::expr& f){
     const z3::expr& left_a = f.arg(0);
     const z3::expr& right_a = f.arg(1);
     storeEquality st_eq(c);
-    st_eq.store_id = f.id();
+    st_eq.store_e = f;
     save_store_index_and_value(left_a, st_eq.a_indices, st_eq.a_values, st_eq.a);
     save_store_index_and_value(right_a, st_eq.b_indices, st_eq.b_values, st_eq.b);
     store_eqs.push_back(st_eq);
@@ -333,11 +333,46 @@ void MEGASampler::remove_array_equalities(std::vector<z3::expr>& conjuncts){
   for (auto it = conjuncts.begin(); it != conjuncts.end(); it++){
     const z3::expr& conjunct = *it;
     if (is_array_eq(conjunct)){
-      // remove it from imlicant_conjuncts
+      // remove store_eq from imlicant_conjuncts
       conjuncts.erase(it);
       // find store_eq in store_eqs
-      // build a list of tuples (index_val, index_e, value_e, in_left_array)
-      // sort this list according to index_val
+      for (const auto& store_eq : store_eqs){
+        if (store_eq.store_e == conjunct){
+          std::cout << "found match in array eqs!!!!\n";
+          // build a list of tuples (index_val, index_e, value_e, in_left_array)
+          std::vector<storeEqIndexValue> index_values;
+          assert(store_eq.a_indices.size() == store_eq.a_values.size());
+          for (unsigned int i = 0; i < store_eq.a_indices.size(); i++) {
+            storeEqIndexValue ival(c);
+            const z3::expr &model_eval_res = model.eval(store_eq.a_indices[i], true);
+            int64_t value;
+            assert(model_eval_res.is_numeral_i64(value));
+            ival.value = value;
+            ival.index_expr = store_eq.a_indices[i];
+            ival.value_expr = store_eq.a_values[i];
+            ival.in_a = true;
+            index_values.push_back(ival);
+          }
+          assert(store_eq.b_indices.size() == store_eq.b_values.size());
+          for (unsigned int i = 0; i < store_eq.b_indices.size(); i++) {
+            storeEqIndexValue ival(c);
+            const z3::expr &model_eval_res = model.eval(store_eq.b_indices[i], true);
+            int64_t value;
+            assert(model_eval_res.is_numeral_i64(value));
+            ival.value = value;
+            ival.index_expr = store_eq.b_indices[i];
+            ival.value_expr = store_eq.b_values[i];
+            ival.in_a = false;
+            index_values.push_back(ival);
+          }
+          std::cout << "index values: \n";
+          for (auto ival2: index_values){
+            std::cout << ival2.to_string() << ",";
+          }
+          std::cout << "\n";
+        }
+      }
+      // sort the list according to values
       // add index relationship conatraints
       // add value constraints for store indices
       // replace selects over indices not in I or J inside implicant_conjuncts

@@ -338,7 +338,6 @@ void MEGASampler::remove_array_equalities(std::vector<z3::expr>& conjuncts){
       // find store_eq in store_eqs
       for (const auto& store_eq : store_eqs){
         if (store_eq.store_e == conjunct){
-          std::cout << "found match in array eqs!!!!\n";
           // build a list of tuples (index_val, index_e, value_e, in_left_array)
           std::vector<storeEqIndexValue> index_values;
           assert(store_eq.a_indices.size() == store_eq.a_values.size());
@@ -348,6 +347,7 @@ void MEGASampler::remove_array_equalities(std::vector<z3::expr>& conjuncts){
             int64_t value;
             assert(model_eval_res.is_numeral_i64(value));
             ival.value = value;
+            ival.serial_number_in_array = i;
             ival.index_expr = store_eq.a_indices[i];
             ival.value_expr = store_eq.a_values[i];
             ival.in_a = true;
@@ -360,19 +360,26 @@ void MEGASampler::remove_array_equalities(std::vector<z3::expr>& conjuncts){
             int64_t value;
             assert(model_eval_res.is_numeral_i64(value));
             ival.value = value;
+            ival.serial_number_in_array = i;
             ival.index_expr = store_eq.b_indices[i];
             ival.value_expr = store_eq.b_values[i];
             ival.in_a = false;
             index_values.push_back(ival);
           }
-          std::cout << "index values: \n";
-          for (auto ival2: index_values){
-            std::cout << ival2.to_string() << ",";
-          }
-          std::cout << "\n";
+//          std::cout << "index values: \n";
+//          for (auto ival2: index_values){
+//            std::cout << ival2.to_string() << ",";
+//          }
+//          std::cout << "\n";
+          // sort the list according to values
+          std::sort(index_values.begin(), index_values.end());
+//          std::cout << "index values after sort: \n";
+//          for (auto ival2: index_values){
+//            std::cout << ival2.to_string() << ",";
+//          }
+//          std::cout << "\n";
         }
       }
-      // sort the list according to values
       // add index relationship conatraints
       // add value constraints for store indices
       // replace selects over indices not in I or J inside implicant_conjuncts

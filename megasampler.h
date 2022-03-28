@@ -55,6 +55,7 @@ class MEGASampler : public Sampler {
   std::vector<storeEquality> store_eqs;
   struct storeEqIndexValue {
     int64_t value;
+    int serial_number_in_array;
     z3::expr index_expr;
     z3::expr value_expr;
     bool in_a; // index is either in 'a' array (base array of arg(0)) or 'b' array of a store_eq.
@@ -64,6 +65,10 @@ class MEGASampler : public Sampler {
         " and value expr: " + value_expr.to_string() +
         " from array " + (in_a ? "a" : "b") +
         " has value: " + std::to_string(value);
+    }
+    bool operator<(const storeEqIndexValue& seq) const {
+      return value < seq.value ||
+              (value == seq.value && in_a == seq.in_a && serial_number_in_array < seq.serial_number_in_array);
     }
   };
 

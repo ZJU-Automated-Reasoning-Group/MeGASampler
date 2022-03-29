@@ -299,7 +299,7 @@ void MEGASampler::initialize_solvers() {
     solver.add(simpl_formula);  // adds formula as constraint to normal solver
 }
 
-static void remove_or(z3::expr& formula, const z3::model& m, std::vector<z3::expr>& res){
+static void remove_or(z3::expr& formula, const z3::model& m, std::list<z3::expr>& res){
   if (formula.decl().decl_kind() != Z3_OP_OR && formula.decl().decl_kind() != Z3_OP_AND){
     res.push_back(formula);
   } else if (formula.decl().decl_kind() == Z3_OP_OR){
@@ -329,12 +329,13 @@ static void remove_or(z3::expr& formula, const z3::model& m, std::vector<z3::exp
   }
 }
 
-void MEGASampler::remove_array_equalities(std::vector<z3::expr>& conjuncts){
-  for (auto it = conjuncts.begin(); it != conjuncts.end(); it++){
-    const z3::expr& conjunct = *it;
+void MEGASampler::remove_array_equalities(std::list<z3::expr>& conjuncts){
+  auto it = conjuncts.begin();
+  while (it != conjuncts.end()){
+    const z3::expr conjunct = *it;
     if (is_array_eq(conjunct)){
       // remove store_eq from imlicant_conjuncts
-      conjuncts.erase(it);
+      it = conjuncts.erase(it);
       // find store_eq in store_eqs
       for (const auto& store_eq : store_eqs){
         if (store_eq.store_e == conjunct){
@@ -405,6 +406,8 @@ void MEGASampler::remove_array_equalities(std::vector<z3::expr>& conjuncts){
         }
       }
       // replace selects over indices not in I or J inside implicant_conjuncts
+    } else {
+      it++;
     }
   }
   std::cout << "after removing array eqs: ";
@@ -417,7 +420,7 @@ void MEGASampler::remove_array_equalities(std::vector<z3::expr>& conjuncts){
 void MEGASampler::do_epoch(const z3::model& m) {
   is_time_limit_reached();
 
-  std::vector<z3::expr> implicant_conjuncts_vec;
+  std::list<z3::expr> implicant_conjuncts_vec;
   remove_or(simpl_formula, m, implicant_conjuncts_vec);
   if (debug) {
     std::cout << "after remove or: ";

@@ -1,6 +1,8 @@
 #ifndef MEGASAMPLER_H_
 #define MEGASAMPLER_H_
 
+#include <list>
+
 #include "sampler.h"
 #include "strengthen.capnp.h"
 
@@ -116,7 +118,7 @@ class MEGASampler : public Sampler {
    */
   z3::expr rename_z3_names(z3::expr& formula);
   void register_store_eq(z3::expr& f);
-  void remove_array_equalities(std::vector<z3::expr>& conjuncts);
+  void remove_array_equalities(std::list<z3::expr>& conjuncts);
 };
 
 #endif /* MEGASAMPLER_H_ */

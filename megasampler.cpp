@@ -378,10 +378,32 @@ void MEGASampler::remove_array_equalities(std::vector<z3::expr>& conjuncts){
 //            std::cout << ival2.to_string() << ",";
 //          }
 //          std::cout << "\n";
+          // add index relationship conatraints
+          for (unsigned int i = 0; i < index_values.size()-1 ; i++){
+            const auto& curr_ival = index_values[i];
+            const auto& next_ival = index_values[i+1];
+            if (curr_ival.value < next_ival.value){
+              conjuncts.push_back(curr_ival.index_expr < next_ival.index_expr);
+            } else {
+              assert (curr_ival.value == next_ival.value);
+              conjuncts.push_back(curr_ival.index_expr == next_ival.index_expr);
+            }
+          }
+          // add value constraints for store indices
+          for (unsigned int i = 0; i < index_values.size()-1 ; i++) {
+            const auto &curr_ival = index_values[i];
+            const auto &next_ival = index_values[i + 1];
+            if (curr_ival.value == next_ival.value && curr_ival.in_a == next_ival.in_a){
+              continue; // todo: make sure that the last in the list is indeed the last value in the store
+            } else if (curr_ival.value == next_ival.value && curr_ival.in_a != next_ival.in_a){
+              conjuncts.push_back(curr_ival.value_expr == next_ival.value_expr);
+            } else {
+
+            }
+
+          }
         }
       }
-      // add index relationship conatraints
-      // add value constraints for store indices
       // replace selects over indices not in I or J inside implicant_conjuncts
     }
   }

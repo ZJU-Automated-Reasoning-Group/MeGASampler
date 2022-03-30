@@ -384,10 +384,10 @@ void MEGASampler::remove_array_equalities(std::list<z3::expr>& conjuncts){
             const auto& curr_ival = index_values[i];
             const auto& next_ival = index_values[i+1];
             if (curr_ival.value < next_ival.value){
-              conjuncts.push_back(curr_ival.index_expr < next_ival.index_expr);
+              conjuncts.push_back(curr_ival.index_expr - next_ival.index_expr < 0);
             } else {
               assert (curr_ival.value == next_ival.value);
-              conjuncts.push_back(curr_ival.index_expr == next_ival.index_expr);
+              conjuncts.push_back(curr_ival.index_expr - next_ival.index_expr == 0);
             }
           }
           // add value constraints for store indices

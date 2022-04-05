@@ -420,20 +420,20 @@ void MEGASampler::remove_array_equalities(std::list<z3::expr>& conjuncts){
 void MEGASampler::do_epoch(const z3::model& m) {
   is_time_limit_reached();
 
-  std::list<z3::expr> implicant_conjuncts_vec;
-  remove_or(simpl_formula, m, implicant_conjuncts_vec);
+  std::list<z3::expr> implicant_conjuncts_list;
+  remove_or(simpl_formula, m, implicant_conjuncts_list);
   if (debug) {
     std::cout << "after remove or: ";
-    for (auto conj: implicant_conjuncts_vec){
+    for (auto conj: implicant_conjuncts_list){
       assert(conj);
       std::cout << conj.to_string() << ",";
     }
     std::cout << "\n";
   }
-  remove_array_equalities(implicant_conjuncts_vec);
+  remove_array_equalities(implicant_conjuncts_list);
 
   z3::expr_vector implicant_conjuncts(c);
-  for (auto conj: implicant_conjuncts_vec){
+  for (auto conj: implicant_conjuncts_list){
     implicant_conjuncts.push_back(conj);
   }
   implicant = z3::mk_and(implicant_conjuncts);

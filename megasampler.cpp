@@ -113,64 +113,6 @@ static inline z3::expr store_substitute(z3::expr& store_e, z3::expr& array_e, z3
     }
 }
 
-void MEGASampler::eliminate_eq_of_different_arrays(){
-    // looking for an expr e of the form store(..(store(a,i,t_i))=store(..(store(b,j,s_j)) where a and b are distinct
-    z3::expr a(c);
-    z3::expr b(c);
-    z3::expr e(c);
-    bool res = find_eq_of_different_arrays(original_formula, a, b, e);
-    while (res) {
-//        std::cout << "found eq of different arays: " << e.to_string() << "\n";
-//        std::cout << "first array name: " << a.to_string() << "\n";
-//        std::cout << "second array name: " << b.to_string() << "\n";
-        // declare auxiliary array variable aux_a
-        std::string aux_a_name = "aux_a_" + std::to_string(aux_array_index);
-        aux_array_index++;
-        z3::expr aux_a = c.constant(aux_a_name.c_str(), c.array_sort(c.int_sort(),c.int_sort()));
-        // record name substitution for future model reconstruction
-        array_renaming_vec.push_back(arrayRenaming(aux_a_name, a.to_string(), b.to_string()));
-        // substitute a and b for a_aux in e to form e'
-        z3::expr_vector src_exprs(c), dst_exprs(c);
-        src_exprs.push_back(a);
-        src_exprs.push_back(b);
-        dst_exprs.push_back(aux_a);
-        dst_exprs.push_back(aux_a);
-        z3::expr e_prime = e.substitute(src_exprs, dst_exprs);
-//        std::cout << "e' is: " << e_prime.to_string() << "\n";
-        // substitute e for e' in the formula
-        z3::expr_vector src_exprs2(c), dst_exprs2(c);
-        src_exprs2.push_back(e);
-        dst_exprs2.push_back(e_prime);
-        original_formula = original_formula.substitute(src_exprs2, dst_exprs2);
-//        std::cout << "formula after e to e' substitution: " << original_formula.to_string() << "\n";
-        // custom-substitute a for a_aux and t_i for select(a,t_i) in left_array, to form a'. same for b
-        z3::expr left_array = e.arg(0);
-        z3::expr a_prime = store_substitute(left_array, a, aux_a);
-//        std::cout << "a' is: " << a_prime.to_string() << "\n";
-        z3::expr right_array = e.arg(1);
-        z3::expr b_prime = store_substitute(right_array, b, aux_a);
-//        std::cout << "b' is: " << b_prime.to_string() << "\n";
-        // substitute a for a' and b for b' in the formula
-        src_exprs = z3::expr_vector(c);
-        dst_exprs = z3::expr_vector(c);
-        src_exprs.push_back(a);
-        dst_exprs.push_back(a_prime);
-        src_exprs.push_back(b);
-        dst_exprs.push_back(b_prime);
-        original_formula = original_formula.substitute(src_exprs, dst_exprs);
-//        std::cout << "formula after a,b to a',b' substitution: " << original_formula.to_string() << "\n";
-        // find another eq (loop progress)
-        res = find_eq_of_different_arrays(original_formula, a, b, e);
-    }
-    if (debug) {
-        std::cout << "array_renaming_vec: ";
-        for (auto ar: array_renaming_vec) {
-            std::cout << ar.aux_name << ":(" << ar.a_name << "," << ar.b_name << ")   ";
-        }
-        std::cout << "\n";
-    }
-}
-
 MEGASampler::MEGASampler(std::string _input, std::string _output_dir,
                          int _max_samples, double _max_time,
                          int _max_epoch_samples, double _max_epoch_time,

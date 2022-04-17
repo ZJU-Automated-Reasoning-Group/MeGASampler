@@ -116,6 +116,7 @@ class MEGASampler : public Sampler {
    * return formula.substitute(z3!name,mega!z3!name) for all z3!names
    */
   z3::expr rename_z3_names(z3::expr& formula);
+  void print_array_equality_graph();
   void register_array_eq(z3::expr& f);
 //  void remove_array_equalities(std::list<z3::expr>& conjuncts);
 //  void add_opposite_array_constraint(const MEGASampler::storeEqIndexValue& curr_ival,

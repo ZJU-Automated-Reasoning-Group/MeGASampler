@@ -12,6 +12,16 @@
 #include "pythonfuncs.h"
 #include "strengthen.capnp.h"
 
+void MEGASampler::print_array_equality_graph(){
+  std::cout << "array equality graph:\n";
+  for (auto it=arrayEqualityGraph.begin(); it!=arrayEqualityGraph.end(); ++it){
+    std::cout << it->first << " =>\n";
+    for (auto it2=it->second.begin(); it2!=it->second.end(); ++it2){
+      std::cout << it2->toString() << "\n";
+    }
+  }
+}
+
 static inline bool is_array_eq(const z3::expr& e){
   return e.is_eq() && e.arg(0).is_array();
 }
@@ -196,13 +206,7 @@ void MEGASampler::simplify_formula(){
 //  if (debug) std::cout << "after losing array eq: " << simp_formula.to_string() << "\n";
 
   register_array_eq(original_formula);
-  std::cout << "array equality graph:\n";
-  for (auto it=arrayEqualityGraph.begin(); it!=arrayEqualityGraph.end(); ++it){
-    std::cout << it->first << " =>\n";
-    for (auto it2=it->second.begin(); it2!=it->second.end(); ++it2){
-      std::cout << it2->toString() << "\n";
-    }
-  }
+  print_array_equality_graph();
 
   // arith_lhs + lose select(store())
   z3::goal g(c);

@@ -56,18 +56,19 @@ static inline void extract_array_from_store(const z3::expr& e, z3::expr& array){
     }
 }
 
-void MEGASampler::register_store_eq(z3::expr& f){
+void MEGASampler::register_array_eq(z3::expr& f){
   if (is_array_eq(f)) {
     const z3::expr& left_a = f.arg(0);
     const z3::expr& right_a = f.arg(1);
-    storeEquality st_eq(c);
+    arrayEqualityEdge st_eq(c);
     st_eq.store_e = f;
     save_store_index_and_value(left_a, st_eq.a_indices, st_eq.a_values, st_eq.a);
     save_store_index_and_value(right_a, st_eq.b_indices, st_eq.b_values, st_eq.b);
-    store_eqs.push_back(st_eq);
+    arrayEqualityGraph[st_eq.a.to_string()].push_back(st_eq);
+    arrayEqualityGraph[st_eq.b.to_string()].push_back(st_eq);
   } else {
     for (auto child : f){
-      register_store_eq(child);
+      register_array_eq(child);
     }
   }
 }
@@ -194,11 +195,13 @@ void MEGASampler::simplify_formula(){
 //  //  TODO: make sure it removes store(a,..)=a, a=a, and nested stores;
 //  if (debug) std::cout << "after losing array eq: " << simp_formula.to_string() << "\n";
 
-  register_store_eq(original_formula);
-  for (auto store_eq : store_eqs){
-    std::cout << "\n";
-    std::cout << store_eq.toString();
-    std::cout << "\n";
+  register_array_eq(original_formula);
+  std::cout << "array equality graph:\n";
+  for (auto it=arrayEqualityGraph.begin(); it!=arrayEqualityGraph.end(); ++it){
+    std::cout << it->first << " =>\n";
+    for (auto it2=it->second.begin(); it2!=it->second.end(); ++it2){
+      std::cout << it2->toString() << "\n";
+    }
   }
 
   // arith_lhs + lose select(store())
@@ -271,134 +274,134 @@ static void remove_or(z3::expr& formula, const z3::model& m, std::list<z3::expr>
   }
 }
 
-void MEGASampler::add_opposite_array_constraint(const MEGASampler::storeEqIndexValue& curr_ival,
-                const MEGASampler::storeEquality& store_eq, std::list<z3::expr>& conjuncts){
-  const z3::expr& array = (curr_ival.in_a ? store_eq.b : store_eq.a);
-  conjuncts.push_back(z3::select(array, curr_ival.index_expr) - curr_ival.value_expr == 0);
-}
-
-void MEGASampler::add_value_clash_constraint(const MEGASampler::storeEqIndexValue& curr_ival,
-                                const MEGASampler::storeEqIndexValue& next_ival, std::list<z3::expr>& conjuncts){
-  conjuncts.push_back(next_ival.value_expr == curr_ival.value_expr);
-}
-
-void MEGASampler::remove_array_equalities(std::list<z3::expr>& conjuncts){
-  auto it = conjuncts.begin();
-  while (it != conjuncts.end()){
-    const z3::expr conjunct = *it;
-    if (is_array_eq(conjunct)){
-      // remove store_eq from imlicant_conjuncts
-      it = conjuncts.erase(it);
-      // find store_eq in store_eqs
-      for (const auto& store_eq : store_eqs){
-        if (store_eq.store_e == conjunct){
-          // build a list of tuples (index_val, index_e, value_e, in_left_array)
-          std::vector<storeEqIndexValue> index_values;
-          assert(store_eq.a_indices.size() == store_eq.a_values.size());
-          for (unsigned int i = 0; i < store_eq.a_indices.size(); i++) {
-            storeEqIndexValue ival(c);
-            const z3::expr &model_eval_res = model.eval(store_eq.a_indices[i], true);
-            int64_t value;
-            assert(model_eval_res.is_numeral_i64(value));
-            ival.value = value;
-            ival.serial_number_in_array = i;
-            ival.index_expr = store_eq.a_indices[i];
-            ival.value_expr = store_eq.a_values[i];
-            ival.in_a = true;
-            index_values.push_back(ival);
-          }
-          assert(store_eq.b_indices.size() == store_eq.b_values.size());
-          for (unsigned int i = 0; i < store_eq.b_indices.size(); i++) {
-            storeEqIndexValue ival(c);
-            const z3::expr &model_eval_res = model.eval(store_eq.b_indices[i], true);
-            int64_t value;
-            assert(model_eval_res.is_numeral_i64(value));
-            ival.value = value;
-            ival.serial_number_in_array = i;
-            ival.index_expr = store_eq.b_indices[i];
-            ival.value_expr = store_eq.b_values[i];
-            ival.in_a = false;
-            index_values.push_back(ival);
-          }
-//          std::cout << "index values: \n";
-//          for (auto ival2: index_values){
-//            std::cout << ival2.to_string() << ",";
+//void MEGASampler::add_opposite_array_constraint(const MEGASampler::storeEqIndexValue& curr_ival,
+//                const MEGASampler::storeEquality& store_eq, std::list<z3::expr>& conjuncts){
+//  const z3::expr& array = (curr_ival.in_a ? store_eq.b : store_eq.a);
+//  conjuncts.push_back(z3::select(array, curr_ival.index_expr) - curr_ival.value_expr == 0);
+//}
+//
+//void MEGASampler::add_value_clash_constraint(const MEGASampler::storeEqIndexValue& curr_ival,
+//                                const MEGASampler::storeEqIndexValue& next_ival, std::list<z3::expr>& conjuncts){
+//  conjuncts.push_back(next_ival.value_expr == curr_ival.value_expr);
+//}
+//
+//void MEGASampler::remove_array_equalities(std::list<z3::expr>& conjuncts){
+//  auto it = conjuncts.begin();
+//  while (it != conjuncts.end()){
+//    const z3::expr conjunct = *it;
+//    if (is_array_eq(conjunct)){
+//      // remove store_eq from imlicant_conjuncts
+//      it = conjuncts.erase(it);
+//      // find store_eq in store_eqs
+//      for (const auto& store_eq : store_eqs){
+//        if (store_eq.store_e == conjunct){
+//          // build a list of tuples (index_val, index_e, value_e, in_left_array)
+//          std::vector<storeEqIndexValue> index_values;
+//          assert(store_eq.a_indices.size() == store_eq.a_values.size());
+//          for (unsigned int i = 0; i < store_eq.a_indices.size(); i++) {
+//            storeEqIndexValue ival(c);
+//            const z3::expr &model_eval_res = model.eval(store_eq.a_indices[i], true);
+//            int64_t value;
+//            assert(model_eval_res.is_numeral_i64(value));
+//            ival.value = value;
+//            ival.serial_number_in_array = i;
+//            ival.index_expr = store_eq.a_indices[i];
+//            ival.value_expr = store_eq.a_values[i];
+//            ival.in_a = true;
+//            index_values.push_back(ival);
 //          }
-//          std::cout << "\n";
-          // sort the list according to values
-          std::sort(index_values.begin(), index_values.end());
-//          std::cout << "index values after sort: \n";
-//          for (auto ival2: index_values){
-//            std::cout << ival2.to_string() << ",";
+//          assert(store_eq.b_indices.size() == store_eq.b_values.size());
+//          for (unsigned int i = 0; i < store_eq.b_indices.size(); i++) {
+//            storeEqIndexValue ival(c);
+//            const z3::expr &model_eval_res = model.eval(store_eq.b_indices[i], true);
+//            int64_t value;
+//            assert(model_eval_res.is_numeral_i64(value));
+//            ival.value = value;
+//            ival.serial_number_in_array = i;
+//            ival.index_expr = store_eq.b_indices[i];
+//            ival.value_expr = store_eq.b_values[i];
+//            ival.in_a = false;
+//            index_values.push_back(ival);
 //          }
-//          std::cout << "\n";
-          // add index relationship conatraints
-          for (unsigned int i = 0; i < index_values.size()-1 ; i++){
-            const auto& curr_ival = index_values[i];
-            const auto& next_ival = index_values[i+1];
-            if (curr_ival.value < next_ival.value){
-              conjuncts.push_back(curr_ival.index_expr - next_ival.index_expr < 0);
-            } else {
-              assert (curr_ival.value == next_ival.value);
-              conjuncts.push_back(curr_ival.index_expr - next_ival.index_expr == 0);
-            }
-          }
-          //remove duplicates
-          auto it = index_values.begin();
-          while (it != index_values.end()){
-            auto next_it = it+1;
-            auto& curr = *it;
-            while (next_it != index_values.end()){
-              auto& next = *next_it;
-              if (curr.value == next.value && curr.in_a == next.in_a){
-                next_it = index_values.erase(next_it);
-              } else {
-                break;
-              }
-            }
-            it++;
-          }
-//          std::cout << "index values after removing duplicates: \n";
-//          for (auto ival2: index_values){
-//            std::cout << ival2.to_string() << ",";
+////          std::cout << "index values: \n";
+////          for (auto ival2: index_values){
+////            std::cout << ival2.to_string() << ",";
+////          }
+////          std::cout << "\n";
+//          // sort the list according to values
+//          std::sort(index_values.begin(), index_values.end());
+////          std::cout << "index values after sort: \n";
+////          for (auto ival2: index_values){
+////            std::cout << ival2.to_string() << ",";
+////          }
+////          std::cout << "\n";
+//          // add index relationship conatraints
+//          for (unsigned int i = 0; i < index_values.size()-1 ; i++){
+//            const auto& curr_ival = index_values[i];
+//            const auto& next_ival = index_values[i+1];
+//            if (curr_ival.value < next_ival.value){
+//              conjuncts.push_back(curr_ival.index_expr - next_ival.index_expr < 0);
+//            } else {
+//              assert (curr_ival.value == next_ival.value);
+//              conjuncts.push_back(curr_ival.index_expr - next_ival.index_expr == 0);
+//            }
 //          }
-//          std::cout << "\n";
-          // add value constraints for store indices
-          unsigned int curr = 0;
-          while (curr < index_values.size()) {
-            const auto &curr_ival = index_values[curr];
-            bool has_next = curr + 1 < index_values.size();
-            if (!has_next){
-              add_opposite_array_constraint(curr_ival, store_eq, conjuncts);
-              curr++;
-            } else {
-              const auto &next_ival = index_values[curr + 1];
-              if (next_ival.value > curr_ival.value){
-                add_opposite_array_constraint(curr_ival, store_eq, conjuncts);
-                curr++;
-              } else {
-                assert(next_ival.value == curr_ival.value && next_ival.in_a != curr_ival.in_a);
-                if (curr + 2 < index_values.size()){
-                  assert(index_values[curr + 2].value != curr_ival.value);
-                }
-                add_value_clash_constraint(curr_ival, next_ival, conjuncts);
-                curr = curr+2;
-              }
-            }
-          }
-          // replace selects over indices not in I or J inside implicant_conjuncts
-        }
-      }
-    } else {
-      it++;
-    }
-  }
-  std::cout << "after removing array eqs: ";
-  for (auto conjunct : conjuncts){
-    std::cout << conjunct.to_string() << ",";
-  }
-  std::cout << "\n";
-}
+//          //remove duplicates
+//          auto it = index_values.begin();
+//          while (it != index_values.end()){
+//            auto next_it = it+1;
+//            auto& curr = *it;
+//            while (next_it != index_values.end()){
+//              auto& next = *next_it;
+//              if (curr.value == next.value && curr.in_a == next.in_a){
+//                next_it = index_values.erase(next_it);
+//              } else {
+//                break;
+//              }
+//            }
+//            it++;
+//          }
+////          std::cout << "index values after removing duplicates: \n";
+////          for (auto ival2: index_values){
+////            std::cout << ival2.to_string() << ",";
+////          }
+////          std::cout << "\n";
+//          // add value constraints for store indices
+//          unsigned int curr = 0;
+//          while (curr < index_values.size()) {
+//            const auto &curr_ival = index_values[curr];
+//            bool has_next = curr + 1 < index_values.size();
+//            if (!has_next){
+//              add_opposite_array_constraint(curr_ival, store_eq, conjuncts);
+//              curr++;
+//            } else {
+//              const auto &next_ival = index_values[curr + 1];
+//              if (next_ival.value > curr_ival.value){
+//                add_opposite_array_constraint(curr_ival, store_eq, conjuncts);
+//                curr++;
+//              } else {
+//                assert(next_ival.value == curr_ival.value && next_ival.in_a != curr_ival.in_a);
+//                if (curr + 2 < index_values.size()){
+//                  assert(index_values[curr + 2].value != curr_ival.value);
+//                }
+//                add_value_clash_constraint(curr_ival, next_ival, conjuncts);
+//                curr = curr+2;
+//              }
+//            }
+//          }
+//          // replace selects over indices not in I or J inside implicant_conjuncts
+//        }
+//      }
+//    } else {
+//      it++;
+//    }
+//  }
+//  std::cout << "after removing array eqs: ";
+//  for (auto conjunct : conjuncts){
+//    std::cout << conjunct.to_string() << ",";
+//  }
+//  std::cout << "\n";
+//}
 
 void MEGASampler::do_epoch(const z3::model& m) {
   is_time_limit_reached();
@@ -413,7 +416,7 @@ void MEGASampler::do_epoch(const z3::model& m) {
     }
     std::cout << "\n";
   }
-  remove_array_equalities(implicant_conjuncts_list);
+//  remove_array_equalities(implicant_conjuncts_list);
 
   z3::expr_vector implicant_conjuncts(c);
   for (auto conj: implicant_conjuncts_list){

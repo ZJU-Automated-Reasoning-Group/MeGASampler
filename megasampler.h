@@ -34,7 +34,25 @@ class MEGASampler : public Sampler {
   };
 
   // data structures for removing array equalities
-  struct storeEquality {
+  struct storeEqIndexValue {
+      int64_t value;
+      int serial_number_in_array;
+      z3::expr index_expr;
+      z3::expr value_expr;
+      bool in_a; // index is either in 'a' array (base array of arg(0)) or 'b' array of a store_eq.
+      storeEqIndexValue(z3::context& c): index_expr(c), value_expr(c) {}
+      std::string to_string() {
+        return "storeEqIndexValue for index_expr: " + index_expr.to_string() +
+               " and value expr: " + value_expr.to_string() +
+               " from array " + (in_a ? "a" : "b") +
+               " has value: " + std::to_string(value);
+      }
+      bool operator<(const storeEqIndexValue& seq) const {
+        return value < seq.value ||
+               (value == seq.value && in_a == seq.in_a && serial_number_in_array < seq.serial_number_in_array);
+      }
+  };
+  struct arrayEqualityEdge {
     z3::expr store_e;
     z3::expr_vector a_indices;
     z3::expr_vector a_values;
@@ -42,33 +60,18 @@ class MEGASampler : public Sampler {
     z3::expr_vector b_values;
     z3::expr a;
     z3::expr b;
-    storeEquality(z3::context& c): store_e(c), a_indices(c), a_values(c), b_indices(c), b_values(c), a(c), b(c) {}
+    bool in_implicant = false;
+    std::vector<storeEqIndexValue> index_values;
+    arrayEqualityEdge(z3::context& c): store_e(c), a_indices(c), a_values(c), b_indices(c), b_values(c), a(c), b(c) {}
     std::string toString() {
-      return "storeEquality object for expression: " + store_e.to_string() + ":\n" +
+      return std::string("arrayEqualityEdge (") + (in_implicant ? "turned on" : "turned off") + ") for expression: " + store_e.to_string() + ":\n" +
       a.to_string() + ": indices:" + a_indices.to_string() + "; values:" + a_values.to_string() +
       "\nand\n" +
       b.to_string() + ": indices:" + b_indices.to_string() + "; values:" + b_values.to_string();
     }
   };
-  std::vector<storeEquality> store_eqs;
-  struct storeEqIndexValue {
-    int64_t value;
-    int serial_number_in_array;
-    z3::expr index_expr;
-    z3::expr value_expr;
-    bool in_a; // index is either in 'a' array (base array of arg(0)) or 'b' array of a store_eq.
-    storeEqIndexValue(z3::context& c): index_expr(c), value_expr(c) {}
-    std::string to_string() {
-      return "storeEqIndexValue for index_expr: " + index_expr.to_string() +
-        " and value expr: " + value_expr.to_string() +
-        " from array " + (in_a ? "a" : "b") +
-        " has value: " + std::to_string(value);
-    }
-    bool operator<(const storeEqIndexValue& seq) const {
-      return value < seq.value ||
-              (value == seq.value && in_a == seq.in_a && serial_number_in_array < seq.serial_number_in_array);
-    }
-  };
+  typedef std::map<std::string, std::list<arrayEqualityEdge>> arrayEqualityGraph_t;
+  arrayEqualityGraph_t arrayEqualityGraph;
 
  public:
   MEGASampler(std::string input, std::string output_dir, int max_samples,
@@ -113,12 +116,12 @@ class MEGASampler : public Sampler {
    * return formula.substitute(z3!name,mega!z3!name) for all z3!names
    */
   z3::expr rename_z3_names(z3::expr& formula);
-  void register_store_eq(z3::expr& f);
-  void remove_array_equalities(std::list<z3::expr>& conjuncts);
-  void add_opposite_array_constraint(const MEGASampler::storeEqIndexValue& curr_ival,
-                                    const MEGASampler::storeEquality& store_eq, std::list<z3::expr>& conjuncts);
-  void add_value_clash_constraint(const MEGASampler::storeEqIndexValue& curr_ival,
-                                    const MEGASampler::storeEqIndexValue& next_ival, std::list<z3::expr>& conjuncts);
+  void register_array_eq(z3::expr& f);
+//  void remove_array_equalities(std::list<z3::expr>& conjuncts);
+//  void add_opposite_array_constraint(const MEGASampler::storeEqIndexValue& curr_ival,
+//                                    const MEGASampler::storeEquality& store_eq, std::list<z3::expr>& conjuncts);
+//  void add_value_clash_constraint(const MEGASampler::storeEqIndexValue& curr_ival,
+//                                    const MEGASampler::storeEqIndexValue& next_ival, std::list<z3::expr>& conjuncts);
 };
 
 #endif /* MEGASAMPLER_H_ */

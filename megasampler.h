@@ -15,6 +15,8 @@ class MEGASampler : public Sampler {
  private:
   z3::expr simpl_formula;
   z3::expr implicant;
+
+  // data structure for parsing intervals over select terms and sampling them
   struct arrayAccessData {
     capnpVarInterval entryInCapnpMap;
     z3::expr indexExpr;
@@ -30,6 +32,8 @@ class MEGASampler : public Sampler {
       return numSelecetsInIndex < d.numSelecetsInIndex;
     }
   };
+
+  // data structures for removing array equalities
   struct storeEquality {
     z3::expr store_e;
     z3::expr_vector a_indices;

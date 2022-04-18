@@ -123,6 +123,10 @@ class MEGASampler : public Sampler {
                                     const MEGASampler::arrayEqualityEdge& store_eq, std::list<z3::expr>& conjuncts);
   void add_value_clash_constraint(const MEGASampler::storeEqIndexValue& curr_ival,
                                     const MEGASampler::storeEqIndexValue& next_ival, std::list<z3::expr>& conjuncts);
+  void build_index_value_vector(arrayEqualityEdge& store_eq);
+  void remove_duplicates_in_index_values(arrayEqualityEdge& store_eq);
+  void add_index_relationship_constraints(const arrayEqualityEdge& store_eq, std::list<z3::expr>& conjuncts);
+  void add_array_value_constraints(const arrayEqualityEdge& store_eq, std::list<z3::expr>& conjuncts);
 };
 
 #endif /* MEGASAMPLER_H_ */

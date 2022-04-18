@@ -75,7 +75,9 @@ void MEGASampler::register_array_eq(z3::expr& f){
     save_store_index_and_value(left_a, st_eq.a_indices, st_eq.a_values, st_eq.a);
     save_store_index_and_value(right_a, st_eq.b_indices, st_eq.b_values, st_eq.b);
     arrayEqualityGraph[st_eq.a.to_string()].push_back(st_eq);
-    arrayEqualityGraph[st_eq.b.to_string()].push_back(st_eq);
+    if (!z3::eq(st_eq.a, st_eq.b)) {
+      arrayEqualityGraph[st_eq.b.to_string()].push_back(st_eq);
+    }
   } else {
     for (auto child : f){
       register_array_eq(child);

@@ -429,10 +429,11 @@ void MEGASampler::remove_array_equalities(std::list<z3::expr>& conjuncts){
 void MEGASampler::do_epoch(const z3::model& m) {
   is_time_limit_reached();
 
-  // set all edges of array_eq_graph as non-valid (not in implicant)
-  for (auto entry : arrayEqualityGraph){
-    for (auto array_eq_edge : entry.second){
+  // set all edges of array_eq_graph as non-valid (not in implicant) and empty the index_values vector
+  for (auto& entry : arrayEqualityGraph){
+    for (auto& array_eq_edge : entry.second){
       array_eq_edge.in_implicant = false;
+      array_eq_edge.index_values.clear();
     }
   }
 

@@ -401,7 +401,7 @@ void MEGASampler::remove_array_equalities(std::list<z3::expr>& conjuncts){
       z3::expr a_array(c);
       extract_array_from_store(conjunct.arg(0), a_array);
       for (auto& store_eq : arrayEqualityGraph[a_array.to_string()]){
-        if (store_eq.store_e == conjunct){
+        if (eq(store_eq.store_e, conjunct)){
           store_eq.in_implicant = true;
           build_index_value_vector(store_eq);
 //          std::cout << "index values: \n";

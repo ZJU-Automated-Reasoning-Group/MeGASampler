@@ -431,7 +431,7 @@ void MEGASampler::remove_array_equalities(std::list<z3::expr>& conjuncts){
       it++;
     }
   }
-  std::cout << "conjuncts after removing array eqs: ";
+  std::cout << "conjuncts after removing array eqs (size " << std::to_string(conjuncts.size()) << ": ";
   for (auto conjunct : conjuncts){
     std::cout << conjunct.to_string() << ",";
   }

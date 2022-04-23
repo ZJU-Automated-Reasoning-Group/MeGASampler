@@ -390,6 +390,31 @@ void MEGASampler::add_array_value_constraints(const arrayEqualityEdge& store_eq,
   }
 }
 
+static void collect_select_terms(const z3::expr& expr, std::list<z3::expr>& select_terms){
+  if (expr.decl().decl_kind() == Z3_OP_SELECT){
+    select_terms.push_back(expr);
+  }
+  for (unsigned int i=0; i<expr.num_args(); i++){
+    collect_select_terms(expr.arg(i), select_terms);
+  }
+}
+
+void add_equalities_from_select_terms(std::list<z3::expr>& conjuncts){
+  std::list<z3::expr> new_conjuncts;
+  std::list<z3::expr> select_terms;
+  for (const auto& conj : conjuncts){
+    collect_select_terms(conj, select_terms);
+  }
+  std::cout << "select terms collected: ";
+  for (const auto& sterm : select_terms){
+    std::cout << sterm.to_string() << ", ";
+  }
+  std::cout << "\n";
+  for (const auto& sterm : select_terms){
+    // add equalities based on equality graph
+  }
+}
+
 void MEGASampler::remove_array_equalities(std::list<z3::expr>& conjuncts){
   auto it = conjuncts.begin();
   while (it != conjuncts.end()){
@@ -436,6 +461,11 @@ void MEGASampler::remove_array_equalities(std::list<z3::expr>& conjuncts){
     std::cout << conjunct.to_string() << ",";
   }
   std::cout << "\n";
+
+  // add equalities from select terms based on array_equality_graph
+  std::cout << "before adding select-term equalities\n";
+  print_array_equality_graph();
+  add_equalities_from_select_terms(conjuncts);
 }
 
 void MEGASampler::do_epoch(const z3::model& m) {
@@ -463,7 +493,6 @@ void MEGASampler::do_epoch(const z3::model& m) {
 
   remove_array_equalities(implicant_conjuncts_list);
   std::cout << "after removing array eqs:\n";
-  print_array_equality_graph();
 
   z3::expr_vector implicant_conjuncts(c);
   for (auto conj: implicant_conjuncts_list){

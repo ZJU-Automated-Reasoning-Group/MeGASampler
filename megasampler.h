@@ -119,6 +119,7 @@ class MEGASampler : public Sampler {
   void print_array_equality_graph();
   void register_array_eq(z3::expr& f);
   void remove_array_equalities(std::list<z3::expr>& conjuncts);
+  void add_equalities_from_select_terms(std::list<z3::expr>& conjuncts);
   void add_opposite_array_constraint(const MEGASampler::storeEqIndexValue& curr_ival,
                                     const MEGASampler::arrayEqualityEdge& store_eq, std::list<z3::expr>& conjuncts);
   void add_value_clash_constraint(const MEGASampler::storeEqIndexValue& curr_ival,

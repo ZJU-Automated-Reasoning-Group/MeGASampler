@@ -10,35 +10,40 @@ import typing as typ
 import collections
 
 import z3
-from z3 import z3util
 
 PARSER = argparse.ArgumentParser(
-    description='Calculate coverage from samples file and smt2 file')
-PARSER.add_argument('-s',
-                    '--samples',
-                    metavar='FILE',
-                    type=open,
-                    required=True,
-                    help="File to load samples from")
-PARSER.add_argument('-f',
-                    '--formula',
-                    metavar='FILE',
-                    type=open,
-                    required=True,
-                    help="Formula file (smt2)")
-PARSER.add_argument('--use-c-api',
-                    action='store_true',
-                    help="Use Z3 C API calls to load samples, if applicable")
-PARSER.add_argument('-m',
-                    '--metric',
-                    required=True,
-                    choices=["satisfies", "wire_coverage"])
+    description="Calculate coverage from samples file and smt2 file"
+)
+PARSER.add_argument(
+    "-s",
+    "--samples",
+    metavar="FILE",
+    type=open,
+    required=True,
+    help="File to load samples from",
+)
+PARSER.add_argument(
+    "-f",
+    "--formula",
+    metavar="FILE",
+    type=open,
+    required=True,
+    help="Formula file (smt2)",
+)
+PARSER.add_argument(
+    "--use-c-api",
+    action="store_true",
+    help="Use Z3 C API calls to load samples, if applicable",
+)
+PARSER.add_argument(
+    "-m", "--metric", required=True, choices=["satisfies", "wire_coverage"]
+)
 
 CTX = z3.Context()
 
 
 def prod(*args):
-    if (len(args) == 1):
+    if len(args) == 1:
         args = args[0]
     return functools.reduce(operator.mul, args, 1)
 
@@ -64,28 +69,30 @@ class SatisfiesMetric(Metric):
         super().__init__(formula)
         self._intsort = z3.IntSort(ctx=CTX)
         self._use_c_api = use_c_api
-        #self._vars = {str(var): var for var in z3util.get_vars(g.as_expr())}
+        # self._vars = {str(var): var for var in z3util.get_vars(g.as_expr())}
 
     def _add_sample_via_c_api(self, sample: list[tuple[str, int]]):
         for var, value in sample:
-            numeral = z3.Z3_mk_numeral(CTX.ref(), str(value),
-                                       self._intsort.ast)
+            numeral = z3.Z3_mk_numeral(CTX.ref(), str(value), self._intsort.ast)
             z3.Z3_inc_ref(CTX.ref(), numeral)
             symbol = z3.Z3_mk_string_symbol(CTX.ref(), var)
             const = z3.Z3_mk_const(CTX.ref(), symbol, self._intsort.ast)
-            #z3.Z3_inc_ref(CTX.ref(), const)
+            # z3.Z3_inc_ref(CTX.ref(), const)
             eq = z3.Z3_mk_eq(CTX.ref(), const, numeral)
-            #z3.Z3_inc_ref(CTX.ref(), const)
+            # z3.Z3_inc_ref(CTX.ref(), const)
             z3.Z3_solver_assert(CTX.ref(), self._solver.solver, eq)
             # Now they are Z3's?
             z3.Z3_dec_ref(CTX.ref(), numeral)
-            #z3.Z3_dec_ref(CTX.ref(), const)
-            #z3.Z3_dec_ref(CTX.ref(), eq)
+            # z3.Z3_dec_ref(CTX.ref(), const)
+            # z3.Z3_dec_ref(CTX.ref(), eq)
 
     def _add_sample_via_smtlib(self, sample: list[tuple[str, int]]):
-        self._solver.from_string("".join(
-            f"(declare-fun {var} () Int)\n(assert (= {var} {value}))"
-            for var, value in sample))
+        self._solver.from_string(
+            "".join(
+                f"(declare-fun {var} () Int)\n(assert (= {var} {value}))"
+                for var, value in sample
+            )
+        )
 
     def _add_sample(self, sample: list[tuple[str, int]]):
         if self._use_c_api:
@@ -93,8 +100,7 @@ class SatisfiesMetric(Metric):
         else:
             self._add_sample_via_smtlib(sample)
 
-    def _check_sample(self, sample: list[tuple[str,
-                                               int]]) -> z3.CheckSatResult:
+    def _check_sample(self, sample: list[tuple[str, int]]) -> z3.CheckSatResult:
         # Easiest way to do this seems to just ask Z3...
         # Hope this isn't **too** costly.
         self._solver.push()
@@ -134,7 +140,7 @@ class ManualSatisfiesMetric(Metric):
         return self._build_bool(expr)
 
     def _build_bool(self, expr):
-        assert (z3.is_bool(expr))
+        assert z3.is_bool(expr)
         if self._statistics:
             self._statistics.register_node(expr.get_id(), "bool")
 
@@ -169,7 +175,7 @@ class ManualSatisfiesMetric(Metric):
         raise Exception(f"Unhandled: {expr}")
 
     def _build_int(self, expr):
-        assert (z3.is_int(expr))
+        assert z3.is_int(expr)
         if self._statistics:
             self._statistics.register_node(expr.get_id(), "int")
 
@@ -225,6 +231,7 @@ class ManualSatisfiesMetric(Metric):
             if self._statistics:
                 self._statistics.evaluate_node(node_id, value)
             return value
+
         return e
 
     def _build_array_select(self, expr):
@@ -313,7 +320,8 @@ class ManualSatisfiesMetric(Metric):
 
 class NodeStatistics(abc.ABC):
     def __init__(self):
-        self._storage = {}
+        self._storage: typ.Mapping[int, tuple[typ.Any, typ.Any, str]] = {}
+        self._totals: typ.Optional[typ.Mapping[int, int]] = None
 
     @abc.abstractmethod
     def register_node(self, node_id: int, sort: str):
@@ -322,6 +330,9 @@ class NodeStatistics(abc.ABC):
     @abc.abstractmethod
     def evaluate_node(self, node_id: int, value: typ.Any):
         pass
+
+    def set_totals(self, totals: typ.Mapping[int, typ.Any]):
+        self._totals = totals
 
     @property
     @abc.abstractmethod
@@ -338,82 +349,123 @@ class WireCoverageStatistics(NodeStatistics):
         elif sort == "int":
             self._storage[node_id] = (0, 0, sort)
         elif sort == "array":
-            self._storage[node_id] = (None, None, sort) # TODO: ???
+            self._storage[node_id] = (None, None, sort)  # TODO: ???
         else:
             raise Exception(f"Unhandled: {sort}")
 
     def evaluate_node(self, node_id: int, value: typ.Any):
         old_true, old_false, sort = self._storage[node_id]
         if sort == "bool":
-            self._storage[node_id] = (old_true or value, old_false
-                                      or not value, sort)
+            self._storage[node_id] = (old_true or value, old_false or not value, sort)
         elif sort == "int":
-            self._storage[node_id] = (old_true | (value & self.MASK), old_false
-                                      | ((value & self.MASK) ^ self.MASK),
-                                      sort)
+            self._storage[node_id] = (
+                old_true | (value & self.MASK),
+                old_false | ((value & self.MASK) ^ self.MASK),
+                sort,
+            )
         elif sort == "array":
-            pass # TODO: ???
+            pass  # TODO: ???
         else:
             raise Exception(f"Unhandled: {sort}")
+
+    def node_total(self, node_id: int, sort: str) -> int:
+        if self._totals:
+            return self._totals[node_id]
+        
+        match sort:
+            case "bool":
+                return 1
+            case "int":
+                return bin(self.MASK).count("1")
+            case "array":
+                return 0  # TODO: ???
+            case _:
+                raise ValueError(f"Unhandled: {sort}")
+
+    def node_count(self, true_count, false_count, sort: str) -> int:
+        match sort:
+            case "bool":
+                return 1 if true_count and false_count else 0
+            case "int":
+                return bin(true_count & false_count).count("1")
+            case "array":
+                return 0
+            case _:
+                raise ValueError(f"Unhandled: {sort}")
 
     @property
     def result(self) -> fractions.Fraction:
         count = 0
         total = 0
-        for true_count, false_count, sort in self._storage.values():
-            if sort == "bool":
-                total += 1
-                if true_count and false_count:
-                    count += 1
-            elif sort == "int":
-                total += bin(self.MASK).count('1')
-                count += bin(true_count & false_count).count('1')
-            elif sort == "array":
-                pass # TODO: ???
-            else:
-                raise Exception(f"Unhandled: {sort}")
+        for key, (true_count, false_count, sort) in self._storage.items():
+            total += self.node_total(sort)
+            count += self.node_count(true_count, false_count, sort)
 
         return fractions.Fraction(count, total)
+
+    @classmethod
+    def union_totals(cls, *statistics: list[WireCoverageStatistics]
+                     ) -> typ.Mapping[int, int]:
+        ret: typ.Mapping[int, int] = {}
+        if not statistics:
+            raise ValueError("Needs at least one statistics")
+        for key in statistics[0]._storage:
+            sort = statistics[0]._storage[key][2]
+            match sort:
+                case "bool":
+                    ret[key] = 1 if any(t and f for t, f, _ in s._storage[key] for s in statistics) else 0
+                case "int":
+                    v = 0
+                    for s in statistics:
+                        t, f, _ = s._storage[key]
+                        v |= t & f
+                    ret[key] = bin(v).count("1")
+                case "array":
+                    ret[key] = 0
+                case _:
+                    raise ValueError(f"Unhandled: {sort}")
+        return ret
 
 
 def _load_formula(f: typ.TextIO) -> str:
     return f.read()
 
 
-def _apply_metric(metric: Metric, samples: typ.Iterator[list[tuple[str,
-                                                                   int]]]):
+def _apply_metric(metric: Metric, samples: typ.Iterator[list[tuple[str, int]]]):
     for sample in samples:
         metric.count_sample(sample)
 
 
 def parse_samples(f: typ.TextIO) -> typ.Iterator[list[tuple[str, int]]]:
     def parse_int(value):
-        return int(value.strip('()').replace(' ', ''))
+        return int(value.strip("()").replace(" ", ""))
 
     def parse_array(value):
-        splitted = value.strip('[],').split(',')
+        splitted = value.strip("[],").split(",")
         default = int(splitted[1])
-        assert(len(splitted) - 2 == int(splitted[0]))
-        return collections.defaultdict(lambda: default,
-                                       ( x.split('->') for x in splitted[2:]))
+        assert len(splitted) - 2 == int(splitted[0])
+        return collections.defaultdict(
+            lambda: default, (x.split("->") for x in splitted[2:])
+        )
 
     def to_tuple(sample):
-        var, value = sample.split(':')
-        return var, parse_array(value) if value[0] == '[' else parse_int(value)
+        var, value = sample.split(":")
+        return var, parse_array(value) if value[0] == "[" else parse_int(value)
 
     for line in f:
-        p = line.split(' ', maxsplit=1)[1].strip('; \n').split(';')
+        p = line.split(" ", maxsplit=1)[1].strip("; \n").split(";")
         yield [to_tuple(x) for x in p]
 
 
-def calc_metric(_formula: typ.TextIO, _samples: typ.TextIO,
-                _metric: str, _use_c_api=False) -> fractions.Fraction:
+def calc_metric(
+    _formula: typ.TextIO, _samples: typ.TextIO, _metric: str, _use_c_api=False
+) -> fractions.Fraction:
     formula = _load_formula(_formula)
     samples = parse_samples(_samples)
 
-    if _metric == 'satisfies':
+    if _metric == "satisfies":
         metric: Metric = SatisfiesMetric(formula, use_c_api=_use_c_api)
-    elif _metric == 'wire_coverage':
+    elif _metric == "wire_coverage":
         metric = ManualSatisfiesMetric(formula,
                                        statistics=WireCoverageStatistics())
 
@@ -427,5 +479,5 @@ def main():
     print(calc_metric(args.formula, args.samples, args.metric, args.use_c_api))
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

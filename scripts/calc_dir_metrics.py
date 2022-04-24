@@ -5,6 +5,7 @@ import json
 import multiprocessing
 import pathlib
 import sys
+import typing as typ
 
 import calc_metric
 
@@ -43,12 +44,10 @@ def process_single_formula(formula_file, args):
             print(f"Failed to process {formula_file}")
             return
     statistics_template = copy.deepcopy(metric._statistics)
+    statistics: typ.Mapping[str, WireCoverageStatistics] = {}
     for json_file, samples_file in files:
-        with open(json_file) as jf:
-            summary = json.load(jf)
-        if "wire_coverage" in summary:
-            continue # no need to recalculate it's the same
         metric._statistics = copy.deepcopy(statistics_template)
+        statistics[json_file] = metric._statistics
         with open(samples_file) as sf:
             for s in calc_metric.parse_samples(sf):
                 try:
@@ -58,6 +57,16 @@ def process_single_formula(formula_file, args):
                     traceback.print_exc()
                     print(f"Failed to process {formula_file} -- {samples_file}")
                     return
+
+    totals = calc_metric.WireCoverageStatistics.union_totals(*statistics.values())
+    for s in statistics.values():
+        s.set_totals(totals)
+
+    for json_file, _ in files:
+        with open(json_file) as jf:
+            summary = json.load(jf)
+
+        metric._statistics = statistics[json_file]
         result = metric.result
         summary["wire_coverage"] = str(result)
         summary["wire_coverage_denom"] = result.denominator

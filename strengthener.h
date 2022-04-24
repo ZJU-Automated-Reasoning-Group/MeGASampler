@@ -1,0 +1,6 @@
+#ifndef STRENGTHENER_H
+#define STRENGTHENER_H
+
+
+
+#endif // STRENGTHENER_H

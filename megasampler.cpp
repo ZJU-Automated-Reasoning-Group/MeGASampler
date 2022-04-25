@@ -295,7 +295,7 @@ static void remove_or(z3::expr& formula, const z3::model& m, std::list<z3::expr>
     std::vector<int> satisfied_disjncts_distances;
     int i = 0;
     for (const auto& child: formula){
-      if (m.eval(child, true)){
+      if (m.eval(child, true).is_true()){
         satisfied_disjncts_distances.push_back(i);
       }
       i++;

@@ -6,7 +6,6 @@
 #include <cstdint>
 #include <iostream>
 #include <random>
-#include <set>
 
 #include "model.h"
 #include "pythonfuncs.h"
@@ -38,6 +37,67 @@ static int count_selects(const z3::expr& e) {
     count += count_selects(e.arg(i));
   }
   return count;
+}
+
+void MEGASampler::array_equality_graph_BFS(const z3::expr& root, const z3::expr& index, int64_t value, std::list<z3::expr>& new_conjucts){
+  // Mark all the vertices as not visited
+  std::set<std::string> visited;
+  // Create a queue for BFS
+  std::list<z3::expr> queue;
+
+  // Mark the current node as visited and enqueue it
+  std::string array_name = root.to_string();
+  visited.insert(array_name);
+  queue.push_back(root);
+
+  while(!queue.empty())
+  {
+    z3::expr s = queue.front();
+    array_name = s.to_string();
+    queue.pop_front();
+    for (const auto& edge : arrayEqualityGraph[array_name])
+    {
+      // skip disabled edges
+      if (!edge.in_implicant) continue;
+      // find edge destination
+      std::string other_name;
+      z3::expr other_array(c);
+      if (array_name == edge.a.to_string()){
+        other_name = edge.b.to_string();
+        other_array = edge.b;
+      } else {
+        assert(array_name == edge.b.to_string());
+        other_name = edge.a.to_string();
+        other_array = edge.a;
+      }
+      // if destination was visited, and this is not a self-loop, skip the edge (symmetric edge was handled)
+      if (visited.find(other_name) != visited.end() && !z3::eq(s, other_array)) continue;
+      // check if value belongs to values in IUJ
+      bool inUnion = false;
+      auto it = edge.index_values.begin();
+      while (it != edge.index_values.end()){
+        if (value == it->value){
+          inUnion = true;
+          break;
+        }
+        it++;
+      }
+      if (inUnion){
+        if (!z3::eq(index, it->index_expr)) {
+          new_conjucts.push_back(index - it->index_expr == 0);
+        }
+        continue; // edge not taken, stop the traversal
+      } else {
+        if (!z3::eq(s, other_array)) {
+          if (!z3::eq(z3::select(s, index), z3::select(other_array, index))) {
+            new_conjucts.push_back(z3::select(s, index) - z3::select(other_array, index) == 0);
+          }
+          visited.insert(other_name);
+          queue.push_back(other_array);
+        }
+      }
+    }
+  }
 }
 
 static inline void save_store_index_and_value(const z3::expr& e, z3::expr_vector& indices, z3::expr_vector& values, z3::expr& a){
@@ -399,21 +459,28 @@ static void collect_select_terms(const z3::expr& expr, std::list<z3::expr>& sele
   }
 }
 
-void add_equalities_from_select_terms(std::list<z3::expr>& conjuncts){
+void MEGASampler::add_equalities_from_select_terms(std::list<z3::expr>& conjuncts){
   std::list<z3::expr> new_conjuncts;
   std::list<z3::expr> select_terms;
   for (const auto& conj : conjuncts){
     collect_select_terms(conj, select_terms);
   }
-  std::cout << "select terms collected: ";
+//  std::cout << "select terms collected: ";
+//  for (const auto& sterm : select_terms){
+//    std::cout << sterm.to_string() << ", ";
+//  }
+//  std::cout << "\n";
   for (const auto& sterm : select_terms){
-    std::cout << sterm.to_string() << ", ";
+    assert(sterm.decl().decl_kind() == Z3_OP_SELECT);
+    z3::expr select_array = sterm.arg(0);
+    assert(select_array.decl().decl_kind() != Z3_OP_STORE);
+    int64_t select_index_value;
+    bool is_i64t = model.eval(sterm.arg(1)).is_numeral_i64(select_index_value);
+    assert(is_i64t);
+//    std::cout << "applying BFS for select-term: " << sterm.to_string() << "\n";
+    array_equality_graph_BFS(select_array, sterm.arg(1), select_index_value, new_conjuncts);
   }
-  std::cout << "\n";
-  for (const auto& sterm : select_terms){
-    // add equalities based on equality graph
-  }
-}
+  conjuncts.splice(conjuncts.end(), new_conjuncts);}
 
 void MEGASampler::remove_array_equalities(std::list<z3::expr>& conjuncts){
   auto it = conjuncts.begin();

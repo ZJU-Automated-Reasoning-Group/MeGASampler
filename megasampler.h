@@ -2,6 +2,7 @@
 #define MEGASAMPLER_H_
 
 #include <list>
+#include <set>
 
 #include "sampler.h"
 #include "strengthen.capnp.h"
@@ -128,6 +129,7 @@ class MEGASampler : public Sampler {
   void remove_duplicates_in_index_values(arrayEqualityEdge& store_eq);
   void add_index_relationship_constraints(const arrayEqualityEdge& store_eq, std::list<z3::expr>& conjuncts);
   void add_array_value_constraints(const arrayEqualityEdge& store_eq, std::list<z3::expr>& conjuncts);
+  void array_equality_graph_BFS(const z3::expr& array, const z3::expr& index, int64_t value, std::list<z3::expr>& new_conjucts);
 };
 
 #endif /* MEGASAMPLER_H_ */

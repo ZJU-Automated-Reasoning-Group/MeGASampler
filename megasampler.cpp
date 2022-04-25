@@ -245,28 +245,6 @@ z3::expr MEGASampler::rename_z3_names(z3::expr& formula){
 
 void MEGASampler::simplify_formula(){
 
-//  // first nnf conversion - to get rid of ite in expr for eliminate_array_eq
-//  z3::goal g(c);
-//  g.add(original_formula);
-//  const z3::tactic nnf_t(c, "nnf");
-//  const auto nnf_ar = nnf_t(g);
-//  assert(nnf_ar.size() == 1);
-//  auto nnf_formula = nnf_ar[0].as_expr();
-//  if (debug) std::cout << "after first nnf conversion: " << nnf_formula.to_string() << "\n";
-//  original_formula = nnf_formula; // for next stage. TODO: change this once next stage doesn't need it
-//
-//  // lose array equalities
-//  g = z3::goal(c);
-//  eliminate_eq_of_different_arrays(); // reads and changes original_formula //TODO: avoid changing original_formula
-//  g.add(original_formula);
-//  z3::params simplify_params(c);
-//  simplify_params.set("expand_store_eq", true);
-//  auto simp_ar = z3::with(z3::tactic(c, "simplify"), simplify_params)(g);
-//  assert(simp_ar.size() == 1);
-//  auto simp_formula = simp_ar[0].as_expr();
-//  //  TODO: make sure it removes store(a,..)=a, a=a, and nested stores;
-//  if (debug) std::cout << "after losing array eq: " << simp_formula.to_string() << "\n";
-
   register_array_eq(original_formula);
 //  print_array_equality_graph();
 

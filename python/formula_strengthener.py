@@ -561,7 +561,7 @@ def remove_or(nnf_formula, guiding_model):
 
 
 def patch_z3_context(context_pointer):
-    print(f"context pointer is: {hex(context_pointer)}")
+    # print(f"context pointer is: {hex(context_pointer)}")
     z3.main_ctx().ctx = ctypes.c_void_p(context_pointer)
 
 

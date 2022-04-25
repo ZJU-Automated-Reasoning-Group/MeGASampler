@@ -245,9 +245,6 @@ z3::expr MEGASampler::rename_z3_names(z3::expr& formula){
 
 void MEGASampler::simplify_formula(){
 
-  register_array_eq(original_formula);
-//  print_array_equality_graph();
-
   // arith_lhs + lose select(store())
   z3::goal g(c);
   g.add(original_formula);
@@ -269,6 +266,9 @@ void MEGASampler::simplify_formula(){
   assert(nnf_ar2.size() == 1);
   auto nnf_formula2 = nnf_ar2[0].as_expr();
   if (debug) std::cout << "after nnf conversion: " << nnf_formula2.to_string() << "\n";
+
+  register_array_eq(nnf_formula2);
+//  print_array_equality_graph();
 
   // final step - rename z3!name to mega!z3!name
   simpl_formula = rename_z3_names(nnf_formula2);

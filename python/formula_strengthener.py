@@ -72,7 +72,8 @@ class StrengthenedFormula():
                 conjunct, model)
             # stren_binary_boolean expects op in >=,<=,==
             if op in Z3_DISTINCT_OPS:
-                assert lhs_value != rhs_value
+                assert lhs_value != rhs_value, f"op is {op_to_string(op)}, but lhs_value ({lhs_value}) " \
+                                               f"and rhs_value ({rhs_value}) are equal. conjunct is {conjunct}"
                 conjunct = distinct_to_ineq(conjunct, lhs_value < rhs_value)
                 op = get_op(conjunct)
             if op in Z3_LT_OPS or op in Z3_GT_OPS:
@@ -561,7 +562,7 @@ def remove_or(nnf_formula, guiding_model):
 
 
 def patch_z3_context(context_pointer):
-    print(f"context pointer is: {hex(context_pointer)}")
+    # print(f"context pointer is: {hex(context_pointer)}")
     z3.main_ctx().ctx = ctypes.c_void_p(context_pointer)
 
 

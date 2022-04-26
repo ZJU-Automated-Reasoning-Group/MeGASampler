@@ -375,7 +375,7 @@ void MEGASampler::build_index_value_vector(arrayEqualityEdge& store_eq){
 void MEGASampler::add_index_relationship_constraints(const arrayEqualityEdge& store_eq, std::list<z3::expr>& conjuncts){
   // add index relationship conatraints
   const auto& index_values = store_eq.index_values;
-  for (unsigned int i = 0; i < index_values.size()-1 ; i++){
+  for (int i = 0; i < ((int)index_values.size())-1 ; i++){
     const auto& curr_ival = index_values[i];
     const auto& next_ival = index_values[i+1];
     if (curr_ival.value < next_ival.value){

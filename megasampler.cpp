@@ -364,6 +364,12 @@ void MEGASampler::build_index_value_vector(arrayEqualityEdge& store_eq){
   }
   // sort the list according to values
   std::sort(index_values.begin(), index_values.end());
+//  // print the result
+//  std::cout << "index values: \n";
+//  for (auto ival2: index_values){
+//    std::cout << ival2.to_string() << ",";
+//  }
+//  std::cout << "\n";
 }
 
 void MEGASampler::add_index_relationship_constraints(const arrayEqualityEdge& store_eq, std::list<z3::expr>& conjuncts){
@@ -377,7 +383,7 @@ void MEGASampler::add_index_relationship_constraints(const arrayEqualityEdge& st
     } else {
       assert (curr_ival.value == next_ival.value);
       if (!eq(curr_ival.index_expr,next_ival.index_expr)) {
-        std::cout << curr_ival.index_expr.to_string() << "different than " << next_ival.index_expr.to_string() << "\n";
+//        std::cout << curr_ival.index_expr.to_string() << "different than " << next_ival.index_expr.to_string() << "\n";
         conjuncts.push_back(curr_ival.index_expr - next_ival.index_expr == 0);
       }
     }
@@ -401,6 +407,11 @@ void MEGASampler::remove_duplicates_in_index_values(arrayEqualityEdge& store_eq)
     }
     it++;
   }
+//  std::cout << "index values after removing duplicates: \n";
+//  for (auto ival2: index_values){
+//    std::cout << ival2.to_string() << ",";
+//  }
+//  std::cout << "\n";
 }
 
 void MEGASampler::add_array_value_constraints(const arrayEqualityEdge& store_eq, std::list<z3::expr>& conjuncts){
@@ -475,18 +486,8 @@ void MEGASampler::remove_array_equalities(std::list<z3::expr>& conjuncts){
         if (eq(store_eq.store_e, conjunct)){
           store_eq.in_implicant = true;
           build_index_value_vector(store_eq);
-//          std::cout << "index values: \n";
-//          for (auto ival2: index_values){
-//            std::cout << ival2.to_string() << ",";
-//          }
-//          std::cout << "\n";
           add_index_relationship_constraints(store_eq, conjuncts);
           remove_duplicates_in_index_values(store_eq);
-//          std::cout << "index values after removing duplicates: \n";
-//          for (auto ival2: index_values){
-//            std::cout << ival2.to_string() << ",";
-//          }
-//          std::cout << "\n";
           add_array_value_constraints(store_eq, conjuncts);
           // update symmetric edge in the graph
           const z3::expr& b_array = store_eq.b;

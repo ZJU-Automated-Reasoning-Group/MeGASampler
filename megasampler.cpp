@@ -523,6 +523,8 @@ void MEGASampler::remove_array_equalities(std::list<z3::expr>& conjuncts){
 void MEGASampler::do_epoch(const z3::model& m) {
   is_time_limit_reached();
 
+  set_timer_on("grow_seed");
+
   // set all edges of array_eq_graph as non-valid (not in implicant) and empty the index_values vector
   for (auto& entry : arrayEqualityGraph){
     for (auto& array_eq_edge : entry.second){
@@ -551,6 +553,9 @@ void MEGASampler::do_epoch(const z3::model& m) {
   }
   implicant = z3::mk_and(implicant_conjuncts);
   struct buflen ret = call_strengthen(implicant, m, has_arrays, debug);
+
+  accumulate_time("grow_seed");
+
   const auto view = kj::arrayPtr(reinterpret_cast<const capnp::word*>(ret.buf),
                                  ret.len / sizeof(capnp::word));
   // Disable the security measure, we trust ourselves

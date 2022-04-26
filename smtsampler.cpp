@@ -302,10 +302,12 @@ void SMTSampler::do_epoch(const z3::model &m) {
   all_ind_count = 0;
 
   // STEP 1: calculate constraints based on model
+  set_timer_on("grow_seed");
   calculate_constraints(m_string);
   is_time_limit_reached();
   // STEP 2: mutate constraints to get Sigma_1 (solutions of distance 1)
   find_neighboring_solutions(mutations);
+  accumulate_time("grow_seed");
   is_time_limit_reached();
   // STEP 3: combine mutations to get Sigma_2...Sigma_6 (solutions of distance
   // 2-6)

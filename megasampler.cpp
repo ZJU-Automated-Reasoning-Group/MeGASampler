@@ -10,6 +10,7 @@
 
 #include "model.h"
 #include "pythonfuncs.h"
+#include "strengthener.h"
 #include "strengthen.capnp.h"
 
 void MEGASampler::print_array_equality_graph(){

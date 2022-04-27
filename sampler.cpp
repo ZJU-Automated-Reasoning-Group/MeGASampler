@@ -466,11 +466,13 @@ void Sampler::assert_soft(z3::expr const &e) { opt.add(e, 1); }
 
 bool Sampler::save_and_output_sample_if_unique(const std::string &sample) {
   valid_samples++;
-  auto res = samples.insert(sample);
+  set_timer_on("output");
+  const auto res = samples.insert(sample);
   if (res.second) {
     unique_valid_samples++;
     results_file << unique_valid_samples << ": " << sample << '\n';
   }
+  accumulate_time("output");
   if (unique_valid_samples >= max_samples) {
     failure_cause = "Reached max samples.";
     safe_exit(0);

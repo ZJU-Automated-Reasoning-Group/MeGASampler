@@ -109,14 +109,14 @@ double Sampler::elapsed_time_from(struct timespec start) {
 }
 
 void Sampler::parse_formula(std::string input) {
-  std::cout << "Parsing input file: " << input << std::endl;
+  std::cout << "Parsing input file: " << input << '\n';
   z3::expr_vector formulas =
       c.parse_file(input.c_str());  // bat: reads smt2 file
-  std::cout << "Number of formulas in file: " << formulas.size() << std::endl;
+  std::cout << "Number of formulas in file: " << formulas.size() << '\n';
   z3::expr formula = mk_and(formulas);
   Z3_ast ast = formula;
   if (ast == NULL) {
-    std::cout << "Could not read input formula.\n";
+    std::cerr << "Could not read input formula." << std::endl;
     failure_cause = "Could not read input formula.";
     safe_exit(1);
   }
@@ -272,19 +272,19 @@ void Sampler::write_json() {
 }
 
 void Sampler::print_stats() {
-  std::cout << "---------SOLVING STATISTICS--------" << std::endl;
+  std::cout << "---------SOLVING STATISTICS--------\n";
   for (auto it = accumulated_times.cbegin(); it != accumulated_times.cend();
        ++it) {
-    std::cout << it->first << " time: " << it->second << std::endl;
+    std::cout << it->first << " time: " << it->second << '\n';
   }
-  std::cout << "Epochs: " << epochs << std::endl;
-  std::cout << "MAX-SMT calls: " << max_smt_calls << std::endl;
-  std::cout << "SMT calls: " << smt_calls << std::endl;
+  std::cout << "Epochs: " << epochs << '\n';
+  std::cout << "MAX-SMT calls: " << max_smt_calls << '\n';
+  std::cout << "SMT calls: " << smt_calls << '\n';
   std::cout << "Assignments considered (with repetitions): " << total_samples
-            << std::endl;
-  std::cout << "Models (with repetitions): " << valid_samples << std::endl;
+            << '\n';
+  std::cout << "Models (with repetitions): " << valid_samples << '\n';
   std::cout << "Unique models (# samples in file): " << unique_valid_samples
-            << std::endl;
+            << '\n';
   std::cout << "-----------------------------------" << std::endl;
 }
 
@@ -469,7 +469,7 @@ bool Sampler::save_and_output_sample_if_unique(const std::string &sample) {
   auto res = samples.insert(sample);
   if (res.second) {
     unique_valid_samples++;
-    results_file << unique_valid_samples << ": " << sample << std::endl;
+    results_file << unique_valid_samples << ": " << sample << '\n';
   }
   if (unique_valid_samples >= max_samples) {
     failure_cause = "Reached max samples.";
@@ -589,7 +589,7 @@ void Sampler::set_timer_on(const std::string &category) {
   if (is_timer_on.find(category) != is_timer_on.end() &&
       is_timer_on[category]) {  // category was inserted to map and its value
                                 // was set to true
-    std::cout << "WARNING: starting timer twice for category " << category
+    std::cerr << "WARNING: starting timer twice for category " << category
               << std::endl;
   }
   struct timespec now;
@@ -601,7 +601,7 @@ void Sampler::set_timer_on(const std::string &category) {
 void Sampler::accumulate_time(const std::string &category) {
   if (is_timer_on.find(category) == is_timer_on.end() ||
       is_timer_on[category] == false) {  // timer never went on
-    std::cout << "ERROR: cannot stop timer for category: " << category
+    std::cerr << "ERROR: cannot stop timer for category: " << category
               << ". Timer was never started." << std::endl;
     failure_cause = "Timer stopped before started.";
     safe_exit(1);  // TODO add exception handling

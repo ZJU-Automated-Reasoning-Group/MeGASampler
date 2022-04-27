@@ -58,6 +58,7 @@ class SMTSampler : public Sampler {
   void find_combined_solutions(std::unordered_set<std::string> &mutations,
                                const std::string &a_string);
   int combine_mutations(long long val_orig, long long val_b, long long val_c);
+  bool combine_bool_mutations(bool val_orig, bool val_b, bool val_c);
   z3::model gen_model(const std::string &candidate,
                       std::vector<z3::func_decl> &ind);
   void assert_is_int_var(const z3::func_decl &v);

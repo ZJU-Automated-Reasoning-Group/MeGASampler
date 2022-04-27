@@ -229,8 +229,7 @@ void SMTSampler::find_combined_solutions(
             z3::sort s = w.range().array_range();  // should always be int
             candidate += combine_function(a_string, b_string, c_string, pos_a,
                                           pos_b, pos_c, arity, s);
-          } else if (w.is_const()) {
-            assert_is_int_var(w);
+          } else if (w.is_const() && w.range().sort_kind() == Z3_INT_SORT) {
             const long long val_a = ll_value(a_string.c_str() + pos_a);
             const long long val_b = ll_value(b_string.c_str() + pos_b);
             const long long val_c = ll_value(c_string.c_str() + pos_c);
@@ -239,7 +238,17 @@ void SMTSampler::find_combined_solutions(
             pos_b = b_string.find(';', pos_b) + 1;
             pos_c = c_string.find(';', pos_c) + 1;
             candidate += std::to_string(num) + ';';
-          } else {
+          } else if (w.is_const() && w.range().sort_kind() == Z3_BOOL_SORT) {
+            const bool val_a = b_value(a_string.c_str() + pos_a);
+            const bool val_b = b_value(b_string.c_str() + pos_b);
+            const bool val_c = b_value(c_string.c_str() + pos_c);
+            const bool val_res = combine_bool_mutations(val_a, val_b, val_c);
+            pos_a = a_string.find(';', pos_a) + 1;
+            pos_b = b_string.find(';', pos_b) + 1;
+            pos_c = c_string.find(';', pos_c) + 1;
+            candidate += std::to_string(val_res) + ';';
+          }
+          else {
             // Uninterpreted function case
             assert(false);
           }
@@ -293,10 +302,12 @@ void SMTSampler::do_epoch(const z3::model &m) {
   all_ind_count = 0;
 
   // STEP 1: calculate constraints based on model
+  set_timer_on("grow_seed");
   calculate_constraints(m_string);
   is_time_limit_reached();
   // STEP 2: mutate constraints to get Sigma_1 (solutions of distance 1)
   find_neighboring_solutions(mutations);
+  accumulate_time("grow_seed");
   is_time_limit_reached();
   // STEP 3: combine mutations to get Sigma_2...Sigma_6 (solutions of distance
   // 2-6)
@@ -409,6 +420,10 @@ static inline long long add_safe(long long a, long long b) {
   return (a < 0) ? LLONG_MIN : LLONG_MAX;
 }
 
+bool SMTSampler::combine_bool_mutations(bool a, bool b, bool c){
+  return a ^ ((a ^ b) | (a ^ c));
+}
+
 int SMTSampler::combine_mutations(long long val_orig, long long val_b,
                                   long long val_c) {
   if (val_b == LLONG_MIN) val_b++;
@@ -466,6 +481,12 @@ z3::model SMTSampler::gen_model(const std::string &candidate,
 
 void SMTSampler::assert_is_int_var(const z3::func_decl &v) {
   assert(v.is_const() and v.range().sort_kind() == Z3_INT_SORT);
+}
+
+bool SMTSampler::b_value(char const *n) {
+  assert(n);
+  assert(n[0] == '0' || n[0] == '1');
+  return atoi(n);
 }
 
 long long SMTSampler::ll_value(char const *n) {

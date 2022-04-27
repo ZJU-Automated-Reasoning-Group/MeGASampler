@@ -355,7 +355,7 @@ void Sampler::choose_random_assignment() {
         break;           // from switch, bool case
       case Z3_INT_SORT:  // random assignment to bool var
       {
-        int random = rand();
+        const int random = rand();
         if (rand() % 2)
           assert_soft(v() == c.int_val(random));
         else
@@ -486,9 +486,9 @@ std::string Sampler::model_to_string(const z3::model &m) {
   for (const auto &v : variables) {
     if (v.range().is_array()) {  // array case
       s += v.name().str() + ':';
-      if (!m.has_interp(v)){
-//          failure_cause = "variable not in model";
-//          safe_exit(1);
+      if (!m.has_interp(v)) {
+        //          failure_cause = "variable not in model";
+        //          safe_exit(1);
         continue;
       }
       z3::expr e = m.get_const_interp(v);
@@ -525,14 +525,17 @@ std::string Sampler::model_to_string(const z3::model &m) {
         s += std::to_string(e.arg(0));
         s += ',';
         for (int j = args.size() - 1; j >= 0; --j) {
-          s += args[j] + "->";
-          s += values[j] + ',';
+          s += args[j];
+          s += "->";
+          s += values[j];
+          s += ',';
         }
         s += "];";
       }
 
     } else if (v.is_const()) {  // BV, Int case
-      s += v.name().str() + ':';
+      s += v.name().str();
+      s += ':';
       z3::expr b = m.get_const_interp(v);
       Z3_ast ast = b;
       switch (v.range().sort_kind()) {
@@ -570,9 +573,11 @@ std::string Sampler::model_to_string(const z3::model &m) {
       z3::func_interp f = m.get_func_interp(v);
       std::string num = "(";
       num += std::to_string(f.num_entries());
-      s += num + ';';
+      s += num;
+      s += ';';
       std::string def = std::to_string(f.else_value());
-      s += def + ';';
+      s += def;
+      s += ';';
       for (size_t j = 0; j < f.num_entries(); ++j) {
         for (size_t k = 0; k < f.entry(j).num_args(); ++k) {
           std::string arg = std::to_string(f.entry(j).arg(k));

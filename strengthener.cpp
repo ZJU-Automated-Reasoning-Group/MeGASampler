@@ -13,6 +13,8 @@ void Strengthener::strengthen_literal(const z3::expr& literal){
       // case Not(true/false/b/!b) (where b is a boolean var)
       strengthen_literal(argument);
     } else {
+//      std::cout<< "negating: " << argument.to_string() << "\n";
+//      std::cout<< "result: " << negate_condition(argument).to_string() << "\n";
       strengthen_literal(negate_condition(argument));
     }
   } else if (is_binary_boolean(literal)){
@@ -54,7 +56,8 @@ int main() {
   z3::expr b1 = c.bool_const("b1");
   z3::expr b2 = c.bool_const("b2");
 //  z3::expr f = b1 == b2; // NoRuleForStrengthening
-  z3::expr f = x*y*z > 5; // NoRuleForStrengthening
+//  z3::expr f = x*y*z > 5; // NoRuleForStrengthening
+  z3::expr f = (!(x != 5)); // should work
 //  z3::expr f = (x+y)*z > 5; // should work
   z3::solver solver(c);
   solver.add(f);

@@ -4,9 +4,20 @@
 
 #include "z3_utils.h"
 
-z3::expr negate_condition(const z3::expr& condition){
-  // TODO: implement
-  return condition;
+z3::expr negate_condition(const z3::expr& cond){
+  if (cond.num_args() < 2){
+    throw UnsupportedOperator();
+  } else {
+    const z3::expr& arg0 = cond.arg(0);
+    const z3::expr& arg1 = cond.arg(1);
+    if (is_le(cond)) return arg0 > arg1;
+    if (is_lt(cond)) return arg0 >= arg1;
+    if (is_ge(cond)) return arg0 < arg1;
+    if (is_gt(cond)) return arg0 <= arg1;
+    if (is_eq(cond)) return arg0 != arg1;
+    if (is_distinct(cond)) return arg0 == arg1;
+    throw UnsupportedOperator();
+  }
 }
 
 bool model_eval_to_bool(const z3::model& model, const z3::expr& bool_expr){
@@ -22,6 +33,16 @@ bool is_lt(const z3::expr& expr){
 bool is_gt(const z3::expr& expr){
   auto op = get_op(expr);
   return op==Z3_OP_GT || op==Z3_OP_SGT || op==Z3_OP_UGT;
+}
+
+bool is_eq(const z3::expr& expr){
+  auto op = get_op(expr);
+  return op==Z3_OP_EQ;
+}
+
+bool is_distinct(const z3::expr& expr){
+  auto op = get_op(expr);
+  return op==Z3_OP_DISTINCT;
 }
 
 bool is_le(const z3::expr& expr){

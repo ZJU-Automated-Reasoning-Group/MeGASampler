@@ -65,6 +65,14 @@ bool is_binary_boolean(const z3::expr& expr){
 }
 
 z3::expr simplify_strict_to_nonstrict(const z3::expr& expr){
-  //TODO: implement
-  return z3::expr(expr.ctx());
+  assert(expr.num_args() == 2);
+  const z3::expr& arg0 = expr.arg(0);
+  const z3::expr& arg1 = expr.arg(1);
+  if (is_gt(expr)){
+    return arg0 >= arg1 + 1;
+  } else if (is_lt(expr)){
+    return arg0 <= arg1 - 1;
+  } else {
+    throw UnsupportedOperator();
+  }
 }

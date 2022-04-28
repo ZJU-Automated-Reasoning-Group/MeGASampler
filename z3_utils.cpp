@@ -61,8 +61,7 @@ Z3_decl_kind get_op(const z3::expr& expr){
 }
 
 bool is_binary_boolean(const z3::expr& expr){
-  //TODO: implement
-  return false;
+  return (is_lt(expr) || is_le(expr) || is_gt(expr) || is_ge(expr) || is_eq(expr) || is_distinct(expr));
 }
 
 z3::expr simplify_strict_to_nonstrict(const z3::expr& expr){

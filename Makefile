@@ -11,7 +11,7 @@ PYLIBNAME=$(PYNAME)
 all: $(BINARY)
 
 clean:
-	rm -f $(BINARY) strengthen.capnp.h pythonfuncs.c strengthen.capnp.c++
+	rm -f $(BINARY) strengthen.capnp.h pythonfuncs.c strengthen.capnp.c++ testmodel strengthener
 
 $(BINARY): strengthen.capnp.h $(SRC) pythonfuncs.c
 	g++ -Wall -Wextra -Wshadow -Wnon-virtual-dtor -pedantic -ggdb \
@@ -35,3 +35,10 @@ testmodel: test_model.cpp model.cpp model.h
   	test_model.cpp model.cpp \
       -isystem ../z3/src/api -isystem ../z3/src/api/c++  \
       -L ../z3/build -lz3
+
+strengthener: strengthener.cpp strengthener.h intervalmap.cpp intervalmap.h z3_utils.cpp z3_utils.h
+	g++ -Wall -Wextra -Wnon-virtual-dtor -pedantic -ggdb \
+      	-std=gnu++17 -march=native -pipe -O3 -o strengthener \
+      	strengthener.cpp intervalmap.cpp z3_utils.cpp \
+          -isystem ../z3/src/api -isystem ../z3/src/api/c++  \
+          -L ../z3/build -lz3

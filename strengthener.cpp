@@ -10,8 +10,8 @@ void Strengthener::strengthen_literal(const z3::expr& literal){
   } else if (literal.is_not()){
     const z3::expr& argument = literal.arg(0);
     if (argument.is_const()){
-      // case Not(true/false/b/!b) (where b is a boolean var)
-      strengthen_literal(argument);
+      // case Not(true/false/b) (where b is a boolean var)
+      return; // TODO: this is what we do in Python. Is it correct?
     } else {
 //      std::cout<< "negating: " << argument.to_string() << "\n";
 //      std::cout<< "result: " << negate_condition(argument).to_string() << "\n";

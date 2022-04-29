@@ -10,12 +10,13 @@ z3::expr negate_condition(const z3::expr& cond){
   } else {
     const z3::expr& arg0 = cond.arg(0);
     const z3::expr& arg1 = cond.arg(1);
-    if (is_le(cond)) return arg0 > arg1;
-    if (is_lt(cond)) return arg0 >= arg1;
-    if (is_ge(cond)) return arg0 < arg1;
-    if (is_gt(cond)) return arg0 <= arg1;
-    if (is_eq(cond)) return arg0 != arg1;
-    if (is_distinct(cond)) return arg0 == arg1;
+    Z3_decl_kind op = get_op(cond);
+    if (is_op_le(op)) return arg0 > arg1;
+    if (is_op_lt(op)) return arg0 >= arg1;
+    if (is_op_ge(op)) return arg0 < arg1;
+    if (is_op_gt(op)) return arg0 <= arg1;
+    if (is_op_eq(op)) return arg0 != arg1;
+    if (is_op_distinct(op)) return arg0 == arg1;
     throw UnsupportedOperator();
   }
 }
@@ -27,32 +28,32 @@ bool model_eval_to_bool(const z3::model& model, const z3::expr& bool_expr){
 
 bool is_lt(const z3::expr& expr){
   auto op = get_op(expr);
-  return op==Z3_OP_LT || op==Z3_OP_SLT || op==Z3_OP_ULT;
+  return is_op_lt(op);
 }
 
 bool is_gt(const z3::expr& expr){
   auto op = get_op(expr);
-  return op==Z3_OP_GT || op==Z3_OP_SGT || op==Z3_OP_UGT;
+  return is_op_gt(op);
 }
 
 bool is_eq(const z3::expr& expr){
   auto op = get_op(expr);
-  return op==Z3_OP_EQ;
+  return is_op_eq(op);
 }
 
 bool is_distinct(const z3::expr& expr){
   auto op = get_op(expr);
-  return op==Z3_OP_DISTINCT;
+  return is_op_distinct(op);
 }
 
 bool is_le(const z3::expr& expr){
   auto op = get_op(expr);
-  return op==Z3_OP_LE || op==Z3_OP_SLEQ || op==Z3_OP_ULEQ;
+  return is_op_le(op);
 }
 
 bool is_ge(const z3::expr& expr){
   auto op = get_op(expr);
-  return op==Z3_OP_GE || op==Z3_OP_SGEQ || op==Z3_OP_UGEQ;
+  return is_op_ge(op);
 }
 
 Z3_decl_kind get_op(const z3::expr& expr){
@@ -61,16 +62,18 @@ Z3_decl_kind get_op(const z3::expr& expr){
 }
 
 bool is_binary_boolean(const z3::expr& expr){
-  return (is_lt(expr) || is_le(expr) || is_gt(expr) || is_ge(expr) || is_eq(expr) || is_distinct(expr));
+  Z3_decl_kind op = get_op(expr);
+  return (is_op_lt(op) || is_op_le(op) || is_op_gt(op) || is_op_ge(op) || is_op_eq(op) || is_op_distinct(op));
 }
 
 z3::expr simplify_strict_to_nonstrict(const z3::expr& expr){
   assert(expr.num_args() == 2);
   const z3::expr& arg0 = expr.arg(0);
   const z3::expr& arg1 = expr.arg(1);
-  if (is_gt(expr)){
+  Z3_decl_kind op = get_op(expr);
+  if (is_op_gt(op)){
     return arg0 >= arg1 + 1;
-  } else if (is_lt(expr)){
+  } else if (is_op_lt(op)){
     return arg0 <= arg1 - 1;
   } else {
     throw UnsupportedOperator();

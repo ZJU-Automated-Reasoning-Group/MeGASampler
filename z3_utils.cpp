@@ -79,3 +79,60 @@ z3::expr simplify_strict_to_nonstrict(const z3::expr& expr){
     throw UnsupportedOperator();
   }
 }
+
+std::string op_to_string(Z3_decl_kind op){
+  if (is_op_le(op)){
+    return "<=";
+  } else if (is_op_lt(op)){
+    return "<";
+  } else if (is_op_ge(op)){
+    return ">=";
+  } else if (is_op_gt(op)){
+    return ">";
+  } else if (is_op_eq(op)){
+    return "==";
+  } else if (is_op_distinct(op)){
+    return "!=";
+  } else if (is_op_and(op)){
+    return "and";
+  } else if (is_op_or(op)){
+    return "or";
+  } else if (is_op_add(op)){
+    return "+";
+  } else if (is_op_sub(op)){
+    return "-";
+  } else if (is_op_mul(op)){
+    return "*";
+  } else if (is_op_div(op)){
+    return "/";
+  } else if (is_op_mod(op)){
+    return "%";
+  } else if (is_op_rem(op)){
+    return "%";
+  } else if (is_op_uminus(op)){
+    return "-";
+  } else {
+    throw UnsupportedOperator();
+  }
+}
+
+bool is_op_le(Z3_decl_kind op) {return op==Z3_OP_LE || op==Z3_OP_SLEQ;}
+bool is_op_lt(Z3_decl_kind op) {return op==Z3_OP_LT || op==Z3_OP_SLT;}
+bool is_op_ge(Z3_decl_kind op) {return op==Z3_OP_GE || op==Z3_OP_SGEQ;}
+bool is_op_gt(Z3_decl_kind op) {return op==Z3_OP_GT || op==Z3_OP_SGT;}
+bool is_op_eq(Z3_decl_kind op) {return op==Z3_OP_EQ;}
+bool is_op_distinct(Z3_decl_kind op) {return op==Z3_OP_DISTINCT;}
+bool is_op_add(Z3_decl_kind op) {return op==Z3_OP_ADD || op==Z3_OP_BADD;}
+bool is_op_sub(Z3_decl_kind op) {return op==Z3_OP_SUB || op==Z3_OP_BSUB;}
+bool is_op_mul(Z3_decl_kind op) {return op==Z3_OP_MUL || op==Z3_OP_BMUL;}
+bool is_op_div(Z3_decl_kind op) {return op==Z3_OP_DIV || op==Z3_OP_IDIV || op==Z3_OP_BSDIV || op==Z3_OP_BSDIV0 || op==Z3_OP_BUDIV || op==Z3_OP_BUDIV0;}
+bool is_op_rem(Z3_decl_kind op) {return op==Z3_OP_REM || op==Z3_OP_BSREM || op==Z3_OP_BSREM0 || op==Z3_OP_BUREM || op==Z3_OP_BUREM0;}
+bool is_op_mod(Z3_decl_kind op) {return op==Z3_OP_MOD || op==Z3_OP_BSMOD || op==Z3_OP_BSMOD0;}
+bool is_op_and(Z3_decl_kind op) {return op==Z3_OP_AND || op==Z3_OP_BAND || op==Z3_OP_BREDAND;}
+bool is_op_or(Z3_decl_kind op) {return op==Z3_OP_OR || op==Z3_OP_BOR || op==Z3_OP_BREDOR;}
+bool is_op_not(Z3_decl_kind op) {return op==Z3_OP_NOT;}
+bool is_op_uminus(Z3_decl_kind op) {return op==Z3_OP_UMINUS;}
+bool is_op_select(Z3_decl_kind op) {return op==Z3_OP_SELECT;}
+bool is_op_store(Z3_decl_kind op) {return op==Z3_OP_STORE;}
+bool is_op_ite(Z3_decl_kind op) {return op==Z3_OP_ITE;}
+bool is_op_uninterpreted(Z3_decl_kind op) {return op==Z3_OP_UNINTERPRETED;}

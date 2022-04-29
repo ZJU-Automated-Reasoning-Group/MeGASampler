@@ -3,6 +3,7 @@
 #include "z3_utils.h"
 
 void Strengthener::strengthen_literal(const z3::expr& literal){
+  std::cout << "strengthening literal: " << literal.to_string() << "\n";
   assert(model_eval_to_bool(model, literal));
   if (literal.is_bool() && literal.is_const()){
     // case e=true/false/b/!b (where b is a boolean var)
@@ -13,14 +14,14 @@ void Strengthener::strengthen_literal(const z3::expr& literal){
       // case Not(true/false/b) (where b is a boolean var)
       return; // TODO: this is what we do in Python. Is it correct?
     } else {
-//      std::cout<< "negating: " << argument.to_string() << "\n";
-//      std::cout<< "result: " << negate_condition(argument).to_string() << "\n";
       strengthen_literal(negate_condition(argument));
     }
   } else if (is_binary_boolean(literal)){
     const z3::expr& lhs = literal.arg(0);
     if (!lhs.is_int()) throw NoRuleForStrengthening();
     const z3::expr rhs = literal.arg(1);
+    int64_t old_rhs_value;
+    assert(rhs.is_numeral_i64(old_rhs_value));
     // turn op into >=,<=, or ==
     z3::expr literal_as_ineq(literal);
     if (literal.decl().decl_kind() == Z3_OP_DISTINCT){
@@ -45,6 +46,7 @@ void Strengthener::strengthen_literal(const z3::expr& literal){
 
 void Strengthener::strengthen_binary_bool_literal(const z3::expr& lhs, int64_t lhs_value, int64_t rhs_value, Z3_decl_kind op){
   //TODO: implement
+  std::cout << "strengthening binary bool literal: " << lhs.to_string() << op_to_string(op) << rhs_value << "\n";
 }
 
 int main() {
@@ -57,7 +59,14 @@ int main() {
   z3::expr b2 = c.bool_const("b2");
 //  z3::expr f = b1 == b2; // NoRuleForStrengthening
 //  z3::expr f = x*y*z > 5; // NoRuleForStrengthening
-  z3::expr f = (!(x != 5)); // should work
+//  z3::expr f = (!(x != 5)); // should work
+//  z3::expr f = (x*y)-z < 9; // should work
+//  z3::expr f = !((x*y)-z < 9); // should work
+//  z3::expr f = !((x*0)-z <= 9); // should work
+//  z3::expr f = b1; // should work
+//  z3::expr f = !b2; // should work
+//  z3::expr f = 3*(x+4) != 20; // should work
+  z3::expr f = 3*(x+4) != x; // assertion failure - rhs is not a number
 //  z3::expr f = (x+y)*z > 5; // should work
   z3::solver solver(c);
   solver.add(f);
@@ -65,7 +74,6 @@ int main() {
   assert(res == z3::sat);
   z3::model m = solver.get_model();
   Strengthener s(c,m);
-  std::cout << "calling strengthen_literal!!\n";
   s.strengthen_literal(f);
   return 0;
 }

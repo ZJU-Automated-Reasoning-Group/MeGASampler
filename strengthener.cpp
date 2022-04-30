@@ -45,8 +45,30 @@ void Strengthener::strengthen_literal(const z3::expr& literal){
 }
 
 void Strengthener::strengthen_binary_bool_literal(const z3::expr& lhs, int64_t lhs_value, int64_t rhs_value, Z3_decl_kind op){
-  //TODO: implement
   std::cout << "strengthening binary bool literal: " << lhs.to_string() << op_to_string(op) << rhs_value << "\n";
+  assert (is_op_ge(op) or is_op_le(op) or is_op_eq(op));
+  assert (lhs.is_int());
+  if (is_numeral_constant(lhs)) return;
+  if (lhs.is_const()){
+    add_interval(lhs, rhs_value, op);
+  } else if (is_op_eq(op)){
+    for (unsigned int i=0; i<lhs.num_args(); i++){
+      if (!is_numeral_constant(lhs.arg(i))){
+        int64_t arg_value;
+        model_eval_to_int64(model, lhs.arg(i), arg_value);
+        strengthen_binary_bool_literal(lhs.arg(i), arg_value, arg_value, op);
+      }
+    }
+  } else if (is_op_uminus(op)){
+    const z3::expr& arg0 = lhs.arg(0);
+    strengthen_binary_bool_literal(arg0, -lhs_value, -rhs_value, reverse_bool_op(op));
+  } else if (is_op_add(op)){
+    // TODO: continue
+  }
+//  elif get_op(lhs) in Z3_ADD_OPS:
+//  children_values = get_children_values(lhs, model)
+//  self._strengthen_add(lhs.children(), children_values, op,
+//                       rhs_value, model)
 }
 
 int main() {

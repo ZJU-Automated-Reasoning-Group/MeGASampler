@@ -136,3 +136,40 @@ bool is_op_select(Z3_decl_kind op) {return op==Z3_OP_SELECT;}
 bool is_op_store(Z3_decl_kind op) {return op==Z3_OP_STORE;}
 bool is_op_ite(Z3_decl_kind op) {return op==Z3_OP_ITE;}
 bool is_op_uninterpreted(Z3_decl_kind op) {return op==Z3_OP_UNINTERPRETED;}
+
+bool is_numeral_constant(const z3::expr& expr){
+  int64_t val;
+  return expr.is_numeral_i64(val) || (is_op_uminus(get_op(expr)) && expr.arg(0).is_numeral_i64(val));
+}
+
+int64_t model_eval_to_int64(const z3::model& model, const z3::expr& int64_expr){
+  int64_t res;
+  assert(model.eval(int64_expr, true).is_numeral_i64(res));
+  return res;
+}
+
+Z3_decl_kind reverse_bool_op(Z3_decl_kind op){
+  if (op == Z3_OP_LE){
+    return Z3_OP_GE;
+  } else if (op == Z3_OP_LT){
+    return Z3_OP_GT;
+  } else if (op == Z3_OP_GE){
+    return Z3_OP_LE;
+  } else if (op == Z3_OP_GT){
+    return Z3_OP_LT;
+  } else if (op == Z3_OP_SLEQ){
+    return Z3_OP_SGEQ;
+  } else if (op == Z3_OP_SLT){
+    return Z3_OP_SGT;
+  } else if (op == Z3_OP_SGEQ){
+    return Z3_OP_SLEQ;
+  } else if (op == Z3_OP_SGT){
+    return Z3_OP_SLT;
+  } else if (op == Z3_OP_EQ){
+    return Z3_OP_EQ;
+  } else if (op == Z3_OP_DISTINCT){
+    return Z3_OP_DISTINCT;
+  } else {
+    throw UnsupportedOperator();
+  }
+}

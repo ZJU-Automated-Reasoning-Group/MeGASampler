@@ -54,8 +54,7 @@ void Strengthener::strengthen_binary_bool_literal(const z3::expr& lhs, int64_t l
   } else if (is_op_eq(op)){
     for (unsigned int i=0; i<lhs.num_args(); i++){
       if (!is_numeral_constant(lhs.arg(i))){
-        int64_t arg_value;
-        model_eval_to_int64(model, lhs.arg(i), arg_value);
+        int64_t arg_value = model_eval_to_int64(model, lhs.arg(i));
         strengthen_binary_bool_literal(lhs.arg(i), arg_value, arg_value, op);
       }
     }

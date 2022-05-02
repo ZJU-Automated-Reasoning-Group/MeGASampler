@@ -173,3 +173,11 @@ Z3_decl_kind reverse_bool_op(Z3_decl_kind op){
     throw UnsupportedOperator();
   }
 }
+
+void get_arguments_values(const z3::expr& expr, const z3::model& model, std::list<int64_t>& arguments_values){
+  for (unsigned int i=0; i<expr.num_args(); i++){
+    const z3::expr& child = expr.arg(i);
+    int64_t value = model_eval_to_int64(model, child);
+    arguments_values.push_back(value);
+  }
+}

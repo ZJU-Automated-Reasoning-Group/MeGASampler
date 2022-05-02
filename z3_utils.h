@@ -6,6 +6,7 @@
 #define MEGASAMPLER_Z3_UTILS_H
 
 #include <z3++.h>
+#include <list>
 
 bool is_op_le(Z3_decl_kind op);
 bool is_op_lt(Z3_decl_kind op);
@@ -44,5 +45,6 @@ z3::expr simplify_strict_to_nonstrict(const z3::expr& expr);
 std::string op_to_string(Z3_decl_kind op);
 bool is_numeral_constant(const z3::expr& expr);
 Z3_decl_kind reverse_bool_op(Z3_decl_kind op);
+void get_arguments_values(const z3::expr& expr, const z3::model& model, std::list<int64_t>& arguments_values);
 
 #endif //MEGASAMPLER_Z3_UTILS_H

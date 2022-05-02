@@ -58,16 +58,69 @@ void Strengthener::strengthen_binary_bool_literal(const z3::expr& lhs, int64_t l
         strengthen_binary_bool_literal(lhs.arg(i), arg_value, arg_value, op);
       }
     }
-  } else if (is_op_uminus(op)){
-    const z3::expr& arg0 = lhs.arg(0);
-    strengthen_binary_bool_literal(arg0, -lhs_value, -rhs_value, reverse_bool_op(op));
-  } else if (is_op_add(op)){
-    // TODO: continue
+  } else {
+    auto lhs_op = get_op(lhs);
+    std::list<int64_t> arguments_values;
+    get_arguments_values(lhs, model, arguments_values);
+    if (is_op_uminus(lhs_op)) {
+      std::cout << "strengthening unary minus: " << lhs.to_string() << op_to_string(op) << rhs_value << "\n";
+      const z3::expr &arg0 = lhs.arg(0);
+      strengthen_binary_bool_literal(arg0, -lhs_value, -rhs_value, reverse_bool_op(op));
+    } else if (is_op_add(lhs_op)) {
+      strengthen_add(lhs, arguments_values, op, rhs_value);
+    } else if (is_op_mul(lhs_op)){
+      strengthen_mult(lhs, arguments_values, op, rhs_value);
+    } else if (is_op_sub(lhs_op)){
+      strengthen_sub(lhs, arguments_values, op, rhs_value);
+    } else {
+      throw NoRuleForStrengthening();
+    }
   }
-//  elif get_op(lhs) in Z3_ADD_OPS:
-//  children_values = get_children_values(lhs, model)
-//  self._strengthen_add(lhs.children(), children_values, op,
-//                       rhs_value, model)
+}
+
+void Strengthener::strengthen_mult(const z3::expr &lhs, std::list<int64_t>& arguments_values, Z3_decl_kind op,
+                                   int64_t rhs_value) {
+  std::cout << "strengthening mul: " << lhs.to_string() << op_to_string(op) << rhs_value << "\n";
+  //TODO: finish
+  unsigned int i=0;
+  while (i < lhs.num_args()){
+    const z3::expr& child = lhs.arg(i);
+    if (is_numeral_constant(child)){
+      int64_t child_value = model_eval_to_int64(model, child);
+    }
+    i++;
+  }
+//      var_list = lhs.children()
+//      var_list.pop(i)
+//      children_values.pop(i)
+//      self._strengthen_mul_by_constant(const_value, var_list,
+//                                       children_values, op,
+//                                       rhs_value, model)
+//      return
+//              i = i + 1
+//      self._strengthen_mult(lhs.children(), children_values, op,
+//                            rhs_value, model)
+}
+
+void Strengthener::strengthen_add(const z3::expr &lhs, std::list<int64_t> &arguments_values, Z3_decl_kind op,
+                                  int64_t rhs_value) {
+  std::cout << "strengthening add: " << lhs.to_string() << op_to_string(op) << rhs_value << "\n";
+  //TODO: implement
+}
+
+void Strengthener::add_interval(const z3::expr &lhs, int64_t rhs_value, Z3_decl_kind op) {
+  std::cout << "adding interval: " << lhs.to_string() << op_to_string(op) << rhs_value << "\n";
+  //TODO: implement
+}
+
+void Strengthener::strengthen_sub(const z3::expr &lhs, std::list<int64_t> &arguments_values, Z3_decl_kind op,
+                                  int64_t rhs_value) {
+  std::cout << "strengthening subtraction: " << lhs.to_string() << op_to_string(op) << rhs_value << "\n";
+  assert(arguments_values.size() == 2);
+  int64_t second_arg_value = arguments_values.back();
+  arguments_values.pop_back();
+  arguments_values.push_back(-second_arg_value);
+  strengthen_add(lhs.arg(0) + (-lhs.arg(1)), arguments_values, op, rhs_value);
 }
 
 int main() {

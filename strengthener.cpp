@@ -1,5 +1,6 @@
 #include "strengthener.h"
 #include <iostream>
+#include <numeric>
 #include "z3_utils.h"
 
 void Strengthener::strengthen_literal(const z3::expr& literal){
@@ -105,7 +106,37 @@ void Strengthener::strengthen_mult(const z3::expr &lhs, std::list<int64_t>& argu
 void Strengthener::strengthen_add(const z3::expr &lhs, std::list<int64_t> &arguments_values, Z3_decl_kind op,
                                   int64_t rhs_value) {
   std::cout << "strengthening add: " << lhs.to_string() << op_to_string(op) << rhs_value << "\n";
-  //TODO: implement
+  assert(lhs.num_args() == arguments_values.size());
+  z3::expr non_constants_sum_e(c);
+  int64_t constants_sum = 0;
+  int64_t non_constants_sum = 0;
+  int constants_count = 0;
+  auto it = arguments_values.begin();
+  for (unsigned int i=0; i<lhs.num_args(); i++){
+    const z3::expr& argument = lhs.arg(i);
+    int64_t value = *it;
+//    std::cout << "argument: " << argument.to_string() << " with value: " << value << "\n";
+    if (is_numeral_constant(argument)){
+//      std::cout << "is numeral constant\n";
+      constants_sum += value;
+      constants_count++;
+      it = arguments_values.erase(it);
+    } else {
+//      std::cout << "is not a numeral constant\n";
+      non_constants_sum += value;
+      if (non_constants_sum_e) {
+        non_constants_sum_e = non_constants_sum_e + argument;
+      } else {
+        non_constants_sum_e = argument;
+      }
+      it++;
+    }
+  }
+  if (constants_count > 0){
+    strengthen_binary_bool_literal(non_constants_sum_e, non_constants_sum, rhs_value-constants_sum, op);
+  } else {
+    strengthen_add_without_constants(lhs, arguments_values, op, rhs_value);
+  }
 }
 
 void Strengthener::add_interval(const z3::expr &lhs, int64_t rhs_value, Z3_decl_kind op) {
@@ -121,6 +152,63 @@ void Strengthener::strengthen_sub(const z3::expr &lhs, std::list<int64_t> &argum
   arguments_values.pop_back();
   arguments_values.push_back(-second_arg_value);
   strengthen_add(lhs.arg(0) + (-lhs.arg(1)), arguments_values, op, rhs_value);
+}
+
+void Strengthener::strengthen_add_without_constants(const z3::expr &lhs, std::list<int64_t> &arguments_values,
+                                                    Z3_decl_kind op, int64_t rhs_value) {
+  assert(lhs.num_args() == arguments_values.size());
+  unsigned int num_arguments = lhs.num_args();
+  if (is_op_le(op)){
+    int64_t lhs_value = std::accumulate(arguments_values.begin(), arguments_values.end(), (int64_t)0);
+    int64_t diff = rhs_value - lhs_value;
+    assert(diff >= 0);
+    int64_t minimal_addition = diff; // num_children
+    int64_t extra_addition = diff - (minimal_addition * num_arguments);
+    int count_given_extra_addition = 0;
+    auto it = arguments_values.begin();
+    unsigned int i = 0;
+    while (count_given_extra_addition < extra_addition){
+      assert(it!=arguments_values.end() && i<num_arguments);
+      int64_t value_i = *it;
+      strengthen_binary_bool_literal(lhs.arg(i), value_i, value_i + minimal_addition + 1, op);
+      count_given_extra_addition ++;
+      i++;
+      it++;
+    }
+    while (i < num_arguments){
+      assert(it!=arguments_values.end());
+      int64_t value_i = *it;
+      strengthen_binary_bool_literal(lhs.arg(i), value_i, value_i + minimal_addition, op);
+      i++;
+      it++;
+    }
+  } else if (is_op_ge(op)){
+    int64_t lhs_value = std::accumulate(arguments_values.begin(), arguments_values.end(), (int64_t)0);
+    int64_t diff = lhs_value - rhs_value;
+    assert(diff >= 0);
+    int64_t minimal_subtraction = diff; // num_children
+    int64_t extra_subtraction = diff - (minimal_subtraction * num_arguments);
+    int count_given_extra_subtraction = 0;
+    auto it = arguments_values.begin();
+    unsigned int i = 0;
+    while (count_given_extra_subtraction < extra_subtraction){
+      assert(it!=arguments_values.end() && i<num_arguments);
+      int64_t value_i = *it;
+      strengthen_binary_bool_literal(lhs.arg(i), value_i, value_i - minimal_subtraction - 1, op);
+      count_given_extra_subtraction++;
+      i++;
+      it++;
+    }
+    while (i < num_arguments){
+      assert(it!=arguments_values.end());
+      int64_t value_i = *it;
+      strengthen_binary_bool_literal(lhs.arg(i), value_i, value_i - minimal_subtraction, op);
+      i++;
+      it++;
+    }
+  } else {
+    throw NoRuleForStrengthening();
+  }
 }
 
 int main() {

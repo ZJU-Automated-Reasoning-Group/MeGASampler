@@ -296,7 +296,7 @@ int main() {
   z3::expr b1 = c.bool_const("b1");
   z3::expr b2 = c.bool_const("b2");
 //  z3::expr f = b1 == b2; // NoRuleForStrengthening
-//  z3::expr f = x*y*z > 5; // NoRuleForStrengthening
+//  z3::expr f = x*y*z > 5; // should work
 //  z3::expr f = (!(x != 5)); // should work
 //  z3::expr f = (x*y)-z < 9; // should work
 //  z3::expr f = !((x*y)-z < 9); // should work
@@ -304,8 +304,11 @@ int main() {
 //  z3::expr f = b1; // should work
 //  z3::expr f = !b2; // should work
 //  z3::expr f = 3*(x+4) != 20; // should work
-  z3::expr f = 3*(x+4) != x; // assertion failure - rhs is not a number
+//  z3::expr f = 3*(x+4) != x; // assertion failure - rhs is not a number
 //  z3::expr f = (x+y)*z > 5; // should work
+//  z3::expr f = (x+y)+4+z+(-2) > 5; // should work
+//  z3::expr f = (-x)-y+2*z > 50; // should work
+  z3::expr f = 3*x*5*y > 50; // should work
   z3::solver solver(c);
   solver.add(f);
   auto res = solver.check();

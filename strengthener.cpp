@@ -69,9 +69,9 @@ void Strengthener::strengthen_binary_bool_literal(const z3::expr& lhs, int64_t l
       const z3::expr &arg0 = lhs.arg(0);
       strengthen_binary_bool_literal(arg0, -lhs_value, -rhs_value, reverse_bool_op(op));
     } else if (is_op_add(lhs_op)) {
-      strengthen_add(lhs, arguments_values, op, rhs_value);
+      strengthen_add(lhs, lhs_value, arguments_values, op, rhs_value);
     } else if (is_op_mul(lhs_op)){
-      strengthen_mult(lhs, arguments_values, op, rhs_value);
+      strengthen_mult(lhs, lhs_value, arguments_values, op, rhs_value);
     } else if (is_op_sub(lhs_op)){
       strengthen_sub(lhs, arguments_values, op, rhs_value);
     } else {
@@ -80,7 +80,7 @@ void Strengthener::strengthen_binary_bool_literal(const z3::expr& lhs, int64_t l
   }
 }
 
-void Strengthener::strengthen_mult(const z3::expr &lhs, std::list<int64_t>& arguments_values, Z3_decl_kind op,
+void Strengthener::strengthen_mult(const z3::expr &lhs, int64_t lhs_value, std::list<int64_t>& arguments_values, Z3_decl_kind op,
                                    int64_t rhs_value) {
   std::cout << "strengthening mul: " << lhs.to_string() << op_to_string(op) << rhs_value << "\n";
   assert(arguments_values.size() == lhs.num_args());
@@ -112,11 +112,11 @@ void Strengthener::strengthen_mult(const z3::expr &lhs, std::list<int64_t>& argu
   if (constants_count > 0){
     strengthen_mult_by_constant(non_constants_prod_e, non_constants_prod, constants_prod, rhs_value, op);
   } else {
-    strengthen_mult_without_constants(lhs, arguments_values, op, rhs_value);
+    strengthen_mult_without_constants(lhs, lhs_value, arguments_values, op, rhs_value);
   }
 }
 
-void Strengthener::strengthen_add(const z3::expr &lhs, std::list<int64_t> &arguments_values, Z3_decl_kind op,
+void Strengthener::strengthen_add(const z3::expr &lhs, int64_t lhs_value, std::list<int64_t> &arguments_values, Z3_decl_kind op,
                                   int64_t rhs_value) {
   std::cout << "strengthening add: " << lhs.to_string() << op_to_string(op) << rhs_value << "\n";
   assert(lhs.num_args() == arguments_values.size());
@@ -148,7 +148,7 @@ void Strengthener::strengthen_add(const z3::expr &lhs, std::list<int64_t> &argum
   if (constants_count > 0){
     strengthen_binary_bool_literal(non_constants_sum_e, non_constants_sum, rhs_value-constants_sum, op);
   } else {
-    strengthen_add_without_constants(lhs, arguments_values, op, rhs_value);
+    strengthen_add_without_constants(lhs, lhs_value, arguments_values, op, rhs_value);
   }
 }
 
@@ -163,16 +163,16 @@ void Strengthener::strengthen_sub(const z3::expr &lhs, std::list<int64_t> &argum
   assert(arguments_values.size() == 2);
   int64_t second_arg_value = arguments_values.back();
   arguments_values.pop_back();
+  int64_t first_arg_value = arguments_values.back();
   arguments_values.push_back(-second_arg_value);
-  strengthen_add(lhs.arg(0) + (-lhs.arg(1)), arguments_values, op, rhs_value);
+  strengthen_add(lhs.arg(0) + (-lhs.arg(1)), first_arg_value-second_arg_value, arguments_values, op, rhs_value);
 }
 
-void Strengthener::strengthen_add_without_constants(const z3::expr &lhs, std::list<int64_t> &arguments_values,
+void Strengthener::strengthen_add_without_constants(const z3::expr &lhs, int64_t lhs_value, std::list<int64_t> &arguments_values,
                                                     Z3_decl_kind op, int64_t rhs_value) {
   assert(lhs.num_args() == arguments_values.size());
   unsigned int num_arguments = lhs.num_args();
   if (is_op_le(op)){
-    int64_t lhs_value = std::accumulate(arguments_values.begin(), arguments_values.end(), (int64_t)0);
     int64_t diff = rhs_value - lhs_value;
     assert(diff >= 0);
     int64_t minimal_addition = diff; // num_children
@@ -196,7 +196,6 @@ void Strengthener::strengthen_add_without_constants(const z3::expr &lhs, std::li
       it++;
     }
   } else if (is_op_ge(op)){
-    int64_t lhs_value = std::accumulate(arguments_values.begin(), arguments_values.end(), (int64_t)0);
     int64_t diff = lhs_value - rhs_value;
     assert(diff >= 0);
     int64_t minimal_subtraction = diff; // num_children
@@ -244,7 +243,7 @@ void Strengthener::strengthen_mult_by_constant(const z3::expr &non_constant_arg,
   }
 }
 
-void Strengthener::strengthen_mult_without_constants(const z3::expr &lhs, std::list<int64_t> &arguments_values,
+void Strengthener::strengthen_mult_without_constants(const z3::expr &lhs, int64_t lhs_value, std::list<int64_t> &arguments_values,
                                                      Z3_decl_kind op, int64_t rhs_value) {
   std::cout << "strengthening multiply without constants: " << lhs.to_string() << op_to_string(op) << rhs_value << "\n";
   //TODO: finish

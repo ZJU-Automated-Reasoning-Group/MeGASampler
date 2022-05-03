@@ -175,7 +175,7 @@ void Strengthener::strengthen_add_without_constants(const z3::expr &lhs, int64_t
   if (is_op_le(op)){
     int64_t diff = rhs_value - lhs_value;
     assert(diff >= 0);
-    int64_t minimal_addition = diff; // num_children
+    int64_t minimal_addition = std::floor((double)diff/num_arguments);
     int64_t extra_addition = diff - (minimal_addition * num_arguments);
     int count_given_extra_addition = 0;
     auto it = arguments_values.begin();
@@ -198,7 +198,7 @@ void Strengthener::strengthen_add_without_constants(const z3::expr &lhs, int64_t
   } else if (is_op_ge(op)){
     int64_t diff = lhs_value - rhs_value;
     assert(diff >= 0);
-    int64_t minimal_subtraction = diff; // num_children
+    int64_t minimal_subtraction = std::floor((double)diff/num_arguments);
     int64_t extra_subtraction = diff - (minimal_subtraction * num_arguments);
     int count_given_extra_subtraction = 0;
     auto it = arguments_values.begin();

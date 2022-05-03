@@ -1,6 +1,7 @@
 #include "strengthener.h"
 #include <iostream>
 #include <numeric>
+#include <cmath>
 #include "z3_utils.h"
 
 void Strengthener::strengthen_literal(const z3::expr& literal){
@@ -82,25 +83,37 @@ void Strengthener::strengthen_binary_bool_literal(const z3::expr& lhs, int64_t l
 void Strengthener::strengthen_mult(const z3::expr &lhs, std::list<int64_t>& arguments_values, Z3_decl_kind op,
                                    int64_t rhs_value) {
   std::cout << "strengthening mul: " << lhs.to_string() << op_to_string(op) << rhs_value << "\n";
-  //TODO: finish
-  unsigned int i=0;
-  while (i < lhs.num_args()){
-    const z3::expr& child = lhs.arg(i);
-    if (is_numeral_constant(child)){
-      int64_t child_value = model_eval_to_int64(model, child);
+  assert(arguments_values.size() == lhs.num_args());
+  z3::expr non_constants_prod_e(c);
+  int64_t constants_prod = 1;
+  int64_t non_constants_prod = 1;
+  int constants_count = 0;
+  auto it = arguments_values.begin();
+  for (unsigned int i=0; i<lhs.num_args(); i++){
+    const z3::expr& argument = lhs.arg(i);
+    int64_t value = *it;
+    std::cout << "argument: " << argument.to_string() << " with value: " << value << "\n";
+    if (is_numeral_constant(argument)){
+      std::cout << "is numeral constant\n";
+      constants_prod *= value; // TODO: safe computations
+      constants_count++;
+      it = arguments_values.erase(it);
+    } else {
+      std::cout << "is not a numeral constant\n";
+      non_constants_prod *= value;
+      if (non_constants_prod_e) {
+        non_constants_prod_e = non_constants_prod_e * argument;
+      } else {
+        non_constants_prod_e = argument;
+      }
+      it++;
     }
-    i++;
   }
-//      var_list = lhs.children()
-//      var_list.pop(i)
-//      children_values.pop(i)
-//      self._strengthen_mul_by_constant(const_value, var_list,
-//                                       children_values, op,
-//                                       rhs_value, model)
-//      return
-//              i = i + 1
-//      self._strengthen_mult(lhs.children(), children_values, op,
-//                            rhs_value, model)
+  if (constants_count > 0){
+    strengthen_mult_by_constant(non_constants_prod_e, non_constants_prod, constants_prod, rhs_value, op);
+  } else {
+    strengthen_mult_without_constants(lhs, arguments_values, op, rhs_value);
+  }
 }
 
 void Strengthener::strengthen_add(const z3::expr &lhs, std::list<int64_t> &arguments_values, Z3_decl_kind op,
@@ -209,6 +222,32 @@ void Strengthener::strengthen_add_without_constants(const z3::expr &lhs, std::li
   } else {
     throw NoRuleForStrengthening();
   }
+}
+
+void Strengthener::strengthen_mult_by_constant(const z3::expr &non_constant_arg, int64_t non_constant_arg_value,
+                                               int64_t constant_value, int64_t rhs_value, Z3_decl_kind op) {
+  std::cout << "strengthening multiply by constant: " << constant_value << "*" << non_constant_arg.to_string() <<
+                                                        op_to_string(op) << rhs_value << "\n";
+  int64_t division_rounded_down = std::floor((float)rhs_value / constant_value);
+  if (constant_value > 0){
+    bool should_round_up = (is_op_ge(op) or is_op_gt(op)) and rhs_value % constant_value != 0;
+    strengthen_binary_bool_literal(non_constant_arg, non_constant_arg_value,
+                                   division_rounded_down+should_round_up, op);
+  } else if (constant_value < 0){
+    Z3_decl_kind reversed_op = reverse_bool_op(op);
+    bool should_round_up = (is_op_ge(reversed_op) or is_op_gt(reversed_op)) and rhs_value % constant_value != 0;
+    strengthen_binary_bool_literal(non_constant_arg, non_constant_arg_value,
+                                   division_rounded_down+should_round_up, reversed_op);
+  } else {
+    // case 0*expr op rhs, no need to add restrictions on expr
+    return;
+  }
+}
+
+void Strengthener::strengthen_mult_without_constants(const z3::expr &lhs, std::list<int64_t> &arguments_values,
+                                                     Z3_decl_kind op, int64_t rhs_value) {
+  std::cout << "strengthening multiply without constants: " << lhs.to_string() << op_to_string(op) << rhs_value << "\n";
+  //TODO: finish
 }
 
 int main() {

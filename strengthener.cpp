@@ -246,7 +246,45 @@ void Strengthener::strengthen_mult_by_constant(const z3::expr &non_constant_arg,
 void Strengthener::strengthen_mult_without_constants(const z3::expr &lhs, int64_t lhs_value, std::list<int64_t> &arguments_values,
                                                      Z3_decl_kind op, int64_t rhs_value) {
   std::cout << "strengthening multiply without constants: " << lhs.to_string() << op_to_string(op) << rhs_value << "\n";
-  //TODO: finish
+  assert(lhs.num_args() == arguments_values.size());
+  unsigned int num_arguments = lhs.num_args();
+  Z3_decl_kind ge_op = op;
+  Z3_decl_kind le_op = reverse_bool_op(op);
+  if (is_op_le(op)){
+    le_op = op;
+    ge_op = reverse_bool_op(op);
+  }
+  if ((is_op_le(op) && lhs_value>=0) || (is_op_ge(op) && lhs_value<=0)) {
+    auto it = arguments_values.begin();
+    unsigned int i = 0;
+    while (i < num_arguments) {
+      assert(it != arguments_values.end());
+      if (*it >= 0) {
+        strengthen_binary_bool_literal(lhs.arg(i), *it, *it, le_op);
+        strengthen_binary_bool_literal(lhs.arg(i), *it, 0, ge_op);
+      } else {
+        strengthen_binary_bool_literal(lhs.arg(i), *it, *it, ge_op);
+        strengthen_binary_bool_literal(lhs.arg(i), *it, 0, le_op);
+      }
+      i++;
+      it++;
+    }
+  } else if ((is_op_le(op) && lhs_value <= 0) || (is_op_ge(op) && lhs_value >= 0)){
+    auto it = arguments_values.begin();
+    unsigned int i = 0;
+    while (i < num_arguments) {
+      assert(it != arguments_values.end());
+      if (*it >= 0) {
+        strengthen_binary_bool_literal(lhs.arg(i), *it, *it, ge_op);
+      } else {
+        strengthen_binary_bool_literal(lhs.arg(i), *it, *it, le_op);
+      }
+      i++;
+      it++;
+    }
+  } else {
+    throw NoRuleForStrengthening();
+  }
 }
 
 int main() {

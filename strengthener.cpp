@@ -131,7 +131,7 @@ void Strengthener::strengthen_add(const z3::expr &lhs, std::list<int64_t> &argum
 //    std::cout << "argument: " << argument.to_string() << " with value: " << value << "\n";
     if (is_numeral_constant(argument)){
 //      std::cout << "is numeral constant\n";
-      constants_sum += value;
+      constants_sum += value; // TODO: safe computations
       constants_count++;
       it = arguments_values.erase(it);
     } else {

@@ -584,6 +584,13 @@ void MEGASampler::do_epoch(const z3::model& m) {
 
   remove_array_equalities(implicant_conjuncts_list);
 
+  Strengthener s(c, model);
+  s.print_interval_map();
+  for (auto conj : implicant_conjuncts_list) {
+    s.strengthen_literal(conj);
+  }
+  s.print_interval_map();
+
   z3::expr_vector implicant_conjuncts(c);
   for (auto conj : implicant_conjuncts_list) {
     implicant_conjuncts.push_back(conj);

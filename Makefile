@@ -38,7 +38,8 @@ testmodel: test_model.cpp model.cpp model.h
 	test_model.cpp model.cpp \
 	$(Z3FLAGS)
 
-strengthener: strengthener.cpp strengthener.h intervalmap.cpp intervalmap.h z3_utils.cpp z3_utils.h
+strengthener: strengthener.cpp strengthener.h interval.cpp interval.h z3_utils.cpp z3_utils.h test_strengthener.cpp
 	g++ $(CXXFLAGS) -o strengthener \
-	strengthener.cpp intervalmap.cpp z3_utils.cpp \
+	strengthener.cpp interval.cpp z3_utils.cpp test_strengthener.cpp \
 	$(Z3FLAGS)
+

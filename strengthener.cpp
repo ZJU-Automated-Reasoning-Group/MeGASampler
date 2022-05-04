@@ -154,7 +154,17 @@ void Strengthener::strengthen_add(const z3::expr &lhs, int64_t lhs_value, std::l
 
 void Strengthener::add_interval(const z3::expr &lhs, int64_t rhs_value, Z3_decl_kind op) {
   std::cout << "adding interval: " << lhs.to_string() << op_to_string(op) << rhs_value << "\n";
-  //TODO: implement
+  assert(lhs.is_const() || is_op_select(get_op(lhs)));
+  if (is_op_ge(op)){
+    i_map[lhs.to_string()].set_lower_bound(rhs_value);
+  } else if (is_op_le(op)){
+    i_map[lhs.to_string()].set_upper_bound(rhs_value);
+  } else if (is_op_eq(op)){
+    i_map[lhs.to_string()].set_lower_bound(rhs_value);
+    i_map[lhs.to_string()].set_upper_bound(rhs_value);
+  } else {
+    throw NoRuleForStrengthening();
+  }
 }
 
 void Strengthener::strengthen_sub(const z3::expr &lhs, std::list<int64_t> &arguments_values, Z3_decl_kind op,
@@ -285,6 +295,14 @@ void Strengthener::strengthen_mult_without_constants(const z3::expr &lhs, int64_
   } else {
     throw NoRuleForStrengthening();
   }
+}
+
+void Strengthener::print_interval_map() {
+  std::cout << "interval map: ";
+  for (auto const &pair: i_map) {
+    std::cout << pair.first << ":" << pair.second << ",";
+  }
+  std::cout << "\n";
 }
 
 int main() {

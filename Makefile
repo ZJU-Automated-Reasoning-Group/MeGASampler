@@ -22,7 +22,7 @@ clean:
 $(BINARY): strengthen.capnp.h $(SRC) pythonfuncs.c
 	g++ $(CXXFLAGS) -o $(BINARY) \
   strengthen.capnp.c++ smtsampler.cpp pythonfuncs.c megasampler.cpp sampler.cpp \
-  main.cpp model.cpp \
+  main.cpp model.cpp strengthener.cpp interval.cpp z3_utils.cpp \
   -isystem /usr/lib/$(PYNAME)/include -isystem /usr/include/$(PYNAME) \
   $(Z3FLAGS) -L /usr/lib/$(PYNAME)/config-$(PYVER)m-x86_64-linux-gnu \
   -lz3 -l$(PYLIBNAME) -lpthread -lcapnp -ljsoncpp

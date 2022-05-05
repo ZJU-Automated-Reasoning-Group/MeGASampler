@@ -11,9 +11,9 @@ class Strengthener{
 
     z3::context& c;
     z3::model& model;
+public:
     IntervalMap i_map;
 
-public:
     Strengthener(z3::context& con, z3::model& mod) : c(con), model(mod) {};
     class NoRuleForStrengthening : std::exception {};
     void strengthen_literal(const z3::expr& literal); // _strengthen_conjunct in python

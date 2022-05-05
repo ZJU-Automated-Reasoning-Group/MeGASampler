@@ -10,7 +10,6 @@
 #include "model.h"
 #include "pythonfuncs.h"
 #include "strengthen.capnp.h"
-#include "strengthener.h"
 
 void MEGASampler::print_array_equality_graph() {
   std::cout << "array equality graph:\n";
@@ -657,6 +656,7 @@ void MEGASampler::do_epoch(const z3::model& m) {
   if (is_time_limit_reached("epoch")) return;
 
   sample_intervals_in_rounds(container.getIntervalmap(), index_vec);
+  sample_intervals_in_rounds(s.i_map, index_vec);
 }
 
 void MEGASampler::finish() {
@@ -733,6 +733,14 @@ int64_t randomInInterval(const MEGASampler::capnpInterval& interval) {
   return gen(rng);
 }
 
+int64_t randomInInterval(const Interval& interval) {
+  int64_t low = interval.get_low();
+  int64_t high = interval.get_high();
+  std::mt19937 rng(std::random_device{}());
+  std::uniform_int_distribution<int64_t> gen(low, high);  // uniform, unbiased
+  return gen(rng);
+}
+
 std::string MEGASampler::get_random_sample_from_array_intervals(
     const capnpIntervalMap& intervalmap,
     const std::vector<arrayAccessData>& indexvec) {
@@ -775,12 +783,70 @@ std::string MEGASampler::get_random_sample_from_array_intervals(
   }
 }
 
+std::string MEGASampler::get_random_sample_from_array_intervals(
+        const IntervalMap& intervalmap,
+        const std::vector<arrayAccessData>& indexvec) {
+  while (true) {  // TODO some heuristic for early termination in case we keep
+    // getting clashes?
+    Model m_out(variable_names);
+    bool valid_model = true;
+    for (const auto& varinterval : intervalmap) {
+      std::string varsort = "int"; //TODO: replace with real value!!!
+      if (varsort == "int") {
+        const std::string& varname = varinterval.first;
+        const auto& interval = varinterval.second;
+        int64_t rand = randomInInterval(interval);
+        bool res = m_out.addIntAssignment(varname, rand);
+        assert(res);
+      }
+    }
+    // TODO: make the following loop use interval map as well
+    for (const auto& it : indexvec) {
+      int64_t i_val;
+      z3::expr index_expr = it.indexExpr;
+      auto index_res = m_out.evalIntExpr(index_expr, false, true);
+      assert(index_res.second);
+      i_val = index_res.first;
+      std::string array_name = it.entryInCapnpMap.getVariable().cStr();
+      auto res = m_out.evalArrayVar(array_name, i_val);
+      if (res.second) {
+        valid_model =
+                check_if_in_interval(res.first, it.entryInCapnpMap.getInterval());
+        if (!valid_model) break;
+      } else {
+        const auto& interval = it.entryInCapnpMap.getInterval();
+        int64_t rand = randomInInterval(interval);
+        m_out.addArrayAssignment(array_name, i_val, rand);
+      }
+    }
+    if (valid_model) {
+      //    TODO remove_aux_arrays(m_out, aux_list)
+      return m_out.toString();
+    }
+  }
+}
+
 std::string MEGASampler::get_random_sample_from_int_intervals(
     const capnpIntervalMap& intervalmap) {
   std::string sample_string;
   for (auto varinterval : intervalmap) {
     std::string varname = varinterval.getVariable().cStr();
     const auto& interval = varinterval.getInterval();
+    sample_string += varname;
+    sample_string += ":";
+    int64_t randNum = randomInInterval(interval);
+    sample_string += std::to_string(randNum);
+    sample_string += ";";
+  }
+  return sample_string;
+}
+
+std::string MEGASampler::get_random_sample_from_int_intervals(
+        const IntervalMap& intervalmap) {
+  std::string sample_string;
+  for (const auto& varinterval : intervalmap) {
+    const std::string& varname = varinterval.first;
+    const auto& interval = varinterval.second;
     sample_string += varname;
     sample_string += ":";
     int64_t randNum = randomInInterval(interval);
@@ -839,4 +905,53 @@ z3::expr MEGASampler::deserialise_expr(const std::string& str) {
   assert(constraints.size() == 1);
   assert(constraints[0].is_eq());
   return constraints[0].arg(0);
+}
+
+void
+MEGASampler::sample_intervals_in_rounds(const IntervalMap &intervalmap, const std::vector<arrayAccessData> &index_vec) {
+  uint64_t coeff = 1;
+  for (const auto& imap : intervalmap) {
+    const auto& i = imap.second;
+    if (i.is_low_minf() || i.is_high_inf()) {
+      coeff += 32;
+      continue;
+    }
+    coeff = safe_mul(coeff, 1 + ilog2(1 + ilog2(1 + i.get_high() - i.get_low())));
+  }
+  if (use_blocking) coeff = coeff + intervalmap.size();
+  const uint64_t MAX_ROUNDS =
+          std::min(std::max(use_blocking ? 50UL : 10UL, coeff),
+                   (long unsigned)max_samples >> 7UL);
+  const unsigned int MAX_SAMPLES = 30;
+  const float MIN_RATE = 0.75;
+  uint64_t debug_samples = 0;
+
+  if (debug)
+    std::cout << "Sampling, coeff = " << coeff
+              << ", MAX_ROUNDS = " << MAX_ROUNDS
+              << ", MAX_SAMPLES = " << MAX_SAMPLES << "\n";
+
+  float rate = 1.0;
+  for (uint64_t round = 0; round < MAX_ROUNDS && rate > MIN_RATE; ++round) {
+    is_time_limit_reached();
+    unsigned int new_samples = 0;
+    unsigned int round_samples = 0;
+    for (; round_samples <= MAX_SAMPLES; ++round_samples) {
+      std::string sample;
+      if (has_arrays) {
+        sample = get_random_sample_from_array_intervals(intervalmap, index_vec);
+      } else {
+        sample = get_random_sample_from_int_intervals(intervalmap);
+      }
+      ++total_samples;
+      if (save_and_output_sample_if_unique(sample)) {
+        if (debug) ++debug_samples;
+        ++new_samples;
+      }
+    }
+    rate = new_samples / round_samples;
+  }
+  if (debug)
+    std::cout << "Epoch unique samples: " << debug_samples
+              << ", rate = " << rate << "\n";
 }

@@ -6,6 +6,7 @@
 
 #include "sampler.h"
 #include "strengthen.capnp.h"
+#include "strengthener.h"
 
 class MEGASampler : public Sampler {
  public:
@@ -100,10 +101,18 @@ class MEGASampler : public Sampler {
   void sample_intervals_in_rounds(
       const capnpIntervalMap& intervalmap,
       const std::vector<arrayAccessData>& index_vec);
+  void sample_intervals_in_rounds(
+          const IntervalMap& intervalmap,
+          const std::vector<arrayAccessData>& index_vec);
   std::string get_random_sample_from_int_intervals(
       const capnpIntervalMap& intervalmap);
+  std::string get_random_sample_from_int_intervals(
+      const IntervalMap& intervalmap);
   std::string get_random_sample_from_array_intervals(
       const capnpIntervalMap& intervalmap,
+      const std::vector<arrayAccessData>& indexvec);
+  std::string get_random_sample_from_array_intervals(
+      const IntervalMap& intervalmap,
       const std::vector<arrayAccessData>& indexvec);
   void add_soft_constraint_from_intervals(
       const capnpIntervalMap& intervalmap,

@@ -793,7 +793,7 @@ std::string MEGASampler::get_random_sample_from_array_intervals(
     for (const auto& varinterval : intervalmap) {
       std::string varsort = "int"; //TODO: replace with real value!!!
       if (varsort == "int") {
-        const std::string& varname = varinterval.first;
+        const std::string& varname = varinterval.first.to_string();
         const auto& interval = varinterval.second;
         int64_t rand = randomInInterval(interval);
         bool res = m_out.addIntAssignment(varname, rand);
@@ -845,7 +845,7 @@ std::string MEGASampler::get_random_sample_from_int_intervals(
         const IntervalMap& intervalmap) {
   std::string sample_string;
   for (const auto& varinterval : intervalmap) {
-    const std::string& varname = varinterval.first;
+    const std::string& varname = varinterval.first.to_string();
     const auto& interval = varinterval.second;
     sample_string += varname;
     sample_string += ":";

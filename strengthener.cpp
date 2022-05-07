@@ -156,12 +156,12 @@ void Strengthener::add_interval(const z3::expr &lhs, int64_t rhs_value, Z3_decl_
   std::cout << "adding interval: " << lhs.to_string() << op_to_string(op) << rhs_value << "\n";
   assert(lhs.is_const() || is_op_select(get_op(lhs)));
   if (is_op_ge(op)){
-    i_map[lhs.to_string()].set_lower_bound(rhs_value);
+    i_map[lhs].set_lower_bound(rhs_value);
   } else if (is_op_le(op)){
-    i_map[lhs.to_string()].set_upper_bound(rhs_value);
+    i_map[lhs].set_upper_bound(rhs_value);
   } else if (is_op_eq(op)){
-    i_map[lhs.to_string()].set_lower_bound(rhs_value);
-    i_map[lhs.to_string()].set_upper_bound(rhs_value);
+    i_map[lhs].set_lower_bound(rhs_value);
+    i_map[lhs].set_upper_bound(rhs_value);
   } else {
     throw NoRuleForStrengthening();
   }

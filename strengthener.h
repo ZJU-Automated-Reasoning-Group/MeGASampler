@@ -4,8 +4,7 @@
 #include "interval.h"
 #include "z3++.h"
 #include <list>
-
-typedef std::unordered_map<std::string,Interval> IntervalMap;
+#include "intervalmap.h"
 
 class Strengthener{
 

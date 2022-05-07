@@ -117,6 +117,7 @@ class MEGASampler : public Sampler {
   void add_soft_constraint_from_intervals(
       const capnpIntervalMap& intervalmap,
       const std::vector<arrayAccessData>& index_vec);
+  void add_soft_constraint_from_intervals(const IntervalMap& intervalmap);
   z3::expr deserialise_expr(const std::string& str);
   /*
    * simplifies original_formula and saves the result in simpl_fomrula

@@ -650,8 +650,10 @@ void MEGASampler::do_epoch(const z3::model& m) {
     }
   }
 
+//  if (use_blocking)
+//    add_soft_constraint_from_intervals(container.getIntervalmap(), index_vec);
   if (use_blocking)
-    add_soft_constraint_from_intervals(container.getIntervalmap(), index_vec);
+    add_soft_constraint_from_intervals(s.i_map);
 
   if (is_time_limit_reached("epoch")) return;
 
@@ -954,4 +956,22 @@ MEGASampler::sample_intervals_in_rounds(const IntervalMap &intervalmap, const st
   if (debug)
     std::cout << "Epoch unique samples: " << debug_samples
               << ", rate = " << rate << "\n";
+}
+
+void MEGASampler::add_soft_constraint_from_intervals(const IntervalMap &intervalmap) {
+  z3::expr intervals_expr(c);
+  for (const auto& var_interval : intervalmap) {
+    const z3::expr& var = var_interval.first;
+    const Interval& interval = var_interval.second;
+    if (!interval.is_low_minf()) {
+      const auto& low = c.int_val(interval.get_low());
+      intervals_expr = combine_expr(intervals_expr, var >= low);
+    }
+    if (!interval.is_high_inf()) {
+      const auto high = c.int_val(interval.get_high());
+      intervals_expr = combine_expr(intervals_expr, var <= high);
+    }
+  }
+  if (debug) std::cout << "blocking constraint: " << intervals_expr.to_string() << "\n";
+  opt.add_soft(!intervals_expr, 1);
 }

@@ -51,7 +51,7 @@ void Strengthener::strengthen_binary_bool_literal(const z3::expr& lhs, int64_t l
   assert (is_op_ge(op) or is_op_le(op) or is_op_eq(op));
   assert (lhs.is_int());
   if (is_numeral_constant(lhs)) return;
-  if (lhs.is_const()){
+  if (lhs.is_const() || is_op_select(get_op(lhs))){
     add_interval(lhs, rhs_value, op);
   } else if (is_op_eq(op)){
     for (unsigned int i=0; i<lhs.num_args(); i++){

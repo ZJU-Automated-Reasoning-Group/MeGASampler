@@ -117,7 +117,7 @@ class SatisfiesMetric(Metric):
 
 
 class ManualSatisfiesMetric(Metric):
-    def __init__(self, formula: str, statistics: NodeStatistics = None):
+    def __init__(self, formula: str, statistics: typ.Optional[NodeStatistics] = None):
         super().__init__(formula)
         self._statistics = statistics
         expr = z3.And(self._solver.assertions())
@@ -136,7 +136,7 @@ class ManualSatisfiesMetric(Metric):
             return self._statistics.result
         return super().result
 
-    def _build_evaluator(self, expr):
+    def _build_evaluator(self, expr: z3.Expr):
         return self._build_bool(expr)
 
     def _build_bool(self, expr):
@@ -193,9 +193,39 @@ class ManualSatisfiesMetric(Metric):
             return self._build_leaf_symbol(expr)
         elif z3.is_select(expr):
             return self._build_array_select(expr)
+        elif z3.is_app_of(expr, z3.Z3_OP_ITE):
+            return self._build_ite(expr)
         raise Exception(f"Unhandled: {expr}")
 
+    def _build_ite(self, expr):
+        node_id = expr.get_id()
+        predicate = self._build_bool(expr.arg(0))
+
+        if z3.is_int(expr):
+            op = self._build_int
+        elif z3.is_bool(expr):
+            op = self._build_bool
+        elif z3.is_array(expr):
+            op = self._build_array
+        else:
+            raise Exception(f"Unhandled ite: {expr}")
+
+        t_side = op(expr.arg(1))
+        f_side = op(expr.arg(2))
+
+        def e(model):
+            if predicate(model):
+                value = t_side(model)
+            else:
+                value = f_side(model)
+            if self._statistics:
+                self._statistics.evaluate_node(node_id, value)
+            return value
+
+        return e
+
     def _build_array(self, expr):
+        assert z3.is_array(expr)
         node_id = expr.get_id()
         if self._statistics:
             self._statistics.register_node(node_id, "array")
@@ -204,6 +234,8 @@ class ManualSatisfiesMetric(Metric):
             return self._build_array_leaf_symbol(expr)
         elif z3.is_store(expr):
             return self._build_array_store(expr)
+        elif z3.is_app_of(expr, z3.Z3_OP_ITE):
+            return self._build_ite(expr)
         raise Exception(f"Unhandled array: {expr}")
 
     def _build_array_leaf_symbol(self, expr):
@@ -226,7 +258,7 @@ class ManualSatisfiesMetric(Metric):
 
         def e(model):
             old_value = array(model)
-            value = collections.defaultdict(old_value.default_factory)
+            value = collections.defaultdict(old_value.default_factory, old_value)
             value[index(model)] = store(model)
             if self._statistics:
                 self._statistics.evaluate_node(node_id, value)
@@ -320,8 +352,8 @@ class ManualSatisfiesMetric(Metric):
 
 class NodeStatistics(abc.ABC):
     def __init__(self):
-        self._storage: typ.Mapping[int, tuple[typ.Any, typ.Any, str]] = {}
-        self._totals: typ.Optional[typ.Mapping[int, int]] = None
+        self._storage: typ.MutableMapping[int, tuple[typ.Any, typ.Any, str]] = {}
+        self._totals: typ.Optional[typ.MutableMapping[int, int]] = None
 
     @abc.abstractmethod
     def register_node(self, node_id: int, sort: str):
@@ -331,7 +363,7 @@ class NodeStatistics(abc.ABC):
     def evaluate_node(self, node_id: int, value: typ.Any):
         pass
 
-    def set_totals(self, totals: typ.Mapping[int, typ.Any]):
+    def set_totals(self, totals: typ.MutableMapping[int, typ.Any]):
         self._totals = totals
 
     @property
@@ -371,59 +403,61 @@ class WireCoverageStatistics(NodeStatistics):
     def node_total(self, node_id: int, sort: str) -> int:
         if self._totals:
             return self._totals[node_id]
-        
-        match sort:
-            case "bool":
-                return 1
-            case "int":
-                return bin(self.MASK).count("1")
-            case "array":
-                return 0  # TODO: ???
-            case _:
-                raise ValueError(f"Unhandled: {sort}")
+
+        if sort == "bool":
+            return 1
+        elif sort == "int":
+            return bin(self.MASK).count("1")
+        elif sort == "array":
+            return 0  # TODO: ???
+        else:
+            raise ValueError(f"Unhandled: {sort}")
 
     def node_count(self, true_count, false_count, sort: str) -> int:
-        match sort:
-            case "bool":
-                return 1 if true_count and false_count else 0
-            case "int":
-                return bin(true_count & false_count).count("1")
-            case "array":
-                return 0
-            case _:
-                raise ValueError(f"Unhandled: {sort}")
+        if sort == "bool":
+            return 1 if true_count and false_count else 0
+        elif sort == "int":
+            return bin(true_count & false_count).count("1")
+        elif sort == "array":
+            return 0
+        else:
+            raise ValueError(f"Unhandled: {sort}")
 
     @property
     def result(self) -> fractions.Fraction:
         count = 0
         total = 0
         for key, (true_count, false_count, sort) in self._storage.items():
-            total += self.node_total(sort)
+            total += self.node_total(key, sort)
             count += self.node_count(true_count, false_count, sort)
 
         return fractions.Fraction(count, total)
 
     @classmethod
-    def union_totals(cls, *statistics: list[WireCoverageStatistics]
-                     ) -> typ.Mapping[int, int]:
-        ret: typ.Mapping[int, int] = {}
+    def union_totals(
+        cls, *statistics: WireCoverageStatistics
+    ) -> typ.MutableMapping[int, int]:
+        ret: typ.MutableMapping[int, int] = {}
         if not statistics:
             raise ValueError("Needs at least one statistics")
         for key in statistics[0]._storage:
             sort = statistics[0]._storage[key][2]
-            match sort:
-                case "bool":
-                    ret[key] = 1 if any(t and f for t, f, _ in s._storage[key] for s in statistics) else 0
-                case "int":
-                    v = 0
-                    for s in statistics:
-                        t, f, _ = s._storage[key]
-                        v |= t & f
-                    ret[key] = bin(v).count("1")
-                case "array":
-                    ret[key] = 0
-                case _:
-                    raise ValueError(f"Unhandled: {sort}")
+            if sort == "bool":
+                ret[key] = (
+                    1
+                    if any(s._storage[key][0] and s._storage[key][1] for s in statistics)
+                    else 0
+                )
+            elif sort == "int":
+                v = 0
+                for s in statistics:
+                    t, f, _ = s._storage[key]
+                    v |= t & f
+                ret[key] = bin(v).count("1")
+            elif sort == "array":
+                ret[key] = 0
+            else:
+                raise ValueError(f"Unhandled: {sort}")
         return ret
 
 
@@ -466,8 +500,7 @@ def calc_metric(
     if _metric == "satisfies":
         metric: Metric = SatisfiesMetric(formula, use_c_api=_use_c_api)
     elif _metric == "wire_coverage":
-        metric = ManualSatisfiesMetric(formula,
-                                       statistics=WireCoverageStatistics())
+        metric = ManualSatisfiesMetric(formula, statistics=WireCoverageStatistics())
 
     _apply_metric(metric, samples)
     return metric.result

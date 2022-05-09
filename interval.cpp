@@ -1,5 +1,6 @@
 
 #include "interval.h"
+#include <random>
 
 void Interval::set_upper_bound(int64_t u_bound) {
   if (u_bound < high){
@@ -48,4 +49,14 @@ bool Interval::is_bottom() const {
 
 bool Interval::is_top() const {
   return is_high_inf() && is_low_minf();
+}
+
+bool Interval::is_in_range(int64_t val) const {
+    return (val >= low && val <= high);
+}
+
+int64_t Interval::random_in_range() const {
+    std::mt19937 rng(std::random_device{}());
+    std::uniform_int_distribution<int64_t> gen(low, high);  // uniform, unbiased
+    return gen(rng);
 }

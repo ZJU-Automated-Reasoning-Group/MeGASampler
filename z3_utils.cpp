@@ -181,3 +181,16 @@ void get_arguments_values(const z3::expr& expr, const z3::model& model, std::lis
     arguments_values.push_back(value);
   }
 }
+
+int count_selects(const z3::expr& e) {
+  if (!e.is_app()) return 0;
+  int count = (e.decl().decl_kind() == Z3_OP_SELECT);
+  for (unsigned int i = 0; i < e.num_args(); i++) {
+    count += count_selects(e.arg(i));
+  }
+  return count;
+}
+
+bool is_array_eq(const z3::expr& e) {
+  return e.is_eq() && e.arg(0).is_array();
+}

@@ -7,33 +7,14 @@
 #include "sampler.h"
 #include "strengthen.capnp.h"
 #include "strengthener.h"
+#include "z3_utils.h"
 
 class MEGASampler : public Sampler {
- public:
-  typedef capnp::List<StrengthenResult::VarInterval>::Reader capnpIntervalMap;
-  typedef ::StrengthenResult::VarInterval::Reader capnpVarInterval;
-  typedef ::StrengthenResult::VarInterval::Interval::Reader capnpInterval;
 
  private:
   z3::expr simpl_formula;
   z3::expr implicant;
-
-  // data structure for parsing intervals over select terms and sampling them
-  struct arrayAccessData {
-    capnpVarInterval entryInCapnpMap;
-    z3::expr indexExpr;
-    int numSelecetsInIndex;
-    arrayAccessData(const capnpVarInterval e, z3::expr i, int n)
-        : entryInCapnpMap(e), indexExpr(i), numSelecetsInIndex(n) {}
-    std::string toString() {
-      return "index " + indexExpr.to_string() + " in array " +
-             entryInCapnpMap.getVariable().cStr() + " has " +
-             std::to_string(numSelecetsInIndex) + " selects.";
-    }
-    bool operator<(const arrayAccessData& d) const {
-      return numSelecetsInIndex < d.numSelecetsInIndex;
-    }
-  };
+  std::list<z3::expr> intervals_select_terms;
 
   // data structures for removing array equalities
   struct storeEqIndexValue {
@@ -98,26 +79,12 @@ class MEGASampler : public Sampler {
      * The entry aux_a->(a,b) is inserted to aux_array_map.
      */
   void eliminate_eq_of_different_arrays();
-  void sample_intervals_in_rounds(
-      const capnpIntervalMap& intervalmap,
-      const std::vector<arrayAccessData>& index_vec);
-  void sample_intervals_in_rounds(
-          const IntervalMap& intervalmap,
-          const std::vector<arrayAccessData>& index_vec);
-  std::string get_random_sample_from_int_intervals(
-      const capnpIntervalMap& intervalmap);
+  void sample_intervals_in_rounds(const IntervalMap &intervalmap);
   std::string get_random_sample_from_int_intervals(
       const IntervalMap& intervalmap);
   std::string get_random_sample_from_array_intervals(
-      const capnpIntervalMap& intervalmap,
-      const std::vector<arrayAccessData>& indexvec);
-  std::string get_random_sample_from_array_intervals(
-      const IntervalMap& intervalmap,
-      const std::vector<arrayAccessData>& indexvec);
-  void add_soft_constraint_from_intervals(
-      const capnpIntervalMap& intervalmap,
-      const std::vector<arrayAccessData>& index_vec);
-  z3::expr deserialise_expr(const std::string& str);
+      const IntervalMap& intervalmap);
+  void add_soft_constraint_from_intervals(const IntervalMap& intervalmap);
   /*
    * simplifies original_formula and saves the result in simpl_fomrula
    */

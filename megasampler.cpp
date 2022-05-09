@@ -2,7 +2,6 @@
 
 #include <cstdint>
 #include <iostream>
-#include <random>
 
 #include "model.h"
 #include "pythonfuncs.h"
@@ -617,14 +616,6 @@ static inline int64_t safe_mul(const int64_t a, const int64_t b) {
   return ((a > 0) ^ (b > 0)) ? INT64_MIN : INT64_MAX;
 }
 
-int64_t randomInInterval(const Interval& interval) {
-  int64_t low = interval.get_low();
-  int64_t high = interval.get_high();
-  std::mt19937 rng(std::random_device{}());
-  std::uniform_int_distribution<int64_t> gen(low, high);  // uniform, unbiased
-  return gen(rng);
-}
-
 std::string MEGASampler::get_random_sample_from_array_intervals(
         const IntervalMap& intervalmap) {
   while (true) {  // TODO some heuristic for early termination in case we keep getting clashes?
@@ -635,7 +626,7 @@ std::string MEGASampler::get_random_sample_from_array_intervals(
       if (var.is_const()) {
         const Interval& interval = varinterval.second;
         const std::string& varname = var.to_string();
-        int64_t rand = randomInInterval(interval);
+        int64_t rand = interval.random_in_range();
         bool res = m_out.addIntAssignment(varname, rand);
         assert(res);
       }
@@ -656,7 +647,7 @@ std::string MEGASampler::get_random_sample_from_array_intervals(
         if (!valid_model) break;
       } else {
         const auto& interval = intervalmap.at(select_t);
-        int64_t rand = randomInInterval(interval);
+        int64_t rand = interval.random_in_range();
         m_out.addArrayAssignment(array_name, i_val, rand);
       }
     }
@@ -674,7 +665,7 @@ std::string MEGASampler::get_random_sample_from_int_intervals(
     const auto& interval = varinterval.second;
     sample_string += varname;
     sample_string += ":";
-    int64_t randNum = randomInInterval(interval);
+    int64_t randNum = interval.random_in_range();
     sample_string += std::to_string(randNum);
     sample_string += ";";
   }

@@ -27,6 +27,11 @@ static inline bool is_array_eq(const z3::expr& e) {
 }
 
 static inline bool check_if_in_interval(
+        int64_t val, const Interval& interval) {
+  return (val >= interval.get_low() && val <= interval.get_high());
+}
+
+static inline bool check_if_in_interval(
     int64_t val, const MEGASampler::capnpInterval& interval) {
   return (val >= interval.getLow() && val <= interval.getHigh());
 }

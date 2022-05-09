@@ -190,3 +190,7 @@ int count_selects(const z3::expr& e) {
   }
   return count;
 }
+
+bool is_array_eq(const z3::expr& e) {
+  return e.is_eq() && e.arg(0).is_array();
+}

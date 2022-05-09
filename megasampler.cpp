@@ -18,10 +18,6 @@ void MEGASampler::print_array_equality_graph() {
   }
 }
 
-static inline bool is_array_eq(const z3::expr& e) {
-  return e.is_eq() && e.arg(0).is_array();
-}
-
 static inline bool check_if_in_interval(
         int64_t val, const Interval& interval) {
   return (val >= interval.get_low() && val <= interval.get_high());

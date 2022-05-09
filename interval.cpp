@@ -49,3 +49,7 @@ bool Interval::is_bottom() const {
 bool Interval::is_top() const {
   return is_high_inf() && is_low_minf();
 }
+
+bool Interval::is_in_range(int64_t val) const {
+    return (val >= low && val <= high);
+}

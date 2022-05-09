@@ -21,6 +21,7 @@ public:
     [[nodiscard]] bool is_bottom() const;
     [[nodiscard]] bool is_top() const;
     friend std::ostream& operator<<(std::ostream& os, const Interval& interval);
+    bool is_in_range(int64_t value) const;
 };
 
 

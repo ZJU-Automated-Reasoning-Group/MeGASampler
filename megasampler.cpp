@@ -18,11 +18,6 @@ void MEGASampler::print_array_equality_graph() {
   }
 }
 
-static inline bool check_if_in_interval(
-        int64_t val, const Interval& interval) {
-  return (val >= interval.get_low() && val <= interval.get_high());
-}
-
 void MEGASampler::array_equality_graph_BFS(const z3::expr& root,
                                            const z3::expr& index, int64_t value,
                                            std::list<z3::expr>& new_conjucts) {
@@ -657,7 +652,7 @@ std::string MEGASampler::get_random_sample_from_array_intervals(
       auto res = m_out.evalArrayVar(array_name, i_val);
       if (res.second) {
         valid_model =
-                check_if_in_interval(res.first, intervalmap.at(select_t));
+                intervalmap.at(select_t).is_in_range(res.first);
         if (!valid_model) break;
       } else {
         const auto& interval = intervalmap.at(select_t);

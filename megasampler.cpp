@@ -31,15 +31,6 @@ static inline bool check_if_in_interval(
   return (val >= interval.getLow() && val <= interval.getHigh());
 }
 
-static int count_selects(const z3::expr& e) {
-  if (!e.is_app()) return 0;
-  int count = (e.decl().decl_kind() == Z3_OP_SELECT);
-  for (unsigned int i = 0; i < e.num_args(); i++) {
-    count += count_selects(e.arg(i));
-  }
-  return count;
-}
-
 void MEGASampler::array_equality_graph_BFS(const z3::expr& root,
                                            const z3::expr& index, int64_t value,
                                            std::list<z3::expr>& new_conjucts) {

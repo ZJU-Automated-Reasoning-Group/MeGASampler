@@ -7,6 +7,7 @@
 #include "sampler.h"
 #include "strengthen.capnp.h"
 #include "strengthener.h"
+#include "z3_utils.h"
 
 class MEGASampler : public Sampler {
  public:

@@ -46,5 +46,6 @@ std::string op_to_string(Z3_decl_kind op);
 bool is_numeral_constant(const z3::expr& expr);
 Z3_decl_kind reverse_bool_op(Z3_decl_kind op);
 void get_arguments_values(const z3::expr& expr, const z3::model& model, std::list<int64_t>& arguments_values);
+int count_selects(const z3::expr& e);
 
 #endif //MEGASAMPLER_Z3_UTILS_H

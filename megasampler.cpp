@@ -466,10 +466,11 @@ void MEGASampler::add_array_value_constraints(const arrayEqualityEdge& store_eq,
   }
 }
 
+template<typename T>
 static void collect_select_terms(const z3::expr& expr,
-                                 std::list<z3::expr>& select_terms) {
+                                 T& select_terms) {
   if (expr.decl().decl_kind() == Z3_OP_SELECT) {
-    select_terms.push_back(expr);
+    select_terms.insert(expr);
   }
   for (unsigned int i = 0; i < expr.num_args(); i++) {
     collect_select_terms(expr.arg(i), select_terms);
@@ -479,7 +480,7 @@ static void collect_select_terms(const z3::expr& expr,
 void MEGASampler::add_equalities_from_select_terms(
     std::list<z3::expr>& conjuncts) {
   std::list<z3::expr> new_conjuncts;
-  std::list<z3::expr> select_terms;
+  std::unordered_set<z3::expr> select_terms;
   for (const auto& conj : conjuncts) {
     collect_select_terms(conj, select_terms);
   }

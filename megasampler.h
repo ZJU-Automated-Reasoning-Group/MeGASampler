@@ -18,6 +18,7 @@ class MEGASampler : public Sampler {
  private:
   z3::expr simpl_formula;
   z3::expr implicant;
+  std::list<z3::expr> intervals_select_terms;
 
   // data structure for parsing intervals over select terms and sampling them
   struct arrayAccessData {
@@ -102,9 +103,7 @@ class MEGASampler : public Sampler {
   void sample_intervals_in_rounds(
       const capnpIntervalMap& intervalmap,
       const std::vector<arrayAccessData>& index_vec);
-  void sample_intervals_in_rounds(
-          const IntervalMap& intervalmap,
-          const std::vector<arrayAccessData>& index_vec);
+  void sample_intervals_in_rounds(const IntervalMap &intervalmap);
   std::string get_random_sample_from_int_intervals(
       const capnpIntervalMap& intervalmap);
   std::string get_random_sample_from_int_intervals(
@@ -113,8 +112,7 @@ class MEGASampler : public Sampler {
       const capnpIntervalMap& intervalmap,
       const std::vector<arrayAccessData>& indexvec);
   std::string get_random_sample_from_array_intervals(
-      const IntervalMap& intervalmap,
-      const std::vector<arrayAccessData>& indexvec);
+      const IntervalMap& intervalmap);
   void add_soft_constraint_from_intervals(
       const capnpIntervalMap& intervalmap,
       const std::vector<arrayAccessData>& index_vec);

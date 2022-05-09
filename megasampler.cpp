@@ -587,75 +587,36 @@ void MEGASampler::do_epoch(const z3::model& m) {
   }
   s.print_interval_map();
 
-  z3::expr_vector implicant_conjuncts(c);
-  for (auto conj : implicant_conjuncts_list) {
-    implicant_conjuncts.push_back(conj);
-  }
-  implicant = z3::mk_and(implicant_conjuncts);
-  struct buflen ret = call_strengthen(implicant, m, has_arrays, debug);
-
   accumulate_time("grow_seed");
 
-  const auto view = kj::arrayPtr(reinterpret_cast<const capnp::word*>(ret.buf),
-                                 ret.len / sizeof(capnp::word));
-  // Disable the security measure, we trust ourselves
-  const capnp::ReaderOptions options{UINT64_MAX, 64};
-  capnp::FlatArrayMessageReader message(view, options);
-  auto container = message.getRoot<StrengthenResult>();
-
-  auto res = container.getRes();
-  auto failureDescription = container.getFailuredecription();
-  if (!res) {
-    std::cout << "An error has occurred during epoch: "
-              << failureDescription.cStr() << "\n";
-    failure_cause = failureDescription.cStr();
-    safe_exit(1);
-  }
-
-  // print intervals for debug and parse array indices
-  std::vector<arrayAccessData> index_vec;
-  if (has_arrays && debug) std::cout << "parsing intervals:\n";
-  for (auto varinterval : container.getIntervalmap()) {
-    std::string varsort = varinterval.getVarsort().cStr();
-    std::string varname;
-    if (varsort == "int") {
-      varname = varinterval.getVariable().cStr();
-    } else {
-      assert(varsort == "select");
-      varname = varinterval.getVariable().cStr();
-      std::string index_str = varinterval.getIndex().cStr();
-      z3::expr index_expr = deserialise_expr(index_str);
-      varname += std::string{"["} + index_expr.to_string() + std::string{"]"};
-      int num_selects = count_selects(index_expr);
-      arrayAccessData d(varinterval, index_expr, num_selects);
-      index_vec.push_back(d);
+  intervals_select_terms.clear();
+  for (const auto& varinterval : s.i_map) {
+    const z3::expr& var = varinterval.first;
+    if (is_op_select(get_op(var))) {
+      intervals_select_terms.push_back(var);
     }
-    auto interval = varinterval.getInterval();
-    bool isLowMinf = interval.getIslowminf();
-    bool isHighInf = interval.getIshighinf();
-    auto low = isLowMinf ? "MINF" : std::to_string(interval.getLow());
-    auto high = isHighInf ? "INF" : std::to_string(interval.getHigh());
-    if (debug)
-      std::cout << varname << ": "
-                << "[" << low << "," << high << "] ";
   }
-  if (debug) std::cout << "\n";
-  std::sort(index_vec.begin(), index_vec.end());
+  auto num_selects_compare = [](const z3::expr& a, const z3::expr& b) {
+      int num_selects_a = count_selects(a);
+      int num_selects_b = count_selects(b);
+      return num_selects_a < num_selects_b ||
+             (num_selects_a == num_selects_b && a.to_string() < b.to_string());
+  };
+  intervals_select_terms.sort(num_selects_compare);
   if (debug) {
-    for (auto it = index_vec.begin(); it < index_vec.end(); it++) {
-      std::cout << it->toString() << "\n";
+    std::cout << "select_terms from intervals after sorting: ";
+    for (const auto &t: intervals_select_terms) {
+      std::cout << t.to_string() << ",";
     }
+    std::cout << "\n";
   }
 
-//  if (use_blocking)
-//    add_soft_constraint_from_intervals(container.getIntervalmap(), index_vec);
   if (use_blocking)
     add_soft_constraint_from_intervals(s.i_map);
 
   if (is_time_limit_reached("epoch")) return;
 
-  sample_intervals_in_rounds(container.getIntervalmap(), index_vec);
-  sample_intervals_in_rounds(s.i_map, index_vec);
+  sample_intervals_in_rounds(s.i_map);
 }
 
 void MEGASampler::finish() {
@@ -783,43 +744,41 @@ std::string MEGASampler::get_random_sample_from_array_intervals(
 }
 
 std::string MEGASampler::get_random_sample_from_array_intervals(
-        const IntervalMap& intervalmap,
-        const std::vector<arrayAccessData>& indexvec) {
-  while (true) {  // TODO some heuristic for early termination in case we keep
-    // getting clashes?
+        const IntervalMap& intervalmap) {
+  while (true) {  // TODO some heuristic for early termination in case we keep getting clashes?
     Model m_out(variable_names);
     bool valid_model = true;
     for (const auto& varinterval : intervalmap) {
-      std::string varsort = "int"; //TODO: replace with real value!!!
-      if (varsort == "int") {
-        const std::string& varname = varinterval.first.to_string();
-        const auto& interval = varinterval.second;
+      const z3::expr& var = varinterval.first;
+      if (var.is_const()) {
+        const Interval& interval = varinterval.second;
+        const std::string& varname = var.to_string();
         int64_t rand = randomInInterval(interval);
         bool res = m_out.addIntAssignment(varname, rand);
         assert(res);
       }
     }
-    // TODO: make the following loop use interval map as well
-    for (const auto& it : indexvec) {
+    for (const auto& select_t : intervals_select_terms) {
+      assert(is_op_select(get_op(select_t)));
       int64_t i_val;
-      z3::expr index_expr = it.indexExpr;
+      z3::expr index_expr = select_t.arg(1);
       auto index_res = m_out.evalIntExpr(index_expr, false, true);
       assert(index_res.second);
       i_val = index_res.first;
-      std::string array_name = it.entryInCapnpMap.getVariable().cStr();
+      assert(select_t.arg(0).is_const());
+      std::string array_name = select_t.arg(0).to_string();
       auto res = m_out.evalArrayVar(array_name, i_val);
       if (res.second) {
         valid_model =
-                check_if_in_interval(res.first, it.entryInCapnpMap.getInterval());
+                check_if_in_interval(res.first, intervalmap.at(select_t));
         if (!valid_model) break;
       } else {
-        const auto& interval = it.entryInCapnpMap.getInterval();
+        const auto& interval = intervalmap.at(select_t);
         int64_t rand = randomInInterval(interval);
         m_out.addArrayAssignment(array_name, i_val, rand);
       }
     }
     if (valid_model) {
-      //    TODO remove_aux_arrays(m_out, aux_list)
       return m_out.toString();
     }
   }
@@ -907,7 +866,7 @@ z3::expr MEGASampler::deserialise_expr(const std::string& str) {
 }
 
 void
-MEGASampler::sample_intervals_in_rounds(const IntervalMap &intervalmap, const std::vector<arrayAccessData> &index_vec) {
+MEGASampler::sample_intervals_in_rounds(const IntervalMap &intervalmap) {
   uint64_t coeff = 1;
   for (const auto& imap : intervalmap) {
     const auto& i = imap.second;
@@ -938,7 +897,7 @@ MEGASampler::sample_intervals_in_rounds(const IntervalMap &intervalmap, const st
     for (; round_samples <= MAX_SAMPLES; ++round_samples) {
       std::string sample;
       if (has_arrays) {
-        sample = get_random_sample_from_array_intervals(intervalmap, index_vec);
+        sample = get_random_sample_from_array_intervals(intervalmap);
       } else {
         sample = get_random_sample_from_int_intervals(intervalmap);
       }

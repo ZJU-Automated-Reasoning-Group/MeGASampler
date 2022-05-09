@@ -132,50 +132,6 @@ void MEGASampler::register_array_eq(z3::expr& f) {
   }
 }
 
-/*
- * search for a sub-expr e of the form
- * store(..(store(a,..))=store(..(store(b,..)) in f. return a,b and e
- */
-static inline bool find_eq_of_different_arrays(z3::expr& f, z3::expr& a,
-                                               z3::expr& b, z3::expr& e) {
-  if (is_array_eq(f)) {
-    //        std::cout << "array eq found: " << f.to_string() << "\n";
-    z3::expr left_a = f.arg(0);
-    z3::expr right_a = f.arg(1);
-    extract_array_from_store(left_a, a);
-    extract_array_from_store(right_a, b);
-    e = f;
-    return (a.to_string() != b.to_string());
-  } else {
-    for (auto child : f) {
-      bool res = find_eq_of_different_arrays(child, a, b, e);
-      if (res) return res;
-    }
-    return false;
-  }
-}
-
-static inline z3::expr store_substitute(z3::expr& store_e, z3::expr& array_e,
-                                        z3::expr& aux_array_e) {
-  if (store_e.is_app() && store_e.decl().decl_kind() == Z3_OP_STORE) {
-    z3::expr smaller_array_e = store_e.arg(0);
-    z3::expr index_e = store_e.arg(1);
-    z3::expr value_e = store_e.arg(2);
-    z3::expr smaller_array_prime =
-        store_substitute(smaller_array_e, array_e, aux_array_e);
-    z3::expr_vector src_e(store_e.ctx());
-    z3::expr_vector dst_e(store_e.ctx());
-    src_e.push_back(smaller_array_e);
-    dst_e.push_back(smaller_array_prime);
-    src_e.push_back(value_e);
-    dst_e.push_back(z3::select(array_e, index_e));
-    return store_e.substitute(src_e, dst_e);
-  } else {
-    assert(store_e == array_e);
-    return aux_array_e;
-  }
-}
-
 MEGASampler::MEGASampler(std::string _input, std::string _output_dir,
                          int _max_samples, double _max_time,
                          int _max_epoch_samples, double _max_epoch_time,

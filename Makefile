@@ -3,10 +3,6 @@
 BINARY=megasampler
 SRC=$(wildcard *.cpp) $(wildcard *.h) $(wildcard *.c++) $(wildcard *.c)
 PYVER=$(shell python --version | cut -d. -f1-2 | cut -d' ' -f2)
-PYNAME=python$(PYVER)
-PYLIBNAME=$(PYNAME)
-#PYNAME=pypy3
-#PYLIBNAME=pypy3-c
 
 all: $(BINARY)
 
@@ -17,21 +13,13 @@ Z3FLAGS=-isystem $(Z3DIR)/src/api -isystem ../z3/src/api/c++ \
  -L ../z3/build -lz3
 
 clean:
-	rm -f $(BINARY) strengthen.capnp.h pythonfuncs.c strengthen.capnp.c++ testmodel strengthener
+	rm -f $(BINARY) testmodel strengthener
 
-$(BINARY): strengthen.capnp.h $(SRC) pythonfuncs.c
+$(BINARY): $(SRC)
 	g++ $(CXXFLAGS) -o $(BINARY) \
-  strengthen.capnp.c++ smtsampler.cpp pythonfuncs.c megasampler.cpp sampler.cpp \
+  smtsampler.cpp megasampler.cpp sampler.cpp \
   main.cpp model.cpp strengthener.cpp interval.cpp z3_utils.cpp \
-  -isystem /usr/lib/$(PYNAME)/include -isystem /usr/include/$(PYNAME) \
-  $(Z3FLAGS) -L /usr/lib/$(PYNAME)/config-$(PYVER)m-x86_64-linux-gnu \
-  -lz3 -l$(PYLIBNAME) -lpthread -lcapnp -ljsoncpp
-
-strengthen.capnp.h: strengthen.capnp
-	capnp compile -oc++ strengthen.capnp
-
-pythonfuncs.c: pythonfuncs.h python_build.py
-	$(PYNAME) python_build.py
+  $(Z3FLAGS) -ljsoncpp -lpthread
 
 testmodel: test_model.cpp model.cpp model.h
 	g++ $(CXXFLAGS) -o testmodel \
@@ -42,4 +30,3 @@ strengthener: strengthener.cpp strengthener.h interval.cpp interval.h z3_utils.c
 	g++ $(CXXFLAGS) -o strengthener \
 	strengthener.cpp interval.cpp z3_utils.cpp test_strengthener.cpp \
 	$(Z3FLAGS)
-

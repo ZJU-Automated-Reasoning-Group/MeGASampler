@@ -5,7 +5,6 @@
 #include <set>
 
 #include "sampler.h"
-#include "strengthen.capnp.h"
 #include "strengthener.h"
 #include "z3_utils.h"
 

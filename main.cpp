@@ -8,7 +8,6 @@
 
 #include "megasampler.h"
 #include "minisampler.h"
-#include "pythonfuncs.h"
 #include "sampler.h"
 #include "smtsampler.h"
 
@@ -167,7 +166,6 @@ int regular_run(z3::context &c, const struct args &args) {
   if (args.debug) s->debug = true;
 
   global_samplers[0] = s.get();
-  patch_global_context(c);
   s->set_timer_max("total", args.max_time);
   s->set_timer_max("epoch", args.max_epoch_time);
   s->set_timer_on("total");

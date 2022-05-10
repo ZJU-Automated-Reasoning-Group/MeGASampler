@@ -4,7 +4,6 @@
 #include <iostream>
 
 #include "model.h"
-#include "pythonfuncs.h"
 
 void MEGASampler::print_array_equality_graph() {
   std::cout << "array equality graph:\n";

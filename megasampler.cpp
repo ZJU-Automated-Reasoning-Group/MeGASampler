@@ -570,10 +570,9 @@ static inline int64_t safe_mul(const int64_t a, const int64_t b) {
   return ((a > 0) ^ (b > 0)) ? INT64_MIN : INT64_MAX;
 }
 
-std::string MEGASampler::get_random_sample_from_array_intervals(
-    const IntervalMap& intervalmap) {
-  while (true) {  // TODO some heuristic for early termination in case we keep
-                  // getting clashes?
+std::string MEGASampler::get_random_sample_from_intervals(
+        const IntervalMap& intervalmap) {
+  while (true) {  // TODO some heuristic for early termination in case we keep getting clashes?
     Model m_out(variable_names);
     bool valid_model = true;
     for (const auto& varinterval : intervalmap) {
@@ -609,21 +608,6 @@ std::string MEGASampler::get_random_sample_from_array_intervals(
       return m_out.toString();
     }
   }
-}
-
-std::string MEGASampler::get_random_sample_from_int_intervals(
-    const IntervalMap& intervalmap) {
-  std::string sample_string;
-  for (const auto& varinterval : intervalmap) {
-    const std::string& varname = varinterval.first.to_string();
-    const auto& interval = varinterval.second;
-    sample_string += varname;
-    sample_string += ":";
-    int64_t randNum = interval.random_in_range();
-    sample_string += std::to_string(randNum);
-    sample_string += ";";
-  }
-  return sample_string;
 }
 
 static inline z3::expr combine_expr(const z3::expr& base, const z3::expr& arg) {
@@ -662,11 +646,7 @@ void MEGASampler::sample_intervals_in_rounds(const IntervalMap& intervalmap) {
     unsigned int round_samples = 0;
     for (; round_samples <= MAX_SAMPLES; ++round_samples) {
       std::string sample;
-      if (has_arrays) {
-        sample = get_random_sample_from_array_intervals(intervalmap);
-      } else {
-        sample = get_random_sample_from_int_intervals(intervalmap);
-      }
+      sample = get_random_sample_from_intervals(intervalmap);
       ++total_samples;
       if (save_and_output_sample_if_unique(sample)) {
         if (debug) ++debug_samples;
@@ -680,8 +660,7 @@ void MEGASampler::sample_intervals_in_rounds(const IntervalMap& intervalmap) {
               << ", rate = " << rate << "\n";
 }
 
-void MEGASampler::add_soft_constraint_from_intervals(
-    const IntervalMap& intervalmap) {
+void MEGASampler::add_soft_constraint_from_intervals(const IntervalMap& intervalmap) {
   z3::expr intervals_expr(c);
   for (const auto& var_interval : intervalmap) {
     const z3::expr& var = var_interval.first;
@@ -695,7 +674,6 @@ void MEGASampler::add_soft_constraint_from_intervals(
       intervals_expr = combine_expr(intervals_expr, var <= high);
     }
   }
-  if (debug)
-    std::cout << "blocking constraint: " << intervals_expr.to_string() << "\n";
+  if (debug) std::cout << "blocking constraint: " << intervals_expr.to_string() << "\n";
   opt.add_soft(!intervals_expr, 1);
 }

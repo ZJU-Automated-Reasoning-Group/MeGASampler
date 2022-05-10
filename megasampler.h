@@ -16,23 +16,24 @@ class MEGASampler : public Sampler {
 
   // data structures for removing array equalities
   struct storeEqIndexValue {
-    int64_t value;
-    int serial_number_in_array;
-    z3::expr index_expr;
-    z3::expr value_expr;
-    bool in_a;  // index is either in 'a' array (base array of arg(0)) or 'b'
-                // array of a store_eq.
-    storeEqIndexValue(z3::context& c) : index_expr(c), value_expr(c) {}
-    std::string to_string() {
-      return "storeEqIndexValue for index_expr: " + index_expr.to_string() +
-             " and value expr: " + value_expr.to_string() + " from array " +
-             (in_a ? "a" : "b") + " has value: " + std::to_string(value);
-    }
-    bool operator<(const storeEqIndexValue& seq) const {
-      return value < seq.value ||
-             (value == seq.value && in_a == seq.in_a &&
-              serial_number_in_array < seq.serial_number_in_array);
-    }
+      int64_t value;
+      int serial_number_in_array;
+      z3::expr index_expr;
+      z3::expr value_expr;
+      bool in_a;  // index is either in 'a' array (base array of arg(0)) or 'b'
+                  // array of a store_eq.
+      storeEqIndexValue(z3::context& c) : index_expr(c), value_expr(c) {}
+      std::string to_string() {
+        return "storeEqIndexValue for index_expr: " + index_expr.to_string() +
+               " and value expr: " + value_expr.to_string() +
+               " from array " + (in_a ? "a" : "b") +
+               " has value: " + std::to_string(value);
+      }
+      bool operator<(const storeEqIndexValue& seq) const {
+        return value < seq.value ||
+               (value == seq.value && in_a == seq.in_a &&
+               serial_number_in_array < seq.serial_number_in_array);
+      }
   };
   struct arrayEqualityEdge {
     z3::expr store_e;
@@ -92,10 +93,8 @@ class MEGASampler : public Sampler {
    * entry aux_a->(a,b) is inserted to aux_array_map.
    */
   void eliminate_eq_of_different_arrays();
-  void sample_intervals_in_rounds(const IntervalMap& intervalmap);
-  std::string get_random_sample_from_int_intervals(
-      const IntervalMap& intervalmap);
-  std::string get_random_sample_from_array_intervals(
+  void sample_intervals_in_rounds(const IntervalMap &intervalmap);
+  std::string get_random_sample_from_intervals(
       const IntervalMap& intervalmap);
   void add_soft_constraint_from_intervals(const IntervalMap& intervalmap);
   /*

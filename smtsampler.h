@@ -19,9 +19,10 @@ class SMTSampler : public Sampler {
   //  std::unordered_set<Z3_ast> sub;
 
  public:
-  SMTSampler(std::string input, std::string output_dir, int max_samples,
-             double max_time, int max_epoch_samples, double max_epoch_time,
-             int strategy, bool json, bool blocking);
+  SMTSampler(z3::context *_c, const std::string &input,
+             const std::string &output_dir, int max_samples, double max_time,
+             int max_epoch_samples, double max_epoch_time, int strategy,
+             bool json, bool blocking);
   /*
    * Finds additional valid models (samples) of the formula
    * (based on the given model, which is assumed valid).

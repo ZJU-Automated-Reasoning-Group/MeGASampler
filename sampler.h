@@ -18,7 +18,7 @@ std::string bv_string(Z3_ast ast, Z3_context ctx);
 class Sampler {
   // Z3 objects
  public:
-  z3::context c;  // must come before other z3 objects!
+  z3::context &c;  // Must come first, memory-managed externally.
   z3::expr original_formula;
   bool debug = false;
 
@@ -90,13 +90,10 @@ class Sampler {
   double duration(struct timespec *a, struct timespec *b);
   double elapsed_time_from(struct timespec start);
   double get_time_left(const std::string &category);
-  void parse_formula(std::string input);
+  void parse_formula(const std::string &input);
   void compute_and_print_formula_stats();
   void _compute_formula_stats_aux(z3::expr e, int depth = 0);
   void assert_soft(z3::expr const &e);
-  // returns true iff the sample is unique (i.e., not seen before)
-  bool save_and_output_sample_if_unique(const std::string &sample);
-  std::string model_to_string(const z3::model &model);
   /*
    * Assigns a random value to all variables and
    * adds equivalence constraints as soft constraints to opt.
@@ -131,9 +128,11 @@ class Sampler {
    * Computes formula statistics.
    * Creates output file (stored in results_file).
    */
-  Sampler(std::string input, std::string output_dir, int max_samples,
-          double max_time, int max_epoch_samples, double max_epoch_time,
-          int strategy, bool json, bool blocking);
+  Sampler(z3::context *_c, const std::string &input,
+          const std::string &output_dir, int max_samples, double max_time,
+          int max_epoch_samples, double max_epoch_time, int strategy, bool json,
+          bool blocking);
+
   /*
    * Initializes solvers (MAX-SMT and SMT) with formula.
    */
@@ -173,10 +172,16 @@ class Sampler {
    * Document final result, clean up using finish(), then exit with exit code.
    */
   void safe_exit(int exitcode);
+
+  // returns true iff the sample is unique (i.e., not seen before)
+  bool save_and_output_sample_if_unique(const std::string &sample);
+  std::string model_to_string(const z3::model &model);
+
   /*
    * Starts measuring time under the given category.
    */
   void set_timer_on(const std::string &category);
+
   /*
    * Stops measuring time under the given category (should always be preceded by
    * a matching call to set_timer_on(category)). The time difference from when
@@ -184,6 +189,7 @@ class Sampler {
    * (in map accumulated_times).
    */
   void accumulate_time(const std::string &category);
+
   /*
    * Checks if global timeout is reached.
    * If so, calls finish.
@@ -203,6 +209,11 @@ class Sampler {
    * Make the sampler exit externally next time we check for time.
    */
   void set_exit() volatile;
+
+  /*
+   * Set the model to some value.
+   */
+  void set_model(const z3::model &new_model);
 
   virtual ~Sampler(){};
 };

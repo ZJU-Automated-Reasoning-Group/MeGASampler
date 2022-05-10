@@ -4,12 +4,13 @@
 #include <climits>
 #include <cstring>
 
-SMTSampler::SMTSampler(std::string _input, std::string _output_dir,
-                       int _max_samples, double _max_time,
-                       int _max_epoch_samples, double _max_epoch_time,
-                       int _strategy, bool _json, bool _blocking)
-    : Sampler(_input, _output_dir, _max_samples, _max_time, _max_epoch_samples,
-              _max_epoch_time, _strategy, _json, _blocking),
+SMTSampler::SMTSampler(z3::context *_c, const std::string &_input,
+                       const std::string &_output_dir, int _max_samples,
+                       double _max_time, int _max_epoch_samples,
+                       double _max_epoch_time, int _strategy, bool _json,
+                       bool _blocking)
+    : Sampler(_c, _input, _output_dir, _max_samples, _max_time,
+              _max_epoch_samples, _max_epoch_time, _strategy, _json, _blocking),
       strategy(_strategy) {
   initialize_solvers();
   //  if (!convert) {
@@ -247,8 +248,7 @@ void SMTSampler::find_combined_solutions(
             pos_b = b_string.find(';', pos_b) + 1;
             pos_c = c_string.find(';', pos_c) + 1;
             candidate += std::to_string(val_res) + ';';
-          }
-          else {
+          } else {
             // Uninterpreted function case
             assert(false);
           }
@@ -420,8 +420,8 @@ static inline long long add_safe(long long a, long long b) {
   return (a < 0) ? LLONG_MIN : LLONG_MAX;
 }
 
-bool SMTSampler::combine_bool_mutations(bool a, bool b, bool c){
-  return a ^ ((a ^ b) | (a ^ c));
+bool SMTSampler::combine_bool_mutations(bool x, bool y, bool z) {
+  return x ^ ((x ^ y) | (x ^ z));
 }
 
 int SMTSampler::combine_mutations(long long val_orig, long long val_b,

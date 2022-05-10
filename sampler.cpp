@@ -1,22 +1,13 @@
-/*
- * sampler.cpp
- *
- *  Created on: 21 Mar 2021
- *      Author: batchen
- */
 #include "sampler.h"
-
-#include <capnp/message.h>
-#include <capnp/serialize-packed.h>
 
 #include <filesystem>
 #include <fstream>
 
-Sampler::Sampler(std::string _input, std::string _output_dir, int _max_samples,
-                 double _max_time, int _max_epoch_samples,
+Sampler::Sampler(z3::context *_c, const std::string& _input, const std::string& _output_dir,
+                 int _max_samples, double _max_time, int _max_epoch_samples,
                  double _max_epoch_time, int __attribute__((unused)) _strategy,
                  bool _json, bool _blocking)
-    : c(),
+    : c(*_c),
       original_formula(c),
       params(c),
       model(c),
@@ -108,7 +99,7 @@ double Sampler::elapsed_time_from(struct timespec start) {
   return duration(&start, &end);
 }
 
-void Sampler::parse_formula(std::string input) {
+void Sampler::parse_formula(const std::string &input) {
   std::cout << "Parsing input file: " << input << '\n';
   z3::expr_vector formulas =
       c.parse_file(input.c_str());  // bat: reads smt2 file
@@ -638,3 +629,5 @@ void Sampler::safe_exit(int exitcode) {
   finish();
   exit(exitcode);
 }
+
+void Sampler::set_model(const z3::model &new_model) { model = new_model; }

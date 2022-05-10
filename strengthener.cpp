@@ -5,7 +5,7 @@
 #include "z3_utils.h"
 
 void Strengthener::strengthen_literal(const z3::expr& literal){
-  std::cout << "strengthening literal: " << literal.to_string() << "\n";
+  if (debug) std::cout << "strengthening literal: " << literal.to_string() << "\n";
   assert(model_eval_to_bool(model, literal));
   if (literal.is_bool() && literal.is_const()){
     // case e=true/false/b/!b (where b is a boolean var)
@@ -47,7 +47,7 @@ void Strengthener::strengthen_literal(const z3::expr& literal){
 }
 
 void Strengthener::strengthen_binary_bool_literal(const z3::expr& lhs, int64_t lhs_value, int64_t rhs_value, Z3_decl_kind op){
-  std::cout << "strengthening binary bool literal: " << lhs.to_string() << op_to_string(op) << rhs_value << "\n";
+  if (debug) std::cout << "strengthening binary bool literal: " << lhs.to_string() << op_to_string(op) << rhs_value << "\n";
   assert (is_op_ge(op) or is_op_le(op) or is_op_eq(op));
   assert (lhs.is_int());
   if (is_numeral_constant(lhs)) return;
@@ -65,7 +65,7 @@ void Strengthener::strengthen_binary_bool_literal(const z3::expr& lhs, int64_t l
     std::list<int64_t> arguments_values;
     get_arguments_values(lhs, model, arguments_values);
     if (is_op_uminus(lhs_op)) {
-      std::cout << "strengthening unary minus: " << lhs.to_string() << op_to_string(op) << rhs_value << "\n";
+      if (debug) std::cout << "strengthening unary minus: " << lhs.to_string() << op_to_string(op) << rhs_value << "\n";
       const z3::expr &arg0 = lhs.arg(0);
       strengthen_binary_bool_literal(arg0, -lhs_value, -rhs_value, reverse_bool_op(op));
     } else if (is_op_add(lhs_op)) {
@@ -82,7 +82,7 @@ void Strengthener::strengthen_binary_bool_literal(const z3::expr& lhs, int64_t l
 
 void Strengthener::strengthen_mult(const z3::expr &lhs, int64_t lhs_value, std::list<int64_t>& arguments_values, Z3_decl_kind op,
                                    int64_t rhs_value) {
-  std::cout << "strengthening mul: " << lhs.to_string() << op_to_string(op) << rhs_value << "\n";
+  if (debug) std::cout << "strengthening mul: " << lhs.to_string() << op_to_string(op) << rhs_value << "\n";
   assert(arguments_values.size() == lhs.num_args());
   z3::expr non_constants_prod_e(c);
   int64_t constants_prod = 1;
@@ -92,14 +92,11 @@ void Strengthener::strengthen_mult(const z3::expr &lhs, int64_t lhs_value, std::
   for (unsigned int i=0; i<lhs.num_args(); i++){
     const z3::expr& argument = lhs.arg(i);
     int64_t value = *it;
-    std::cout << "argument: " << argument.to_string() << " with value: " << value << "\n";
     if (is_numeral_constant(argument)){
-      std::cout << "is numeral constant\n";
       constants_prod *= value; // TODO: safe computations
       constants_count++;
       it = arguments_values.erase(it);
     } else {
-      std::cout << "is not a numeral constant\n";
       non_constants_prod *= value;
       if (non_constants_prod_e) {
         non_constants_prod_e = non_constants_prod_e * argument;
@@ -118,7 +115,7 @@ void Strengthener::strengthen_mult(const z3::expr &lhs, int64_t lhs_value, std::
 
 void Strengthener::strengthen_add(const z3::expr &lhs, int64_t lhs_value, std::list<int64_t> &arguments_values, Z3_decl_kind op,
                                   int64_t rhs_value) {
-  std::cout << "strengthening add: " << lhs.to_string() << op_to_string(op) << rhs_value << "\n";
+  if (debug) std::cout << "strengthening add: " << lhs.to_string() << op_to_string(op) << rhs_value << "\n";
   assert(lhs.num_args() == arguments_values.size());
   z3::expr non_constants_sum_e(c);
   int64_t constants_sum = 0;
@@ -153,7 +150,7 @@ void Strengthener::strengthen_add(const z3::expr &lhs, int64_t lhs_value, std::l
 }
 
 void Strengthener::add_interval(const z3::expr &lhs, int64_t rhs_value, Z3_decl_kind op) {
-  std::cout << "adding interval: " << lhs.to_string() << op_to_string(op) << rhs_value << "\n";
+  if (debug) std::cout << "adding interval: " << lhs.to_string() << op_to_string(op) << rhs_value << "\n";
   assert(lhs.is_const() || is_op_select(get_op(lhs)));
   if (is_op_ge(op)){
     i_map[lhs].set_lower_bound(rhs_value);
@@ -169,7 +166,7 @@ void Strengthener::add_interval(const z3::expr &lhs, int64_t rhs_value, Z3_decl_
 
 void Strengthener::strengthen_sub(const z3::expr &lhs, std::list<int64_t> &arguments_values, Z3_decl_kind op,
                                   int64_t rhs_value) {
-  std::cout << "strengthening subtraction: " << lhs.to_string() << op_to_string(op) << rhs_value << "\n";
+  if (debug) std::cout << "strengthening subtraction: " << lhs.to_string() << op_to_string(op) << rhs_value << "\n";
   assert(arguments_values.size() == 2);
   int64_t second_arg_value = arguments_values.back();
   arguments_values.pop_back();
@@ -235,7 +232,7 @@ void Strengthener::strengthen_add_without_constants(const z3::expr &lhs, int64_t
 
 void Strengthener::strengthen_mult_by_constant(const z3::expr &non_constant_arg, int64_t non_constant_arg_value,
                                                int64_t constant_value, int64_t rhs_value, Z3_decl_kind op) {
-  std::cout << "strengthening multiply by constant: " << constant_value << "*" << non_constant_arg.to_string() <<
+  if (debug) std::cout << "strengthening multiply by constant: " << constant_value << "*" << non_constant_arg.to_string() <<
                                                         op_to_string(op) << rhs_value << "\n";
   int64_t division_rounded_down = std::floor((float)rhs_value / constant_value);
   if (constant_value > 0){
@@ -255,7 +252,7 @@ void Strengthener::strengthen_mult_by_constant(const z3::expr &non_constant_arg,
 
 void Strengthener::strengthen_mult_without_constants(const z3::expr &lhs, int64_t lhs_value, std::list<int64_t> &arguments_values,
                                                      Z3_decl_kind op, int64_t rhs_value) {
-  std::cout << "strengthening multiply without constants: " << lhs.to_string() << op_to_string(op) << rhs_value << "\n";
+  if (debug) std::cout << "strengthening multiply without constants: " << lhs.to_string() << op_to_string(op) << rhs_value << "\n";
   assert(lhs.num_args() == arguments_values.size());
   unsigned int num_arguments = lhs.num_args();
   Z3_decl_kind ge_op = op;

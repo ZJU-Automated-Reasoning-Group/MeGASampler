@@ -5,6 +5,8 @@
 #include <z3++.h>
 #include "interval.h"
 
+#include <unordered_map>
+
 namespace std {
     template <>
     struct hash<z3::expr>

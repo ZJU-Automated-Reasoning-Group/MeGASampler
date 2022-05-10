@@ -635,7 +635,7 @@ void MEGASampler::sample_intervals_in_rounds(const IntervalMap& intervalmap) {
               << ", MAX_ROUNDS = " << MAX_ROUNDS
               << ", MAX_SAMPLES = " << MAX_SAMPLES << "\n";
 
-  float rate = 1.0;
+  double rate = 1.0;
   for (uint64_t round = 0; round < MAX_ROUNDS && rate > MIN_RATE; ++round) {
     is_time_limit_reached();
     unsigned int new_samples = 0;
@@ -652,7 +652,7 @@ void MEGASampler::sample_intervals_in_rounds(const IntervalMap& intervalmap) {
         }
       }
     }
-    rate = new_samples / round_samples;
+    rate = (double)new_samples / round_samples;
   }
   if (debug)
     std::cout << "Epoch unique samples: " << debug_samples

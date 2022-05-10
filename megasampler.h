@@ -7,6 +7,7 @@
 #include "sampler.h"
 #include "strengthener.h"
 #include "z3_utils.h"
+#include "model.h"
 
 class MEGASampler : public Sampler {
  private:
@@ -94,8 +95,7 @@ class MEGASampler : public Sampler {
    */
   void eliminate_eq_of_different_arrays();
   void sample_intervals_in_rounds(const IntervalMap &intervalmap);
-  std::string get_random_sample_from_intervals(
-      const IntervalMap& intervalmap);
+  bool get_random_sample_from_intervals(const IntervalMap& intervalmap, Model& sample);
   void add_soft_constraint_from_intervals(const IntervalMap& intervalmap);
   /*
    * simplifies original_formula and saves the result in simpl_fomrula

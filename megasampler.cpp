@@ -570,44 +570,40 @@ static inline int64_t safe_mul(const int64_t a, const int64_t b) {
   return ((a > 0) ^ (b > 0)) ? INT64_MIN : INT64_MAX;
 }
 
-std::string MEGASampler::get_random_sample_from_intervals(
-        const IntervalMap& intervalmap) {
-  while (true) {  // TODO some heuristic for early termination in case we keep getting clashes?
-    Model m_out(variable_names);
-    bool valid_model = true;
-    for (const auto& varinterval : intervalmap) {
-      const z3::expr& var = varinterval.first;
-      if (var.is_const()) {
-        const Interval& interval = varinterval.second;
-        const std::string& varname = var.to_string();
-        int64_t rand = interval.random_in_range();
-        bool res = m_out.addIntAssignment(varname, rand);
-        assert(res);
-      }
-    }
-    for (const auto& select_t : intervals_select_terms) {
-      assert(is_op_select(get_op(select_t)));
-      int64_t i_val;
-      z3::expr index_expr = select_t.arg(1);
-      auto index_res = m_out.evalIntExpr(index_expr, false, true);
-      assert(index_res.second);
-      i_val = index_res.first;
-      assert(select_t.arg(0).is_const());
-      std::string array_name = select_t.arg(0).to_string();
-      auto res = m_out.evalArrayVar(array_name, i_val);
-      if (res.second) {
-        valid_model = intervalmap.at(select_t).is_in_range(res.first);
-        if (!valid_model) break;
-      } else {
-        const auto& interval = intervalmap.at(select_t);
-        int64_t rand = interval.random_in_range();
-        m_out.addArrayAssignment(array_name, i_val, rand);
-      }
-    }
-    if (valid_model) {
-      return m_out.toString();
+bool MEGASampler::get_random_sample_from_intervals(
+        const IntervalMap& intervalmap, Model& m_out) {
+  bool valid_model = true;
+  for (const auto& varinterval : intervalmap) {
+    const z3::expr& var = varinterval.first;
+    if (var.is_const()) {
+      const Interval& interval = varinterval.second;
+      const std::string& varname = var.to_string();
+      int64_t rand = interval.random_in_range();
+      bool res = m_out.addIntAssignment(varname, rand);
+      assert(res);
     }
   }
+  for (const auto& select_t : intervals_select_terms) {
+    assert(is_op_select(get_op(select_t)));
+    int64_t i_val;
+    z3::expr index_expr = select_t.arg(1);
+    auto index_res = m_out.evalIntExpr(index_expr, false, true);
+    assert(index_res.second);
+    i_val = index_res.first;
+    assert(select_t.arg(0).is_const());
+    std::string array_name = select_t.arg(0).to_string();
+    auto res = m_out.evalArrayVar(array_name, i_val);
+    if (res.second) {
+      valid_model =
+              intervalmap.at(select_t).is_in_range(res.first);
+      if (!valid_model) break;
+    } else {
+      const auto& interval = intervalmap.at(select_t);
+      int64_t rand = interval.random_in_range();
+      m_out.addArrayAssignment(array_name, i_val, rand);
+    }
+  }
+  return valid_model;
 }
 
 static inline z3::expr combine_expr(const z3::expr& base, const z3::expr& arg) {
@@ -645,12 +641,15 @@ void MEGASampler::sample_intervals_in_rounds(const IntervalMap& intervalmap) {
     unsigned int new_samples = 0;
     unsigned int round_samples = 0;
     for (; round_samples <= MAX_SAMPLES; ++round_samples) {
-      std::string sample;
-      sample = get_random_sample_from_intervals(intervalmap);
       ++total_samples;
-      if (save_and_output_sample_if_unique(sample)) {
-        if (debug) ++debug_samples;
-        ++new_samples;
+      Model m_out(variable_names);
+      bool valid_model = get_random_sample_from_intervals(intervalmap, m_out);
+      if (valid_model) {
+        const std::string &sample = m_out.toString();
+        if (save_and_output_sample_if_unique(sample)) {
+          if (debug) ++debug_samples;
+          ++new_samples;
+        }
       }
     }
     rate = new_samples / round_samples;

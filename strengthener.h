@@ -10,10 +10,12 @@ class Strengthener{
 
     z3::context& c;
     z3::model& model;
+    bool debug;
+
 public:
     IntervalMap i_map;
 
-    Strengthener(z3::context& con, z3::model& mod) : c(con), model(mod) {};
+    Strengthener(z3::context& con, z3::model& mod, bool deb) : c(con), model(mod), debug(deb) {};
     class NoRuleForStrengthening : std::exception {};
     void strengthen_literal(const z3::expr& literal); // _strengthen_conjunct in python
     void print_interval_map();

@@ -7,6 +7,7 @@
 #include "sampler.h"
 #include "strengthener.h"
 #include "z3_utils.h"
+#include "model.h"
 
 class MEGASampler : public Sampler {
  private:
@@ -16,23 +17,24 @@ class MEGASampler : public Sampler {
 
   // data structures for removing array equalities
   struct storeEqIndexValue {
-    int64_t value;
-    int serial_number_in_array;
-    z3::expr index_expr;
-    z3::expr value_expr;
-    bool in_a;  // index is either in 'a' array (base array of arg(0)) or 'b'
-                // array of a store_eq.
-    storeEqIndexValue(z3::context& c) : index_expr(c), value_expr(c) {}
-    std::string to_string() {
-      return "storeEqIndexValue for index_expr: " + index_expr.to_string() +
-             " and value expr: " + value_expr.to_string() + " from array " +
-             (in_a ? "a" : "b") + " has value: " + std::to_string(value);
-    }
-    bool operator<(const storeEqIndexValue& seq) const {
-      return value < seq.value ||
-             (value == seq.value && in_a == seq.in_a &&
-              serial_number_in_array < seq.serial_number_in_array);
-    }
+      int64_t value;
+      int serial_number_in_array;
+      z3::expr index_expr;
+      z3::expr value_expr;
+      bool in_a;  // index is either in 'a' array (base array of arg(0)) or 'b'
+                  // array of a store_eq.
+      storeEqIndexValue(z3::context& c) : index_expr(c), value_expr(c) {}
+      std::string to_string() const {
+        return "storeEqIndexValue for index_expr: " + index_expr.to_string() +
+               " and value expr: " + value_expr.to_string() +
+               " from array " + (in_a ? "a" : "b") +
+               " has value: " + std::to_string(value);
+      }
+      bool operator<(const storeEqIndexValue& seq) const {
+        return value < seq.value ||
+               (value == seq.value && in_a == seq.in_a &&
+               serial_number_in_array < seq.serial_number_in_array);
+      }
   };
   struct arrayEqualityEdge {
     z3::expr store_e;
@@ -53,13 +55,15 @@ class MEGASampler : public Sampler {
           a(c),
           b(c) {}
     std::string toString() {
-      return std::move(std::string("arrayEqualityEdge (") +
-                       (in_implicant ? "turned on" : "turned off") +
-                       ") for expression: " + store_e.to_string() + ":\n" +
-                       a.to_string() + ": indices:" + a_indices.to_string() +
-                       "; values:" + a_values.to_string() + "\nand\n" +
-                       b.to_string() + ": indices:" + b_indices.to_string() +
-                       "; values:" + b_values.to_string());
+      std::string res = std::move(std::string("arrayEqualityEdge (") + (in_implicant ? "turned on" : "turned off") + ") for expression: " + store_e.to_string() + ":\n" +
+      "where " + a.to_string() + " is a and " + b.to_string() + " is b\n" +
+      "index_values: ");
+      for (const auto& ival : index_values){
+        res += std::to_string(ival.value);
+        res += " ";
+      }
+      res += "\n";
+      return res;
     }
   };
   typedef std::map<std::string, std::list<arrayEqualityEdge>>
@@ -76,8 +80,7 @@ class MEGASampler : public Sampler {
    */
   void do_epoch(const z3::model& model);
   void finish();
-  void
-  initialize_solvers();  // for MEGA, solve simpl_formula, not original_formula
+  void initialize_solvers(); // for MEGA, solve simpl_formula, not original_formula
   virtual void add_blocking_soft_constraints() { /* do nothing */
   }
 
@@ -92,11 +95,8 @@ class MEGASampler : public Sampler {
    * entry aux_a->(a,b) is inserted to aux_array_map.
    */
   void eliminate_eq_of_different_arrays();
-  void sample_intervals_in_rounds(const IntervalMap& intervalmap);
-  std::string get_random_sample_from_int_intervals(
-      const IntervalMap& intervalmap);
-  std::string get_random_sample_from_array_intervals(
-      const IntervalMap& intervalmap);
+  void sample_intervals_in_rounds(const IntervalMap &intervalmap);
+  bool get_random_sample_from_intervals(const IntervalMap& intervalmap, Model& sample);
   void add_soft_constraint_from_intervals(const IntervalMap& intervalmap);
   /*
    * simplifies original_formula and saves the result in simpl_fomrula
@@ -108,7 +108,7 @@ class MEGASampler : public Sampler {
   z3::expr rename_z3_names(z3::expr& formula);
   void print_array_equality_graph();
   void register_array_eq(z3::expr& f);
-  void remove_array_equalities(std::list<z3::expr>& conjuncts);
+  void remove_array_equalities(std::list<z3::expr>& conjuncts, bool debug_me);
   void add_equalities_from_select_terms(std::list<z3::expr>& conjuncts);
   void add_opposite_array_constraint(
       const MEGASampler::storeEqIndexValue& curr_ival,

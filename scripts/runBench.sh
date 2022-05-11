@@ -15,7 +15,7 @@ JOBS="50%"
 INPUT_DIR="$(realpath $(dirname $0)/../16_bench/)"
 
 MODE_NAMES=( "MeGA" "MeGAb" "SMT" )
-MODE_OPTIONS=( " " "-b" "-x" )
+MODE_OPTIONS=( "-a mega" "-a megab" "-a smt" )
 GLOBAL_OPTIONS="--json --time=600"
 
 # CODE

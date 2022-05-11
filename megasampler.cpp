@@ -322,12 +322,6 @@ void MEGASampler::build_index_value_vector(arrayEqualityEdge& store_eq) {
   }
   // sort the list according to values
   std::sort(index_values.begin(), index_values.end());
-  //  // print the result
-  //  std::cout << "index values: \n";
-  //  for (auto ival2: index_values){
-  //    std::cout << ival2.to_string() << ",";
-  //  }
-  //  std::cout << "\n";
 }
 
 void MEGASampler::add_index_relationship_constraints(
@@ -440,11 +434,12 @@ void MEGASampler::add_equalities_from_select_terms(
   conjuncts.splice(conjuncts.end(), new_conjuncts);
 }
 
-void MEGASampler::remove_array_equalities(std::list<z3::expr>& conjuncts) {
+void MEGASampler::remove_array_equalities(std::list<z3::expr>& conjuncts, bool debug_me = false) {
   auto it = conjuncts.begin();
   while (it != conjuncts.end()) {
     const z3::expr conjunct = *it;
     if (is_array_eq(conjunct)) {
+      if (debug_me) std::cout << "removing array eq: " << conjunct.to_string() << "\n";
       // remove store_eq from imlicant_conjuncts
       it = conjuncts.erase(it);
       // find store_eq in array_equality_graph
@@ -452,15 +447,35 @@ void MEGASampler::remove_array_equalities(std::list<z3::expr>& conjuncts) {
       extract_array_from_store(conjunct.arg(0), a_array);
       for (auto& store_eq : arrayEqualityGraph[a_array.to_string()]) {
         if (eq(store_eq.store_e, conjunct)) {
+          if (debug_me) std::cout << "found edge in graph: " << store_eq.toString() << "\n";
           store_eq.in_implicant = true;
           build_index_value_vector(store_eq);
+          if (debug_me) {
+            std::cout << "constructed index values vector: ";
+            for (const auto& ival: store_eq.index_values){
+              std::cout << ival.to_string() << ",";
+            }
+            std::cout << "\n";
+          }
           add_index_relationship_constraints(store_eq, conjuncts);
+          if (debug_me) {
+            std::cout << "after index relationship constraints:\n";
+            for (const auto& conj: conjuncts) {
+              std::cout << conj.to_string() << "\n";
+            }
+          }
           remove_duplicates_in_index_values(store_eq);
           add_array_value_constraints(store_eq, conjuncts);
+          if (debug_me) {
+            std::cout << "after array value constraints:\n";
+            for (const auto &conj: conjuncts) {
+              std::cout << conj.to_string() << "\n";
+            }
+          }
           // update symmetric edge in the graph
           const z3::expr& b_array = store_eq.b;
           for (auto& store_eq2 : arrayEqualityGraph[b_array.to_string()]) {
-            if (store_eq2.store_e == conjunct) {
+            if (z3::eq(store_eq2.store_e,conjunct)) {
               store_eq2.in_implicant = true;
               store_eq2.index_values = store_eq.index_values;
             }
@@ -471,21 +486,21 @@ void MEGASampler::remove_array_equalities(std::list<z3::expr>& conjuncts) {
       it++;
     }
   }
-  //  std::cout << "conjuncts after index and value constraints (size " <<
-  //  std::to_string(conjuncts.size()) << ": "; for (auto conjunct : conjuncts){
-  //    std::cout << conjunct.to_string() << ",";
-  //  }
-  //  std::cout << "\n";
 
   // add equalities from select terms based on array_equality_graph
-  //  std::cout << "before adding select-term equalities\n";
-  //  print_array_equality_graph();
+  if (debug_me) {
+    std::cout << "before adding select-term equalities graph looks like this:\n";
+    print_array_equality_graph();
+  }
   add_equalities_from_select_terms(conjuncts);
-  //  std::cout << "conjuncts after select-term constraints (size " <<
-  //  std::to_string(conjuncts.size()) << ": "; for (auto conjunct : conjuncts){
-  //    std::cout << conjunct.to_string() << ",";
-  //  }
-  //  std::cout << "\n";
+  if (debug_me) {
+    std::cout << "conjuncts after select-term constraints (size " <<
+              std::to_string(conjuncts.size()) << ": ";
+    for (auto conjunct: conjuncts) {
+      std::cout << conjunct.to_string() << ",";
+    }
+    std::cout << "\n";
+  }
 }
 
 void MEGASampler::do_epoch(const z3::model& m) {
@@ -502,6 +517,8 @@ void MEGASampler::do_epoch(const z3::model& m) {
     }
   }
 
+  if (debug) std::cout << "model is: " << m.to_string() << "\n";
+
   // compute m-implicant
   std::list<z3::expr> implicant_conjuncts_list;
   remove_or(simpl_formula, m, implicant_conjuncts_list);
@@ -515,13 +532,21 @@ void MEGASampler::do_epoch(const z3::model& m) {
   }
 
   remove_array_equalities(implicant_conjuncts_list);
+  if (debug) {
+    std::cout << "after remove array equalities: ";
+    for (auto conj : implicant_conjuncts_list) {
+      assert(conj);
+      std::cout << conj.to_string() << ",";
+    }
+    std::cout << "\n";
+  }
 
-  Strengthener s(c, model);
-  s.print_interval_map();
+  bool debug_rules = false;
+  Strengthener s(c, model, debug_rules);
   for (auto conj : implicant_conjuncts_list) {
     s.strengthen_literal(conj);
   }
-  s.print_interval_map();
+  if (debug) s.print_interval_map();
 
   accumulate_time("grow_seed");
 
@@ -570,60 +595,40 @@ static inline int64_t safe_mul(const int64_t a, const int64_t b) {
   return ((a > 0) ^ (b > 0)) ? INT64_MIN : INT64_MAX;
 }
 
-std::string MEGASampler::get_random_sample_from_array_intervals(
-    const IntervalMap& intervalmap) {
-  while (true) {  // TODO some heuristic for early termination in case we keep
-                  // getting clashes?
-    Model m_out(variable_names);
-    bool valid_model = true;
-    for (const auto& varinterval : intervalmap) {
-      const z3::expr& var = varinterval.first;
-      if (var.is_const()) {
-        const Interval& interval = varinterval.second;
-        const std::string& varname = var.to_string();
-        int64_t rand = interval.random_in_range();
-        bool res = m_out.addIntAssignment(varname, rand);
-        assert(res);
-      }
-    }
-    for (const auto& select_t : intervals_select_terms) {
-      assert(is_op_select(get_op(select_t)));
-      int64_t i_val;
-      z3::expr index_expr = select_t.arg(1);
-      auto index_res = m_out.evalIntExpr(index_expr, false, true);
-      assert(index_res.second);
-      i_val = index_res.first;
-      assert(select_t.arg(0).is_const());
-      std::string array_name = select_t.arg(0).to_string();
-      auto res = m_out.evalArrayVar(array_name, i_val);
-      if (res.second) {
-        valid_model = intervalmap.at(select_t).is_in_range(res.first);
-        if (!valid_model) break;
-      } else {
-        const auto& interval = intervalmap.at(select_t);
-        int64_t rand = interval.random_in_range();
-        m_out.addArrayAssignment(array_name, i_val, rand);
-      }
-    }
-    if (valid_model) {
-      return m_out.toString();
-    }
-  }
-}
-
-std::string MEGASampler::get_random_sample_from_int_intervals(
-    const IntervalMap& intervalmap) {
-  std::string sample_string;
+bool MEGASampler::get_random_sample_from_intervals(
+        const IntervalMap& intervalmap, Model& m_out) {
+  bool valid_model = true;
   for (const auto& varinterval : intervalmap) {
-    const std::string& varname = varinterval.first.to_string();
-    const auto& interval = varinterval.second;
-    sample_string += varname;
-    sample_string += ":";
-    int64_t randNum = interval.random_in_range();
-    sample_string += std::to_string(randNum);
-    sample_string += ";";
+    const z3::expr& var = varinterval.first;
+    if (var.is_const()) {
+      const Interval& interval = varinterval.second;
+      const std::string& varname = var.to_string();
+      int64_t rand = interval.random_in_range();
+      bool res = m_out.addIntAssignment(varname, rand);
+      assert(res);
+    }
   }
-  return sample_string;
+  for (const auto& select_t : intervals_select_terms) {
+    assert(is_op_select(get_op(select_t)));
+    int64_t i_val;
+    z3::expr index_expr = select_t.arg(1);
+    auto index_res = m_out.evalIntExpr(index_expr, false, true);
+    assert(index_res.second);
+    i_val = index_res.first;
+    assert(select_t.arg(0).is_const());
+    std::string array_name = select_t.arg(0).to_string();
+    auto res = m_out.evalArrayVar(array_name, i_val);
+    if (res.second) {
+      valid_model =
+              intervalmap.at(select_t).is_in_range(res.first);
+      if (!valid_model) break;
+    } else {
+      const auto& interval = intervalmap.at(select_t);
+      int64_t rand = interval.random_in_range();
+      m_out.addArrayAssignment(array_name, i_val, rand);
+    }
+  }
+  return valid_model;
 }
 
 static inline z3::expr combine_expr(const z3::expr& base, const z3::expr& arg) {
@@ -655,33 +660,31 @@ void MEGASampler::sample_intervals_in_rounds(const IntervalMap& intervalmap) {
               << ", MAX_ROUNDS = " << MAX_ROUNDS
               << ", MAX_SAMPLES = " << MAX_SAMPLES << "\n";
 
-  float rate = 1.0;
+  double rate = 1.0;
   for (uint64_t round = 0; round < MAX_ROUNDS && rate > MIN_RATE; ++round) {
     is_time_limit_reached();
     unsigned int new_samples = 0;
     unsigned int round_samples = 0;
     for (; round_samples <= MAX_SAMPLES; ++round_samples) {
-      std::string sample;
-      if (has_arrays) {
-        sample = get_random_sample_from_array_intervals(intervalmap);
-      } else {
-        sample = get_random_sample_from_int_intervals(intervalmap);
-      }
       ++total_samples;
-      if (save_and_output_sample_if_unique(sample)) {
-        if (debug) ++debug_samples;
-        ++new_samples;
+      Model m_out(variable_names);
+      bool valid_model = get_random_sample_from_intervals(intervalmap, m_out);
+      if (valid_model) {
+        const std::string &sample = m_out.toString();
+        if (save_and_output_sample_if_unique(sample)) {
+          if (debug) ++debug_samples;
+          ++new_samples;
+        }
       }
     }
-    rate = new_samples / round_samples;
+    rate = (double)new_samples / round_samples;
   }
   if (debug)
     std::cout << "Epoch unique samples: " << debug_samples
               << ", rate = " << rate << "\n";
 }
 
-void MEGASampler::add_soft_constraint_from_intervals(
-    const IntervalMap& intervalmap) {
+void MEGASampler::add_soft_constraint_from_intervals(const IntervalMap& intervalmap) {
   z3::expr intervals_expr(c);
   for (const auto& var_interval : intervalmap) {
     const z3::expr& var = var_interval.first;
@@ -695,7 +698,6 @@ void MEGASampler::add_soft_constraint_from_intervals(
       intervals_expr = combine_expr(intervals_expr, var <= high);
     }
   }
-  if (debug)
-    std::cout << "blocking constraint: " << intervals_expr.to_string() << "\n";
+  if (debug) std::cout << "blocking constraint: " << intervals_expr.to_string() << "\n";
   opt.add_soft(!intervals_expr, 1);
 }

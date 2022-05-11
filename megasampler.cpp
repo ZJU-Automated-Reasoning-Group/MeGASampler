@@ -322,12 +322,6 @@ void MEGASampler::build_index_value_vector(arrayEqualityEdge& store_eq) {
   }
   // sort the list according to values
   std::sort(index_values.begin(), index_values.end());
-  //  // print the result
-  //  std::cout << "index values: \n";
-  //  for (auto ival2: index_values){
-  //    std::cout << ival2.to_string() << ",";
-  //  }
-  //  std::cout << "\n";
 }
 
 void MEGASampler::add_index_relationship_constraints(
@@ -440,11 +434,12 @@ void MEGASampler::add_equalities_from_select_terms(
   conjuncts.splice(conjuncts.end(), new_conjuncts);
 }
 
-void MEGASampler::remove_array_equalities(std::list<z3::expr>& conjuncts) {
+void MEGASampler::remove_array_equalities(std::list<z3::expr>& conjuncts, bool debug_me = false) {
   auto it = conjuncts.begin();
   while (it != conjuncts.end()) {
     const z3::expr conjunct = *it;
     if (is_array_eq(conjunct)) {
+      if (debug_me) std::cout << "removing array eq: " << conjunct.to_string() << "\n";
       // remove store_eq from imlicant_conjuncts
       it = conjuncts.erase(it);
       // find store_eq in array_equality_graph
@@ -452,11 +447,31 @@ void MEGASampler::remove_array_equalities(std::list<z3::expr>& conjuncts) {
       extract_array_from_store(conjunct.arg(0), a_array);
       for (auto& store_eq : arrayEqualityGraph[a_array.to_string()]) {
         if (eq(store_eq.store_e, conjunct)) {
+          if (debug_me) std::cout << "found edge in graph: " << store_eq.toString() << "\n";
           store_eq.in_implicant = true;
           build_index_value_vector(store_eq);
+          if (debug_me) {
+            std::cout << "constructed index values vector: ";
+            for (const auto& ival: store_eq.index_values){
+              std::cout << ival.to_string() << ",";
+            }
+            std::cout << "\n";
+          }
           add_index_relationship_constraints(store_eq, conjuncts);
+          if (debug_me) {
+            std::cout << "after index relationship constraints:\n";
+            for (const auto& conj: conjuncts) {
+              std::cout << conj.to_string() << "\n";
+            }
+          }
           remove_duplicates_in_index_values(store_eq);
           add_array_value_constraints(store_eq, conjuncts);
+          if (debug_me) {
+            std::cout << "after array value constraints:\n";
+            for (const auto &conj: conjuncts) {
+              std::cout << conj.to_string() << "\n";
+            }
+          }
           // update symmetric edge in the graph
           const z3::expr& b_array = store_eq.b;
           for (auto& store_eq2 : arrayEqualityGraph[b_array.to_string()]) {
@@ -471,21 +486,21 @@ void MEGASampler::remove_array_equalities(std::list<z3::expr>& conjuncts) {
       it++;
     }
   }
-  //  std::cout << "conjuncts after index and value constraints (size " <<
-  //  std::to_string(conjuncts.size()) << ": "; for (auto conjunct : conjuncts){
-  //    std::cout << conjunct.to_string() << ",";
-  //  }
-  //  std::cout << "\n";
 
   // add equalities from select terms based on array_equality_graph
-  //  std::cout << "before adding select-term equalities\n";
-  //  print_array_equality_graph();
+  if (debug_me) {
+    std::cout << "before adding select-term equalities graph looks like this:\n";
+    print_array_equality_graph();
+  }
   add_equalities_from_select_terms(conjuncts);
-  //  std::cout << "conjuncts after select-term constraints (size " <<
-  //  std::to_string(conjuncts.size()) << ": "; for (auto conjunct : conjuncts){
-  //    std::cout << conjunct.to_string() << ",";
-  //  }
-  //  std::cout << "\n";
+  if (debug_me) {
+    std::cout << "conjuncts after select-term constraints (size " <<
+              std::to_string(conjuncts.size()) << ": ";
+    for (auto conjunct: conjuncts) {
+      std::cout << conjunct.to_string() << ",";
+    }
+    std::cout << "\n";
+  }
 }
 
 void MEGASampler::do_epoch(const z3::model& m) {
@@ -502,6 +517,8 @@ void MEGASampler::do_epoch(const z3::model& m) {
     }
   }
 
+  if (debug) std::cout << "model is: " << m.to_string() << "\n";
+
   // compute m-implicant
   std::list<z3::expr> implicant_conjuncts_list;
   remove_or(simpl_formula, m, implicant_conjuncts_list);
@@ -515,13 +532,21 @@ void MEGASampler::do_epoch(const z3::model& m) {
   }
 
   remove_array_equalities(implicant_conjuncts_list);
+  if (debug) {
+    std::cout << "after remove array equalities: ";
+    for (auto conj : implicant_conjuncts_list) {
+      assert(conj);
+      std::cout << conj.to_string() << ",";
+    }
+    std::cout << "\n";
+  }
 
-  Strengthener s(c, model, debug);
-  s.print_interval_map();
+  bool debug_rules = false;
+  Strengthener s(c, model, debug_rules);
   for (auto conj : implicant_conjuncts_list) {
     s.strengthen_literal(conj);
   }
-  s.print_interval_map();
+  if (debug) s.print_interval_map();
 
   accumulate_time("grow_seed");
 

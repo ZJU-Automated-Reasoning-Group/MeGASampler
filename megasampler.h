@@ -24,7 +24,7 @@ class MEGASampler : public Sampler {
       bool in_a;  // index is either in 'a' array (base array of arg(0)) or 'b'
                   // array of a store_eq.
       storeEqIndexValue(z3::context& c) : index_expr(c), value_expr(c) {}
-      std::string to_string() {
+      std::string to_string() const {
         return "storeEqIndexValue for index_expr: " + index_expr.to_string() +
                " and value expr: " + value_expr.to_string() +
                " from array " + (in_a ? "a" : "b") +
@@ -55,13 +55,15 @@ class MEGASampler : public Sampler {
           a(c),
           b(c) {}
     std::string toString() {
-      return std::move(std::string("arrayEqualityEdge (") +
-                       (in_implicant ? "turned on" : "turned off") +
-                       ") for expression: " + store_e.to_string() + ":\n" +
-                       a.to_string() + ": indices:" + a_indices.to_string() +
-                       "; values:" + a_values.to_string() + "\nand\n" +
-                       b.to_string() + ": indices:" + b_indices.to_string() +
-                       "; values:" + b_values.to_string());
+      std::string res = std::move(std::string("arrayEqualityEdge (") + (in_implicant ? "turned on" : "turned off") + ") for expression: " + store_e.to_string() + ":\n" +
+      "where " + a.to_string() + " is a and " + b.to_string() + " is b\n" +
+      "index_values: ");
+      for (const auto& ival : index_values){
+        res += std::to_string(ival.value);
+        res += " ";
+      }
+      res += "\n";
+      return res;
     }
   };
   typedef std::map<std::string, std::list<arrayEqualityEdge>>
@@ -78,8 +80,7 @@ class MEGASampler : public Sampler {
    */
   void do_epoch(const z3::model& model);
   void finish();
-  void
-  initialize_solvers();  // for MEGA, solve simpl_formula, not original_formula
+  void initialize_solvers(); // for MEGA, solve simpl_formula, not original_formula
   virtual void add_blocking_soft_constraints() { /* do nothing */
   }
 
@@ -107,7 +108,7 @@ class MEGASampler : public Sampler {
   z3::expr rename_z3_names(z3::expr& formula);
   void print_array_equality_graph();
   void register_array_eq(z3::expr& f);
-  void remove_array_equalities(std::list<z3::expr>& conjuncts);
+  void remove_array_equalities(std::list<z3::expr>& conjuncts, bool debug_me);
   void add_equalities_from_select_terms(std::list<z3::expr>& conjuncts);
   void add_opposite_array_constraint(
       const MEGASampler::storeEqIndexValue& curr_ival,

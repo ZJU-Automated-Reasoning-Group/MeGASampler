@@ -1,4 +1,4 @@
-.PHONY: all clean
+.PHONY: all clean tidy
 
 BINARY=megasampler
 SRC=$(wildcard *.cpp) $(wildcard *.h) $(wildcard *.c++) $(wildcard *.c)
@@ -14,6 +14,9 @@ Z3FLAGS=-isystem $(Z3DIR)/src/api -isystem ../z3/src/api/c++ \
 
 clean:
 	rm -f $(BINARY) testmodel strengthener
+
+tidy:
+	clang-tidy *.cpp -- $(CXXFLAGS) $(Z3FLAGS)
 
 $(BINARY): $(SRC)
 	g++ $(CXXFLAGS) -o $(BINARY) \

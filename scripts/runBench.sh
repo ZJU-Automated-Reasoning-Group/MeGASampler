@@ -12,7 +12,7 @@ KILL_AFTER="3m"
 
 JOBS="50%"
 
-INPUT_DIR="$(dirname $0)/../16_bench/"
+INPUT_DIR="$(realpath $(dirname $0)/../16_bench/)"
 
 MODE_NAMES=( "MeGA" "MeGAb" "SMT" )
 MODE_OPTIONS=( " " "-b" "-x" )

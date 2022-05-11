@@ -460,7 +460,7 @@ void MEGASampler::remove_array_equalities(std::list<z3::expr>& conjuncts) {
           // update symmetric edge in the graph
           const z3::expr& b_array = store_eq.b;
           for (auto& store_eq2 : arrayEqualityGraph[b_array.to_string()]) {
-            if (store_eq2.store_e == conjunct) {
+            if (z3::eq(store_eq2.store_e,conjunct)) {
               store_eq2.in_implicant = true;
               store_eq2.index_values = store_eq.index_values;
             }

@@ -235,20 +235,25 @@ void Strengthener::strengthen_mult_by_constant(const z3::expr &non_constant_arg,
                                                int64_t constant_value, int64_t rhs_value, Z3_decl_kind op) {
   if (debug) std::cout << "strengthening multiply by constant: " << constant_value << "*" << non_constant_arg.to_string() <<
                                                         op_to_string(op) << rhs_value << "\n";
-  int64_t division_rounded_down = std::floor((float)rhs_value / constant_value);
-  if (constant_value > 0){
-    bool should_round_up = (is_op_ge(op) or is_op_gt(op)) and rhs_value % constant_value != 0;
-    strengthen_binary_bool_literal(non_constant_arg, non_constant_arg_value,
-                                   division_rounded_down+should_round_up, op);
-  } else if (constant_value < 0){
-    Z3_decl_kind reversed_op = reverse_bool_op(op);
-    bool should_round_up = (is_op_ge(reversed_op) or is_op_gt(reversed_op)) and rhs_value % constant_value != 0;
-    strengthen_binary_bool_literal(non_constant_arg, non_constant_arg_value,
-                                   division_rounded_down+should_round_up, reversed_op);
-  } else {
+  if (constant_value == 0){
     // case 0*expr op rhs, no need to add restrictions on expr
     return;
   }
+  // determine op
+  if (constant_value < 0){
+    op = reverse_bool_op(op);
+  }
+  int64_t new_rhs_value = rhs_value / constant_value;
+  // fix rounding
+  bool rounded_down = ((rhs_value >= 0) ^ (constant_value < 0)) && (rhs_value % constant_value != 0); // same sign
+  bool rounded_up = !((rhs_value >= 0) ^ (constant_value < 0)) && (rhs_value % constant_value != 0); // opposite signs
+  bool needs_rounding_up = (is_op_ge(op) or is_op_gt(op));
+  bool needs_rounding_down = (is_op_le(op) or is_op_lt(op));
+  if (rounded_down && needs_rounding_up) new_rhs_value++;
+  if (rounded_up && needs_rounding_down) new_rhs_value--;
+  // recursive call
+  strengthen_binary_bool_literal(non_constant_arg, non_constant_arg_value,
+                                 new_rhs_value, op);
 }
 
 void Strengthener::strengthen_mult_without_constants(const z3::expr &lhs, int64_t lhs_value, std::list<int64_t> &arguments_values,

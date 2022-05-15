@@ -52,7 +52,7 @@ void Strengthener::strengthen_binary_bool_literal(const z3::expr& lhs, int64_t l
   assert (lhs.is_int());
   if (is_numeral_constant(lhs)) return;
   if (lhs.is_const() || is_op_select(get_op(lhs))){
-    add_interval(lhs, rhs_value, op);
+    add_interval_wrapper(lhs, rhs_value, op);
   } else if (is_op_eq(op)){
     for (unsigned int i=0; i<lhs.num_args(); i++){
       if (!is_numeral_constant(lhs.arg(i))){
@@ -149,9 +149,34 @@ void Strengthener::strengthen_add(const z3::expr &lhs, int64_t lhs_value, std::l
   }
 }
 
-void Strengthener::add_interval(const z3::expr &lhs, int64_t rhs_value, Z3_decl_kind op) {
+void Strengthener::add_interval_wrapper(const z3::expr &lhs, int64_t rhs_value, Z3_decl_kind op) {
   if (debug) std::cout << "adding interval: " << lhs.to_string() << op_to_string(op) << rhs_value << "\n";
   assert(lhs.is_const() || is_op_select(get_op(lhs)));
+  if (is_op_select(get_op(lhs))){
+    const z3::expr& index = lhs.arg(1);
+    const z3::expr& array = lhs.arg(0);
+    const std::string& array_name = array.to_string();
+    int64_t index_value = model_eval_to_int64(model, index);
+    auto& equivalence_index_set = array_equivalence_classes[array_name][index_value];
+    std::cout << "ec set size: " << equivalence_index_set.size() << "\n";
+    if (!equivalence_index_set.empty()){
+      // copy interval from someone in the set
+      std::cout << "before copy: " << i_map[lhs] << "\n";
+      std::cout << "second copy: " << i_map[z3::select(array, *equivalence_index_set.begin())] << "\n";
+      i_map[lhs] = i_map[z3::select(array, *equivalence_index_set.begin())];
+      std::cout << "after copy: " << i_map[lhs] << "\n";
+    }
+    equivalence_index_set.insert(index);
+    // now update all indices in the set with the new constraint
+    for (const auto& ec_index : array_equivalence_classes[array_name][index_value]){
+      add_interval(z3::select(array,ec_index), rhs_value, op);
+    }
+  } else {
+    add_interval(lhs, rhs_value, op);
+  }
+}
+
+void Strengthener::add_interval(const z3::expr &lhs, int64_t rhs_value, Z3_decl_kind op) {
   if (is_op_ge(op)){
     i_map[lhs].set_lower_bound(rhs_value);
   } else if (is_op_le(op)){

@@ -631,3 +631,5 @@ void Sampler::safe_exit(int exitcode) {
 }
 
 void Sampler::set_model(const z3::model &new_model) { model = new_model; }
+
+void Sampler::set_epochs(int _epochs) { epochs = _epochs; }

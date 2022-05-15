@@ -215,7 +215,13 @@ class Sampler {
    */
   void set_model(const z3::model &new_model);
 
+  /*
+   * Set the number of epochs to some value.
+   */
+  void set_epochs(int _epochs);
+
   virtual ~Sampler(){};
+
 };
 
 #endif /* SAMPLER_H_ */

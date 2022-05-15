@@ -228,6 +228,9 @@ int one_epoch_run(z3::context &c, const struct args &args) {
   }
 
   z3::model m = samplers[0]->start_epoch();
+  for (unsigned int i = 1; i < sizeof(samplers) / sizeof(*samplers); ++i) {
+    samplers[i]->set_epochs(1);
+  }
 
   for (unsigned int i = 0; i < sizeof(samplers) / sizeof(*samplers); ++i) {
     samplers[i]->accumulate_time("start_epoch");

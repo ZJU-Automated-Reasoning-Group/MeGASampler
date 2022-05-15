@@ -14,6 +14,9 @@ class MEGASampler : public Sampler {
   z3::expr simpl_formula;
   z3::expr implicant;
   std::list<z3::expr> intervals_select_terms;
+  bool save_interval_size;
+  int num_infinite_intervals = 0;
+  long double average_interval_size = 0.0;
 
   // data structures for removing array equalities
   struct storeEqIndexValue {
@@ -74,7 +77,7 @@ class MEGASampler : public Sampler {
   MEGASampler(z3::context* _c, const std::string& input,
               const std::string& output_dir, int max_samples, double max_time,
               int max_epoch_samples, double max_epoch_time, int strategy,
-              bool json, bool blocking);
+              bool json, bool blocking, bool _save_interval_size);
   /*
    * Override from sampler
    */

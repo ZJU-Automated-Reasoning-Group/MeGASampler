@@ -135,11 +135,12 @@ MEGASampler::MEGASampler(z3::context* _c, const std::string& _input,
                          const std::string& _output_dir, int _max_samples,
                          double _max_time, int _max_epoch_samples,
                          double _max_epoch_time, int _strategy, bool _json,
-                         bool _blocking)
+                         bool _blocking, bool _save_interval_size)
     : Sampler(_c, _input, _output_dir, _max_samples, _max_time,
               _max_epoch_samples, _max_epoch_time, _strategy, _json, _blocking),
       simpl_formula(c),
-      implicant(c) {
+      implicant(c),
+      save_interval_size(_save_interval_size){
   simplify_formula();
   initialize_solvers();
   std::cout << "starting MeGASampler" << std::endl;
@@ -550,6 +551,19 @@ void MEGASampler::do_epoch(const z3::model& m) {
 
   accumulate_time("grow_seed");
 
+  if (save_interval_size){
+    if (debug) std::cout << "documenting interval size: ";
+    int64_t i_size;
+    bool is_finite = intervals_size(s.i_map,i_size);
+    if (!is_finite){
+      if (debug) std::cout << "infinite\n";
+      num_infinite_intervals++;
+    } else {
+      if (debug) std::cout << i_size << "\n";
+      average_interval_size += (i_size - average_interval_size) / epochs;
+    }
+  }
+
   intervals_select_terms.clear();
   for (const auto& varinterval : s.i_map) {
     const z3::expr& var = varinterval.first;
@@ -581,6 +595,10 @@ void MEGASampler::do_epoch(const z3::model& m) {
 
 void MEGASampler::finish() {
   json_output["method name"] = "megasampler";
+  if (save_interval_size){
+    json_output["inifnite intervals"] = num_infinite_intervals;
+    json_output["average interval size"] = (Json::Int64)average_interval_size;
+  }
   Sampler::finish();
 }
 

@@ -142,13 +142,13 @@ int regular_run(z3::context &c, const struct args &args) {
       s = std::make_unique<MEGASampler>(
           &c, args.input, args.output_dir, args.max_samples, args.max_time,
           args.max_epoch_samples, args.max_epoch_time, args.strategy, args.json,
-          false);
+          false, false);
       break;
     case ALGO_MEGAB:
       s = std::make_unique<MEGASampler>(
           &c, args.input, args.output_dir, args.max_samples, args.max_time,
           args.max_epoch_samples, args.max_epoch_time, args.strategy, args.json,
-          true);
+          true, false);
       break;
     case ALGO_SMT:
       s = std::make_unique<SMTSampler>(
@@ -196,11 +196,11 @@ int one_epoch_run(z3::context &c, const struct args &args) {
       std::make_unique<MEGASampler>(&c, args.input, args.output_dir + "/MeGA",
                                     args.max_samples, args.max_time,
                                     args.max_epoch_samples, args.max_epoch_time,
-                                    args.strategy, args.json, false),
+                                    args.strategy, args.json, false, true),
       std::make_unique<MEGASampler>(&c, args.input, args.output_dir + "/MeGAb",
                                     args.max_samples, args.max_time,
                                     args.max_epoch_samples, args.max_epoch_time,
-                                    args.strategy, args.json, true),
+                                    args.strategy, args.json, true, true),
       std::make_unique<SMTSampler>(&c, args.input, args.output_dir + "/SMT",
                                    args.max_samples, args.max_time,
                                    args.max_epoch_samples, args.max_epoch_time,

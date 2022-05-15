@@ -60,3 +60,7 @@ int64_t Interval::random_in_range() const {
     std::uniform_int_distribution<int64_t> gen(low, high);  // uniform, unbiased
     return gen(rng);
 }
+
+bool Interval::is_infinite() const {
+  return is_high_inf() || is_low_minf();
+}

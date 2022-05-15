@@ -20,6 +20,7 @@ public:
     [[nodiscard]] bool is_low_minf() const;
     [[nodiscard]] bool is_bottom() const;
     [[nodiscard]] bool is_top() const;
+    [[nodiscard]] bool is_infinite() const;
     friend std::ostream& operator<<(std::ostream& os, const Interval& interval);
     [[nodiscard]] bool is_in_range(int64_t value) const;
     [[nodiscard]] int64_t random_in_range() const;

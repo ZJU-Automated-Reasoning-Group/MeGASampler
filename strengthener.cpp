@@ -158,13 +158,9 @@ void Strengthener::add_interval_wrapper(const z3::expr &lhs, int64_t rhs_value, 
     const std::string& array_name = array.to_string();
     int64_t index_value = model_eval_to_int64(model, index);
     auto& equivalence_index_set = array_equivalence_classes[array_name][index_value];
-    std::cout << "ec set size: " << equivalence_index_set.size() << "\n";
     if (!equivalence_index_set.empty()){
       // copy interval from someone in the set
-      std::cout << "before copy: " << i_map[lhs] << "\n";
-      std::cout << "second copy: " << i_map[z3::select(array, *equivalence_index_set.begin())] << "\n";
       i_map[lhs] = i_map[z3::select(array, *equivalence_index_set.begin())];
-      std::cout << "after copy: " << i_map[lhs] << "\n";
     }
     equivalence_index_set.insert(index);
     // now update all indices in the set with the new constraint

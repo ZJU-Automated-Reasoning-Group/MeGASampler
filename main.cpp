@@ -212,6 +212,7 @@ int one_epoch_run(z3::context &c, const struct args &args) {
 
   for (unsigned int i = 0; i < sizeof(samplers) / sizeof(*samplers); ++i) {
     global_samplers[i] = samplers[i].get();
+    if (args.debug) samplers[i]->debug = true;
     samplers[i]->set_timer_max("total", args.max_time);
     samplers[i]->set_timer_max("epoch", args.max_epoch_time);
     samplers[i]->set_timer_on("total");

@@ -26,5 +26,9 @@ namespace std {
 
 typedef std::unordered_map<z3::expr,Interval> IntervalMap;
 
+bool is_inf(const IntervalMap& i_map);
+bool intervals_size(const IntervalMap& i_map, int64_t& i_size);
+
+
 
 #endif //MEGASAMPLER_INTERVALMAP_H

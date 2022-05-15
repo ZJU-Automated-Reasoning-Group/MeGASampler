@@ -20,7 +20,7 @@ tidy:
 
 $(BINARY): $(SRC)
 	g++ $(CXXFLAGS) -o $(BINARY) \
-  smtsampler.cpp megasampler.cpp sampler.cpp \
+  smtsampler.cpp megasampler.cpp sampler.cpp intervalmap.cpp \
   main.cpp model.cpp strengthener.cpp interval.cpp z3_utils.cpp \
   $(Z3FLAGS) -ljsoncpp -lpthread
 

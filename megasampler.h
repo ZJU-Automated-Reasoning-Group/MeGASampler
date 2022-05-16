@@ -77,7 +77,7 @@ class MEGASampler : public Sampler {
   MEGASampler(z3::context* _c, const std::string& input,
               const std::string& output_dir, int max_samples, double max_time,
               int max_epoch_samples, double max_epoch_time, int strategy,
-              bool json, bool blocking, bool _save_interval_size);
+              bool json, bool blocking, bool _save_interval_size, bool _exhaust_epoch = false);
   /*
    * Override from sampler
    */

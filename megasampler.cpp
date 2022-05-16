@@ -135,9 +135,9 @@ MEGASampler::MEGASampler(z3::context* _c, const std::string& _input,
                          const std::string& _output_dir, int _max_samples,
                          double _max_time, int _max_epoch_samples,
                          double _max_epoch_time, int _strategy, bool _json,
-                         bool _blocking, bool _save_interval_size)
+                         bool _blocking, bool _save_interval_size, bool _exhaust_epoch)
     : Sampler(_c, _input, _output_dir, _max_samples, _max_time,
-              _max_epoch_samples, _max_epoch_time, _strategy, _json, _blocking),
+              _max_epoch_samples, _max_epoch_time, _strategy, _json, _blocking, _exhaust_epoch),
       simpl_formula(c),
       implicant(c),
       save_interval_size(_save_interval_size){
@@ -683,7 +683,7 @@ void MEGASampler::sample_intervals_in_rounds(const IntervalMap& intervalmap) {
     is_time_limit_reached();
     unsigned int new_samples = 0;
     unsigned int round_samples = 0;
-    for (; round_samples <= MAX_SAMPLES; ++round_samples) {
+    for (; exhaust_epoch || round_samples <= MAX_SAMPLES ; ++round_samples) {
       ++total_samples;
       Model m_out(variable_names);
       bool valid_model = get_random_sample_from_intervals(intervalmap, m_out);

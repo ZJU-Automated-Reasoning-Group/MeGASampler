@@ -196,7 +196,7 @@ int one_epoch_run(z3::context &c, const struct args &args) {
       std::make_unique<MEGASampler>(&c, args.input, args.output_dir + "/MeGA",
                                     args.max_samples, args.max_time,
                                     args.max_epoch_samples, args.max_epoch_time,
-                                    args.strategy, args.json, false, true),
+                                    args.strategy, args.json, false, true, true),
       std::make_unique<MEGASampler>(&c, args.input, args.output_dir + "/MeGAb",
                                     args.max_samples, args.max_time,
                                     args.max_epoch_samples, args.max_epoch_time,
@@ -204,11 +204,11 @@ int one_epoch_run(z3::context &c, const struct args &args) {
       std::make_unique<SMTSampler>(&c, args.input, args.output_dir + "/SMT",
                                    args.max_samples, args.max_time,
                                    args.max_epoch_samples, args.max_epoch_time,
-                                   args.strategy, args.json, false),
+                                   args.strategy, args.json, false, true),
       std::make_unique<MiniSampler>(&c, args.input, args.output_dir + "/Z3",
                                     args.max_samples, args.max_time,
                                     args.max_epoch_samples, args.max_epoch_time,
-                                    args.strategy, args.json, false)};
+                                    args.strategy, args.json, false, true)};
 
   for (unsigned int i = 0; i < sizeof(samplers) / sizeof(*samplers); ++i) {
     global_samplers[i] = samplers[i].get();

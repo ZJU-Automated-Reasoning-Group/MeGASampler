@@ -8,9 +8,9 @@ SMTSampler::SMTSampler(z3::context *_c, const std::string &_input,
                        const std::string &_output_dir, int _max_samples,
                        double _max_time, int _max_epoch_samples,
                        double _max_epoch_time, int _strategy, bool _json,
-                       bool _blocking)
+                       bool _blocking, bool _exhaust_epoch)
     : Sampler(_c, _input, _output_dir, _max_samples, _max_time,
-              _max_epoch_samples, _max_epoch_time, _strategy, _json, _blocking),
+              _max_epoch_samples, _max_epoch_time, _strategy, _json, _blocking, _exhaust_epoch),
       strategy(_strategy) {
   initialize_solvers();
   //  if (!convert) {
@@ -208,7 +208,7 @@ void SMTSampler::find_combined_solutions(
     std::unordered_set<std::string> &mutations, const std::string &a_string) {
   std::vector<std::string> initial(mutations.begin(), mutations.end());
   std::vector<std::string> sigma = initial;
-  for (int k = 2; k <= 6; ++k) {
+  for (int k = 2; exhaust_epoch || k <= 6; ++k) {
     is_time_limit_reached();
     if (debug) std::cout << "Combining " << k << " mutations\n";
     std::vector<std::string> new_sigma;
@@ -278,7 +278,7 @@ void SMTSampler::find_combined_solutions(
       std::cout << "Valid: " << good << " / " << all_new << " = " << accuracy
                 << '\n';
     //		print_stats();
-    if (all_new == 0 || accuracy < 0.1) break;
+    if (!exhaust_epoch && (all_new == 0 || accuracy < 0.1)) break;
 
     sigma = new_sigma;
   }

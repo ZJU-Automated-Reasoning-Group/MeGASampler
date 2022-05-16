@@ -44,6 +44,7 @@ class Sampler {
   bool random_soft_bit = false;  // TODO enable change from cmd line or remove
   bool use_blocking = false;
   bool should_exit = false;
+  bool exhaust_epoch = false;
 
   // TODO take these max values into account during computation
   int max_samples;
@@ -131,7 +132,7 @@ class Sampler {
   Sampler(z3::context *_c, const std::string &input,
           const std::string &output_dir, int max_samples, double max_time,
           int max_epoch_samples, double max_epoch_time, int strategy, bool json,
-          bool blocking);
+          bool blocking, bool exhaust_epoch = false);
 
   /*
    * Initializes solvers (MAX-SMT and SMT) with formula.

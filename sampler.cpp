@@ -6,7 +6,7 @@
 Sampler::Sampler(z3::context *_c, const std::string& _input, const std::string& _output_dir,
                  int _max_samples, double _max_time, int _max_epoch_samples,
                  double _max_epoch_time, int __attribute__((unused)) _strategy,
-                 bool _json, bool _blocking)
+                 bool _json, bool _blocking, bool _exhaust_epoch)
     : c(*_c),
       original_formula(c),
       params(c),
@@ -17,6 +17,7 @@ Sampler::Sampler(z3::context *_c, const std::string& _input, const std::string& 
       output_dir(_output_dir),
       json(_json),
       use_blocking(_blocking),
+      exhaust_epoch(_exhaust_epoch),
       max_samples(_max_samples),
       max_time(_max_time),
       max_epoch_samples(_max_epoch_samples),

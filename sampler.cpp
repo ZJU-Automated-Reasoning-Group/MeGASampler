@@ -490,30 +490,30 @@ std::string Sampler::model_to_string(const z3::model &m) {
         s += "[";
         s += std::to_string(f.num_entries());
         s += ",";
-        s += std::to_string(f.else_value());
+        s += f.else_value().to_string();
         s += ',';
         for (size_t j = 0; j < f.num_entries(); ++j) {
-          s += std::to_string(f.entry(j).arg(0)) + "->";
-          s += std::to_string(f.entry(j).value()) + ',';
+          s += f.entry(j).arg(0).to_string() + "->";
+          s += f.entry(j).value().to_string() + ',';
         }
         s += "];";
       } else {
         std::vector<std::string> args;
         std::vector<std::string> values;
         while (e.decl().name().str() == "store") {
-          std::string arg = std::to_string(e.arg(1));
+          std::string arg = e.arg(1).to_string();
           if (std::find(args.begin(), args.end(), arg) != args.end()) {
             e = e.arg(0);
             continue;
           }
           args.push_back(arg);
-          values.push_back(std::to_string(e.arg(2)));
+          values.push_back(e.arg(2).to_string());
           e = e.arg(0);
         }
         s += "[";
         s += std::to_string(args.size());
         s += ',';
-        s += std::to_string(e.arg(0));
+        s += e.arg(0).to_string();
         s += ',';
         for (int j = args.size() - 1; j >= 0; --j) {
           s += args[j];

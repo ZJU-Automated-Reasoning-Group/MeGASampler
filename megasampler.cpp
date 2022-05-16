@@ -684,6 +684,7 @@ void MEGASampler::sample_intervals_in_rounds(const IntervalMap& intervalmap) {
     unsigned int new_samples = 0;
     unsigned int round_samples = 0;
     for (; exhaust_epoch || round_samples <= MAX_SAMPLES ; ++round_samples) {
+      is_time_limit_reached();
       ++total_samples;
       Model m_out(variable_names);
       bool valid_model = get_random_sample_from_intervals(intervalmap, m_out);

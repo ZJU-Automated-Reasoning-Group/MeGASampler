@@ -12,6 +12,10 @@ KILL_AFTER="6m"
 
 JOBS="50%"
 
+MODE_NAMES=( "MeGA" "MeGAb" "SMT" "Z3" )
+MODE_OPTIONS=( "-a mega" "-a megab" "-a smt" "-a z3" )
+GLOBAL_OPTIONS="--json"
+
 # CODE
 
 panic() {
@@ -19,8 +23,8 @@ panic() {
   exit 1
 }
 
-original_dir=$(pwd)
-sampler_dir=$(realpath ..)
+original_dir=$(dirname $0)
+sampler_dir=$(realpath "${original_dir}/..")
 
 #parse input
 [ $# -ge 2 ] || panic "Script arguments should receive at least two arguments: input_dir and output_dir."
@@ -38,10 +42,12 @@ echo "Output directory is: '${output_dir}'"
 newdir="${output_dir}/$(basename "$input_dir")_$(date -Iseconds)"
 mkdir "${newdir}"
 
+
 cat > "${newdir}/README.rst" <<EOF
 Started run at $(date -Iseconds)
+Input dir is: "${INPUT_DIR}"
+Git commit is: $(git rev-parse --short HEAD)
 External timeout: ${EXTERNAL_TIMEOUT} (+${KILL_AFTER})
-Additional arguments: ${@:3}
 EOF
 
 # run sampler and collect json files
@@ -49,16 +55,20 @@ for f in "${input_dir}"/**/*.smt2
 do
   # Process benchmarks that are marked as satisfiable (not unsat or unknown)
   grep ":status" ${f} | grep unsat > /dev/null && continue
-  # X: Actually unknowns are fine 
+  # X: Actually unknowns are fine
   # grep ":status" ${f} | grep sat > /dev/null || continue
   echo "Processing: ${f}"
-  cur_output_dir="${newdir}$(dirname ${f#$input_dir})"
-  echo "Output to: ${cur_output_dir}"
-  pushd ${sampler_dir}
-  sem -j${JOBS} --id "$0" -- \
-      timeout --foreground -k${KILL_AFTER} -sHUP ${EXTERNAL_TIMEOUT} \
-      ./megasampler --json -o ${cur_output_dir} "${@:3}" "${f}"
-  popd
+  for i in {0..2}
+  do
+      cur_output_dir="${newdir}/${MODE_NAMES[$i]}/$(dirname ${f#$input_dir})"
+      echo "Output to: ${cur_output_dir}"
+      pushd ${sampler_dir}
+      sem -j${JOBS} --id "$0" -- \
+          timeout --foreground -k${KILL_AFTER} -sHUP ${EXTERNAL_TIMEOUT} \
+          ./megasampler ${GLOBAL_OPTIONS} -o ${cur_output_dir} \
+          ${MODE_OPTIONS[$i]} "${@:3}" "${f}"
+      popd
+  done
 done
 sem --id "$0" --wait
 

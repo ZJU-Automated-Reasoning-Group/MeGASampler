@@ -100,7 +100,9 @@ do
     for mode in ${MODE_NAMES[@]}
     do
         curr="${newdir}/${mode}/${f#${INPUT_DIR}}"
-        echo -n ${mode} $(jq '.["unique valid samples"]' "${curr}.json")"|"$(jq '.["wire_coverage"]' "${curr}.json") " " | tee -a "${newdir}/README.rst"
+        samples=$(jq '.["unique valid samples"]' "${curr}.json" 2>/dev/null)
+        coverage=$(jq '.["wire_coverage"]' "${curr}.json" 2> /dev/null)
+        echo -n ${mode} "${samples}|${coverage} " | tee -a "${newdir}/README.rst"
     done
     echo | tee -a "${newdir}/README.rst"
 done

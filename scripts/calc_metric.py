@@ -2,6 +2,7 @@
 from __future__ import annotations
 import abc
 import argparse
+import itertools
 import functools
 import fractions
 import operator
@@ -38,7 +39,18 @@ PARSER.add_argument(
 PARSER.add_argument(
     "-m", "--metric", required=True, choices=["satisfies", "wire_coverage"]
 )
+PARSER.add_argument(
+    "-l",
+    "--limit",
+    metavar="LIMIT",
+    type=int,
+    default=0,
+    help="Limit number of samples proccessed (0 for no limit)",
+)
 
+PARSER.add_argument(
+    "-p", "--print-first", action="store_true", help="Print the first satisfying sample"
+)
 CTX = z3.Context()
 
 
@@ -56,7 +68,7 @@ class Metric(abc.ABC):
         self._solver.from_string(formula)
 
     @abc.abstractmethod
-    def count_sample(self, sample: list[tuple[str, int]]):
+    def count_sample(self, sample: list[tuple[str, int]]) -> bool:
         pass
 
     @property
@@ -109,11 +121,12 @@ class SatisfiesMetric(Metric):
         self._solver.pop()
         return r
 
-    def count_sample(self, sample: list[tuple[str, int]]):
+    def count_sample(self, sample: list[tuple[str, int]]) -> bool:
         result = self._check_sample(sample)
         if result == z3.sat:
             self._satisfies += 1
         self._total += 1
+        return result == z3.sat
 
 
 class ManualSatisfiesMetric(Metric):
@@ -125,10 +138,11 @@ class ManualSatisfiesMetric(Metric):
 
     def count_sample(self, sample: list[tuple[str, int]]):
         model = dict(sample)
-
-        if self._evaluator(model):
+        res = self._evaluator(model)
+        if res:
             self._satisfies += 1
         self._total += 1
+        return res
 
     @property
     def result(self) -> fractions.Fraction:
@@ -445,7 +459,9 @@ class WireCoverageStatistics(NodeStatistics):
             if sort == "bool":
                 ret[key] = (
                     1
-                    if any(s._storage[key][0] and s._storage[key][1] for s in statistics)
+                    if any(
+                        s._storage[key][0] and s._storage[key][1] for s in statistics
+                    )
                     else 0
                 )
             elif sort == "int":
@@ -465,9 +481,20 @@ def _load_formula(f: typ.TextIO) -> str:
     return f.read()
 
 
-def _apply_metric(metric: Metric, samples: typ.Iterator[list[tuple[str, int]]]):
+def _apply_metric(
+    metric: Metric,
+    samples: typ.Iterator[list[tuple[str, int]]],
+    limit: int = 0,
+    print_first: bool = False,
+):
+    if limit > 0:
+        samples = itertools.islice(samples, limit)
+    first = True
     for sample in samples:
-        metric.count_sample(sample)
+        sat = metric.count_sample(sample)
+        if sat and print_first and first:
+            first = False
+            print(sample)
 
 
 def parse_samples(f: typ.TextIO) -> typ.Iterator[list[tuple[str, int]]]:
@@ -492,7 +519,12 @@ def parse_samples(f: typ.TextIO) -> typ.Iterator[list[tuple[str, int]]]:
 
 
 def calc_metric(
-    _formula: typ.TextIO, _samples: typ.TextIO, _metric: str, _use_c_api=False
+    _formula: typ.TextIO,
+    _samples: typ.TextIO,
+    _metric: str,
+    _use_c_api=False,
+    limit=0,
+    print_first=False,
 ) -> fractions.Fraction:
     formula = _load_formula(_formula)
     samples = parse_samples(_samples)
@@ -502,14 +534,23 @@ def calc_metric(
     elif _metric == "wire_coverage":
         metric = ManualSatisfiesMetric(formula, statistics=WireCoverageStatistics())
 
-    _apply_metric(metric, samples)
+    _apply_metric(metric, samples, limit, print_first)
     return metric.result
 
 
 def main():
     args = PARSER.parse_args(sys.argv[1:])
 
-    print(calc_metric(args.formula, args.samples, args.metric, args.use_c_api))
+    print(
+        calc_metric(
+            args.formula,
+            args.samples,
+            args.metric,
+            _use_c_api=args.use_c_api,
+            limit=args.limit,
+            print_first=args.print_first
+        )
+    )
 
 
 if __name__ == "__main__":

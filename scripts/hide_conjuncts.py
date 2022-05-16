@@ -6,8 +6,9 @@ import sys
 import random
 
 import z3
-from z3 import z3util
+import z3.z3util
 
+MAX_DROP = 1
 OUTPUT_SIZE = 8
 RANDOM_SEED = "A man, a plan, a canal: Panama!"
 
@@ -18,12 +19,17 @@ def toSMT2Benchmark(f, status="sat", name="benchmark", logic=""):
                                             "", 0, v, f.as_ast())
 
 
-def backtrack_permutations(conjuncts, all_vars, ctx):
-    stack = []
-    indexed = dict(enumerate(conjuncts))
+def partition(l, condition):
+    good, bad = [], []
+    for x in l:
+        (bad, good)[condition(x)].append(x)
+    return good, bad
+
+def backtrack_subsets(conjuncts, all_vars, ctx=None):
+    size = len(conjuncts)
     expr_vars = {
-        i: [str(x) for x in z3util.get_vars(v)]
-        for i, v in indexed.items()
+        i: [str(x) for x in z3.z3util.get_vars(v)]
+        for i, v in enumerate(conjuncts)
     }
 
     def have_all_vars(exprs):
@@ -34,36 +40,17 @@ def backtrack_permutations(conjuncts, all_vars, ctx):
                 return True
         return False
 
-    stack.append(range(len(indexed)))
+    always, sometimes = partition(range(size), lambda c: len(expr_vars[c]) < 2)
 
-    while stack:  # is not empty
-        es = stack.pop()
+    for selected in itertools.product([0,1], repeat=len(sometimes)):
+        indexes = always + [ sometimes[i] for i, pred in enumerate(selected)
+                             if pred == 1 ]
+        if have_all_vars(indexes):
+            yield [ conjuncts[i] for i in indexes ]
 
-        # ignore if empty
-        if not es:
-            continue
-
-        # ignore if not all vars are present
-        if not have_all_vars(es):
-            continue
-
-        # yield solution (skip the full formula...)!
-        if len(es) != len(conjuncts):
-            yield [indexed[e] for e in es]
-
-        # add candidates
-        for e in es:
-            # don't remove conjuncts with only 1 var, like 'x >= 1'
-            if len(expr_vars[e]) < 2:
-                continue
-            stack.append([f for f in es if e > f])
-
-
-def main(filename):
-    c = z3.Context()
-
-    inp = z3.parse_smt2_file(filename, ctx=c)
-    g = z3.Goal(ctx=c)
+def load_formula(filename):
+    inp = z3.parse_smt2_file(filename)
+    g = z3.Goal()
     remaining = list(inp)
     while remaining:
         term = remaining.pop()
@@ -72,35 +59,42 @@ def main(filename):
         else:
             g.add(term)
 
-    t = z3.Then('simplify', 'solve-eqs', 'nnf', ctx=c)
+    t = z3.Then('simplify', 'solve-eqs', 'nnf')
     simplified = t(g).as_expr()
 
     if not z3.is_and(simplified):
         print(f"{filename}: Expr is not a conjunction")
-        sys.exit(1)
 
-    all_vars = sorted(z3util.get_vars(simplified), key=str)
+    all_vars = sorted(z3.z3util.get_vars(simplified), key=str)
 
-    print(f"Starting, formula has {len(simplified.children())} conjuncts.")
+    return simplified.children(), all_vars
 
-    size = sum(1 for _ in backtrack_permutations(
-        simplified.children(), all_vars, ctx=c))
+
+def main(filename):
+    conjuncts, all_vars = load_formula(filename)
+
+    def get_it():
+        return ( f for f in backtrack_subsets(conjuncts, all_vars)
+                 if len(f) >= len(conjuncts) - MAX_DROP)
+    
+    print(f"Starting, formula has {len(conjuncts)} conjuncts.")
+
+    size = sum(1 for _ in get_it())
     print(f"There are {size} possible formulas")
 
     random.seed(RANDOM_SEED)
     selected_outputs = random.sample(range(size), k=min(size, OUTPUT_SIZE))
-    outputs = list(
-        itertools.islice((x for i, x in enumerate(
-            backtrack_permutations(simplified.children(), all_vars, ctx=c))
-                          if i in selected_outputs), len(selected_outputs)))
-
+    outputs = [ f for i, f in enumerate(get_it())
+                if i in selected_outputs ]
+    
     benchmarks = [
         toSMT2Benchmark(z3.And(*output),
                         name=f"Based on {filename}, variation #{i+1}",
                         logic="QF_LIA") for i, output in enumerate(outputs)
     ]
-    for benchmark in benchmarks:
-        print(benchmark)
+    for i, benchmark in enumerate(benchmarks):
+        with open(f"{filename}.subset{i}.smt2", "w") as f:
+            f.write(benchmark)
 
 
 if __name__ == '__main__':

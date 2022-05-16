@@ -12,16 +12,14 @@ Based on [SMTSampler](https://github.com/RafaelTupynamba/SMTSampler). See also [
 Install dependencies
 
 ```
-$ sudo apt install git build-essential python3-minimal python3-dev jsoncpp capnproto libcapnp-dev libjsoncpp-dev python3-venv
+$ sudo apt install git build-essential python3-minimal python3-dev jsoncpp libjsoncpp-dev python3-venv
 ```
 
 Create Python virtual environment and install Python dependencies
 
 ```
-$ python -m venv venv
+$ python -m venv venv --upgrade # consider using pypy
 $ source venv/bin/activate
-$ pip install --upgrade pip setuptools wheel
-$ pip install pycapnp cffi
 ```
 
 Clone repos
@@ -34,11 +32,11 @@ $ git clone https://github.com/chaosite/z3.git # patched z3 for SMTSampler cover
 Build patched z3
 ```
 $ pushd z3
-$ python scripts/mk_make.py
+$ python scripts/mk_make.py --python
 $ cd build
-$ make
+$ make # consider adding -j$(nproc)
 $ cd python
-$ make install # installs into current Python venv
+$ make install # installs into current Python venv, do *not* use sudo
 $ popd
 ```
 
@@ -54,7 +52,8 @@ $ make
 tl;dr:
 
 ```
-$ ./megasampler -n 1000000 -t 3600 formula.smt2
+$ export LD_LIBRARY_PATH="venv/lib"
+$ ./megasampler -n 1000000 -a MeGA -t 3600 formula.smt2
 ```
 
 Usage:
@@ -64,7 +63,9 @@ $ ./megasampler --help
 Usage: megasampler [OPTION...] INPUT
 megasampler -- Sample SMT formulas
 
-  -b, --blocking             Use blocking instead of random assignment
+  -1, --one-epoch            Run all algorithms for one epoch
+  -a, --algorithm=ALGORITHM  Select which sampling algorithm to use {MeGA,
+                             MeGAb, SMT, z3}
   -d, --debug                Show debug messages (can be very verbose)
   -e, --epochs=NUM           Number of epochs
   -j, --json                 Write JSON output
@@ -74,7 +75,6 @@ megasampler -- Sample SMT formulas
   -r, --epoch-time=SECONDS   Time limit per epoch
   -s, --strategy=STRAT       Strategy: {smtbit, smtbv, sat}
   -t, --time=SECONDS         Time limit
-  -x, --smtsampler           Use SMTSampler
   -?, --help                 Give this help list
       --usage                Give a short usage message
   -V, --version              Print program version
@@ -82,7 +82,8 @@ megasampler -- Sample SMT formulas
 
 # Benchmarks
 
-The benchmarks used come from SMT-LIB. They can be obtained from the following repositories:
+The benchmarks used come from SMT-LIB. They can be obtained from the following
+repositories:
 
  * [QF_LIA](https://clc-gitlab.cs.uiowa.edu:2443/SMT-LIB-benchmarks/QF_LIA)
  * [QF_NIA](https://clc-gitlab.cs.uiowa.edu:2443/SMT-LIB-benchmarks/QF_NIA)

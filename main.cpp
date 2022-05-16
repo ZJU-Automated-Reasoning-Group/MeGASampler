@@ -24,6 +24,8 @@ static struct argp_option options[] = {
      "Select which sampling algorithm to use {MeGA, MeGAb, SMT, z3}", 0},
     {"one-epoch", '1', 0, 0, "Run all algorithms for one epoch", 0},
     {"debug", 'd', 0, 0, "Show debug messages (can be very verbose)", 0},
+    {"exhaust-epoch", 'x', 0, 0, "Disable heuristics for early termination of sampling in epoch", 0},
+    {"interval-size", 'i', 0, 0, "Calculate and document interval size in each epoch", 0},
     {"samples", 'n', "NUM", 0, "Number of samples", 0},
     {"time", 't', "SECONDS", 0, "Time limit", 0},
     {"epochs", 'e', "NUM", 0, "Number of epochs", 0},
@@ -42,7 +44,7 @@ struct args {
                max_epoch_samples = 10000;
   enum algorithm algorithm = ALGO_UNSET;
   int strategy = STRAT_SMTBIT;
-  bool json = false, debug = false, one_epoch = false;
+  bool json = false, debug = false, one_epoch = false, exhaust_epoch = false, save_interval_size = false;
   double max_time = 3600.0, max_epoch_time = 600.0;
 };
 
@@ -65,6 +67,12 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
       break;
     case 'd':
       args->debug = true;
+      break;
+    case 'x':
+      args->exhaust_epoch = true;
+      break;
+    case 'i':
+      args->save_interval_size = true;
       break;
     case 'n':
       args->max_samples = atoi(arg);
@@ -142,25 +150,25 @@ int regular_run(z3::context &c, const struct args &args) {
       s = std::make_unique<MEGASampler>(
           &c, args.input, args.output_dir, args.max_samples, args.max_time,
           args.max_epoch_samples, args.max_epoch_time, args.strategy, args.json,
-          false, false);
+          false, args.save_interval_size, args.exhaust_epoch);
       break;
     case ALGO_MEGAB:
       s = std::make_unique<MEGASampler>(
           &c, args.input, args.output_dir, args.max_samples, args.max_time,
           args.max_epoch_samples, args.max_epoch_time, args.strategy, args.json,
-          true, false);
+          true, args.save_interval_size, args.exhaust_epoch);
       break;
     case ALGO_SMT:
       s = std::make_unique<SMTSampler>(
           &c, args.input, args.output_dir, args.max_samples, args.max_time,
           args.max_epoch_samples, args.max_epoch_time, args.strategy, args.json,
-          false);
+          false, args.exhaust_epoch);
       break;
     case ALGO_Z3:
       s = std::make_unique<MiniSampler>(
           &c, args.input, args.output_dir, args.max_samples, args.max_time,
           args.max_epoch_samples, args.max_epoch_time, args.strategy, args.json,
-          false);
+          false, args.exhaust_epoch);
       break;
   }
   if (args.debug) s->debug = true;

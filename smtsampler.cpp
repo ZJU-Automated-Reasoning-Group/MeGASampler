@@ -8,9 +8,10 @@ SMTSampler::SMTSampler(z3::context *_c, const std::string &_input,
                        const std::string &_output_dir, int _max_samples,
                        double _max_time, int _max_epoch_samples,
                        double _max_epoch_time, int _strategy, bool _json,
-                       bool _blocking, bool _exhaust_epoch)
+                       bool _blocking, bool _exhaust_epoch, bool _avoid_maxsmt)
     : Sampler(_c, _input, _output_dir, _max_samples, _max_time,
-              _max_epoch_samples, _max_epoch_time, _strategy, _json, _blocking, _exhaust_epoch),
+              _max_epoch_samples, _max_epoch_time, _strategy,
+              _json, _blocking, _exhaust_epoch, _avoid_maxsmt),
       strategy(_strategy) {
   initialize_solvers();
   //  if (!convert) {

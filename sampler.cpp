@@ -6,7 +6,7 @@
 Sampler::Sampler(z3::context *_c, const std::string& _input, const std::string& _output_dir,
                  int _max_samples, double _max_time, int _max_epoch_samples,
                  double _max_epoch_time, int __attribute__((unused)) _strategy,
-                 bool _json, bool _blocking, bool _exhaust_epoch)
+                 bool _json, bool _blocking, bool _exhaust_epoch, bool _avoid_maxsmt)
     : c(*_c),
       original_formula(c),
       params(c),
@@ -18,6 +18,7 @@ Sampler::Sampler(z3::context *_c, const std::string& _input, const std::string& 
       json(_json),
       use_blocking(_blocking),
       exhaust_epoch(_exhaust_epoch),
+      avoid_maxsmt(_avoid_maxsmt),
       max_samples(_max_samples),
       max_time(_max_time),
       max_epoch_samples(_max_epoch_samples),
@@ -133,28 +134,30 @@ void Sampler::check_if_satisfiable() {
   }
 }
 
-z3::check_result Sampler::solve(const std::string &timer_category) {
+z3::check_result Sampler::solve(const std::string &timer_category, bool solve_opt) {
   z3::check_result res = z3::unknown;
-  try {
-    max_smt_calls++;
-    const unsigned timeout = std::min<unsigned>(
-        1000 * 60 * 5,
-        static_cast<unsigned>(800 * get_time_left(timer_category)));
-    params.set(":timeout", timeout);
-    params.set("timeout", timeout);
+  if (solve_opt) {
+    try {
+      max_smt_calls++;
+      const unsigned timeout = std::min<unsigned>(
+              1000 * 60 * 5,
+              static_cast<unsigned>(800 * get_time_left(timer_category)));
+      params.set(":timeout", timeout);
+      params.set("timeout", timeout);
 
-    opt.set(params);
-    res = opt.check();  // bat: first, solve a MAX-SMT instance
-  } catch (const z3::exception &except) {
-    std::cout << "Exception: " << except << "\n";
-    // TODO exception "canceled" can be thrown when Timeout is reached
-    failure_cause = "MAX-SMT exception";
-    safe_exit(1);
+      opt.set(params);
+      res = opt.check();  // bat: first, solve a MAX-SMT instance
+    } catch (const z3::exception &except) {
+      std::cout << "Exception: " << except << "\n";
+      // TODO exception "canceled" can be thrown when Timeout is reached
+      failure_cause = "MAX-SMT exception";
+      safe_exit(1);
+    }
   }
   if (res == z3::sat) {
     model = opt.get_model();
   } else if (res == z3::unknown) {
-    std::cout << "MAX-SMT returned 'unknown' (timeout?)\n";
+    if (solve_opt) std::cout << "MAX-SMT returned 'unknown' (timeout?)\n";
     is_time_limit_reached();
     try {
       smt_calls++;
@@ -293,7 +296,7 @@ z3::model Sampler::start_epoch() {
   } else {
     choose_random_assignment();
   }
-  z3::check_result res = solve("epoch");
+  z3::check_result res = solve("epoch", !avoid_maxsmt);
 
   assert(res != z3::unsat);
   opt.pop();

@@ -45,6 +45,7 @@ class Sampler {
   bool use_blocking = false;
   bool should_exit = false;
   bool exhaust_epoch = false;
+  bool avoid_maxsmt = false;
 
   // TODO take these max values into account during computation
   int max_samples;
@@ -105,12 +106,12 @@ class Sampler {
    */
   virtual void add_blocking_soft_constraints();
   /*
-   * Tries to solve optimized formula (using opt).
+   * Tries to solve optimized formula (using opt) - if solve_opt is enabled.
    * If too long, resorts to regular formula (using solver).
    * Check result (sat/unsat/unknown) is returned.
    * If sat - model is put in model variable.
    */
-  z3::check_result solve(const std::string &timer_category);
+  z3::check_result solve(const std::string &timer_category, bool solve_opt = true);
   /*
    * Prints statistic information about the sampling procedure:
    * number of samples and epochs and time spent on each phase.
@@ -132,7 +133,7 @@ class Sampler {
   Sampler(z3::context *_c, const std::string &input,
           const std::string &output_dir, int max_samples, double max_time,
           int max_epoch_samples, double max_epoch_time, int strategy, bool json,
-          bool blocking, bool exhaust_epoch = false);
+          bool blocking, bool exhaust_epoch = false, bool avoid_maxsmt = false);
 
   /*
    * Initializes solvers (MAX-SMT and SMT) with formula.

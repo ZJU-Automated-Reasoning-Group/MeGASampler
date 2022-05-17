@@ -5,7 +5,7 @@ shopt -s globstar nullglob
 # CONFIG
 
 # Send SIGHUP after this much time
-EXTERNAL_TIMEOUT="63s"
+EXTERNAL_TIMEOUT="3s"
 
 # Send SIGKILL this much time after SIGHUP was sent
 KILL_AFTER="3s"
@@ -78,7 +78,7 @@ Done running benchmarks at $(date -Iseconds)
 EOF
 
 cat >> "${newdir}/README.rst" <<EOF
-Results [ mode samples|interval_size ]:
+Results [ mode samples|interval_size|infinite_interval ]:
 EOF
 
 for f in "${INPUT_DIR}"/**/*.smt2
@@ -87,7 +87,7 @@ do
     for mode in ${MODE_NAMES[@]}
     do
         curr="${newdir}/${mode}/${f#${INPUT_DIR}}"
-        echo -n ${mode} $(jq '.["unique valid samples"]' "${curr}.json") "|" $(jq '.["average interval size"]' "${curr}.json") " " | tee -a "${newdir}/README.rst"
+        echo -n ${mode} $(jq '.["unique valid samples"]' "${curr}.json") "|" $(jq '.["average interval size"]' "${curr}.json") "|" $(jq '.["inifnite intervals"]' "${curr}.json") " " | tee -a "${newdir}/README.rst"
     done
     echo | tee -a "${newdir}/README.rst"
 done

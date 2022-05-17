@@ -29,7 +29,7 @@ static struct argp_option options[] = {
     {"samples", 'n', "NUM", 0, "Number of samples", 0},
     {"time", 't', "SECONDS", 0, "Time limit", 0},
     {"epochs", 'e', "NUM", 0, "Number of epochs", 0},
-    {"epoch-samples", 'm', "NUM", 0, "Samples per epoch", 0},
+    {"epoch-samples", 'y', "NUM", 0, "Samples per epoch", 0},
     {"epoch-time", 'r', "SECONDS", 0, "Time limit per epoch", 0},
     {"strategy", 's', "STRAT", 0, "Strategy: {smtbit, smtbv, sat}", 0},
     {"json", 'j', 0, 0, "Write JSON output", 0},
@@ -86,8 +86,8 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
     case 'r':
       args->max_epoch_time = atof(arg);
       break;
-    case 'm':
-      args->max_samples = atoi(arg);
+    case 'y':
+      args->max_epoch_samples = atoi(arg);
       break;
     case 's':
       if (0 == strncasecmp("sat", arg, 4)) {

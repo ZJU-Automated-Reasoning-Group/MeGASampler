@@ -37,6 +37,8 @@ static struct argp_option options[] = {
     {"epoch-time", 'r', "SECONDS", 0, "Time limit per epoch", 0},
     {"strategy", 's', "STRAT", 0, "Strategy: {smtbit, smtbv, sat}", 0},
     {"json", 'j', 0, 0, "Write JSON output", 0},
+    {"no-samples-output", 'J', 0, 0,
+     "Don't output the samples (use with JSON output)", 0},
     {"output-dir", 'o', "DIRECTORY", 0,
      "Output directory (for statistics, samples, ...)", 0},
     {0, 0, 0, 0, 0, 0}};
@@ -48,8 +50,8 @@ struct args {
                max_epoch_samples = 10000;
   enum algorithm algorithm = ALGO_UNSET;
   int strategy = STRAT_SMTBIT;
-  bool json = false, debug = false, one_epoch = false, exhaust_epoch = false,
-       save_interval_size = false, avoid_maxsmt = false;
+  bool json = false, no_write = false, debug = false, one_epoch = false,
+       exhaust_epoch = false, save_interval_size = false, avoid_maxsmt = false;
   double max_time = 3600.0, max_epoch_time = 600.0;
 };
 
@@ -111,6 +113,9 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
     case 'j':
       args->json = true;
       break;
+    case 'J':
+      args->no_write = true;
+      break;
     case 'o':
       args->output_dir = arg;
       break;
@@ -147,7 +152,8 @@ SamplerConfig configFromArgs(const struct args &args, bool blocking) {
   return SamplerConfig(blocking, args.one_epoch, args.debug, args.exhaust_epoch,
                        args.save_interval_size, args.avoid_maxsmt,
                        args.max_samples, args.max_epoch_samples, args.max_time,
-                       args.max_epoch_time, args.strategy, args.json);
+                       args.max_epoch_time, args.strategy, args.json,
+                       args.no_write);
 }
 
 int regular_run(z3::context &c, const struct args &args) {
@@ -274,7 +280,6 @@ static struct argp argp = {MeGA::options,
                            0,
                            0,
                            0};
-
 
 int main(int argc, char *argv[]) {
   std::signal(SIGHUP, MeGA::signal_handler);

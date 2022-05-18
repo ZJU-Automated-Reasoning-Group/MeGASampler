@@ -39,7 +39,8 @@ Sampler::Sampler(z3::context *_c, const std::string &_input,
   const std::string output_base =
       (output_path / input_path.filename()).string();
   json_filename = output_base + ".json";
-  results_file.open(output_base + ".samples");
+  if (!config.no_write)
+    results_file.open(output_base + ".samples");
 
   if (num_bv > 0 || num_uf > 0 || num_reals > 0) {
     std::cout << "Unsupported sort in formula. Exiting.\n";
@@ -214,6 +215,7 @@ void Sampler::finish() {  // todo: remove exit and add where calling
     accumulate_time("total");
   }
   print_stats();
+  if (!config.no_write)
   results_file.close();
 }
 
@@ -252,6 +254,9 @@ void Sampler::write_json() {
   json_output["options"]["use blocking"] = config.blocking;
   json_output["options"]["max samples"] = config.max_samples;
   json_output["options"]["max epoch samples"] = config.max_epoch_samples;
+  json_output["options"]["debug"] = config.debug;
+  json_output["options"]["one epoch"] = config.one_epoch;
+  json_output["options"]["no samples output"] = config.no_write;
 
   Json::StreamWriterBuilder builder;
   builder["indentation"] = " ";
@@ -469,7 +474,8 @@ bool Sampler::save_and_output_sample_if_unique(const std::string &sample) {
   const auto res = samples.insert(sample);
   if (res.second) {
     unique_valid_samples++;
-    results_file << unique_valid_samples << ": " << sample << '\n';
+    if (!config.no_write)
+      results_file << unique_valid_samples << ": " << sample << '\n';
   }
   accumulate_time("output");
   if (unique_valid_samples >= config.max_samples) {

@@ -15,7 +15,7 @@ struct SamplerConfig {
                 bool interval_size, bool avoid_maxsmt,
                 unsigned long max_samples, unsigned long max_epoch_samples,
                 unsigned long max_time, unsigned long max_epoch_time,
-                unsigned long strategy, bool json)
+                unsigned long strategy, bool json, bool no_write)
       : blocking(blocking),
         one_epoch(one_epoch),
         debug(debug),
@@ -27,7 +27,8 @@ struct SamplerConfig {
         max_time(max_time),
         max_epoch_time(max_epoch_time),
         strategy(strategy),
-        json(json) {}
+        json(json),
+        no_write(no_write) {}
 
   const bool blocking;
   const bool one_epoch;
@@ -41,6 +42,7 @@ struct SamplerConfig {
   const unsigned long max_epoch_time;
   const unsigned long strategy;
   const bool json;
+  const bool no_write;
 };
 
 };  // namespace MeGA

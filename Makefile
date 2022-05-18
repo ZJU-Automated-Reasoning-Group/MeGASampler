@@ -11,7 +11,7 @@ PYVER=$(shell python --version | cut -d. -f1-2 | cut -d' ' -f2)
 all: $(BINARY)
 
 CXXFLAGS=-Wall -Wextra -Wnon-virtual-dtor -pedantic -ggdb \
-  -std=gnu++17 -march=native -pipe -O3 -flto
+  -std=gnu++17 -march=native -pipe -O3 -flto # -DNDEBUG
 Z3DIR=../z3
 Z3FLAGS=-isystem $(Z3DIR)/src/api -isystem ../z3/src/api/c++
 Z3LINKFLAGS=-L ../z3/build -lz3

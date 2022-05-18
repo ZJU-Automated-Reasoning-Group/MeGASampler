@@ -181,7 +181,6 @@ z3::expr MEGASampler::rename_z3_names(z3::expr& formula) {
   return formula.substitute(z3_var_vector, new_vars_vector);
 }
 
-
 void MEGASampler::simplify_formula() {
   // arith_lhs + lose select(store())
   z3::goal g(c);
@@ -224,8 +223,7 @@ void MEGASampler::initialize_solvers() {
   solver.add(simpl_formula);  // adds formula as constraint to normal solver
 }
 
-void MEGASampler::remove_or(z3::expr& formula,
-                            const z3::model& m,
+void MEGASampler::remove_or(z3::expr& formula, const z3::model& m,
                             std::list<z3::expr>& res) {
   if (formula.decl().decl_kind() != Z3_OP_OR &&
       formula.decl().decl_kind() != Z3_OP_AND) {
@@ -492,29 +490,31 @@ void MEGASampler::remove_array_equalities(std::list<z3::expr>& conjuncts,
   }
 }
 
-bool MEGASampler::has_unbounded_selects(const IntervalMap &intervalmap){
-  for (const auto& select_t : intervals_select_terms){
-//    std::cout << "parsing: " << select_t.to_string() << "\n";
+bool MEGASampler::has_unbounded_selects(const IntervalMap& intervalmap) {
+  for (const auto& select_t : intervals_select_terms) {
+    //    std::cout << "parsing: " << select_t.to_string() << "\n";
     z3::expr index = select_t.arg(1);
     while (is_op_select(get_op(index))) {
-//      std::cout << "in loop for indices: " << index.to_string() << "\n";
+      //      std::cout << "in loop for indices: " << index.to_string() << "\n";
       if (intervalmap.count(index) == 0) {
-//        std::cout << "found unbounded select index: " << index.to_string() << "\n";
+        //        std::cout << "found unbounded select index: " <<
+        //        index.to_string() << "\n";
         return true;
       }
       index = index.arg(1);
     }
     z3::expr_vector int_vars(c);
     collect_vars(index, int_vars);
-//    std::cout << "going over vars: ";
-    for (const auto& v : int_vars){
-//      std::cout << v.to_string() << ",";
+    //    std::cout << "going over vars: ";
+    for (const auto& v : int_vars) {
+      //      std::cout << v.to_string() << ",";
       if (intervalmap.count(v) == 0) {
-//        std::cout << "found unbounded select index: " << index.to_string() << "\n";
+        //        std::cout << "found unbounded select index: " <<
+        //        index.to_string() << "\n";
         return true;
       }
     }
-//    std::cout << "\n";
+    //    std::cout << "\n";
   }
   return false;
 }
@@ -601,12 +601,12 @@ void MEGASampler::do_epoch(const z3::model& m) {
     std::cout << "\n";
   }
 
-  if (config.interval_size){
+  if (config.interval_size) {
     if (debug) std::cout << "documenting interval size: ";
     int64_t i_size;
     bool are_intervals_finite = intervals_size(s.i_map, i_size);
     bool unbounded_selects = has_unbounded_selects(s.i_map);
-    if (!are_intervals_finite || unbounded_selects){
+    if (!are_intervals_finite || unbounded_selects) {
       if (debug) std::cout << "infinite\n";
       num_infinite_intervals++;
     } else {

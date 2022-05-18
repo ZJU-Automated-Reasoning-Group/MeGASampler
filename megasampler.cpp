@@ -492,6 +492,33 @@ void MEGASampler::remove_array_equalities(std::list<z3::expr>& conjuncts,
   }
 }
 
+bool MEGASampler::has_unbounded_selects(const IntervalMap &intervalmap){
+  for (const auto& select_t : intervals_select_terms){
+//    std::cout << "parsing: " << select_t.to_string() << "\n";
+    z3::expr index = select_t.arg(1);
+    while (is_op_select(get_op(index))) {
+//      std::cout << "in loop for indices: " << index.to_string() << "\n";
+      if (intervalmap.count(index) == 0) {
+//        std::cout << "found unbounded select index: " << index.to_string() << "\n";
+        return true;
+      }
+      index = index.arg(1);
+    }
+    z3::expr_vector int_vars(c);
+    collect_vars(index, int_vars);
+//    std::cout << "going over vars: ";
+    for (const auto& v : int_vars){
+//      std::cout << v.to_string() << ",";
+      if (intervalmap.count(v) == 0) {
+//        std::cout << "found unbounded select index: " << index.to_string() << "\n";
+        return true;
+      }
+    }
+//    std::cout << "\n";
+  }
+  return false;
+}
+
 void MEGASampler::do_epoch(const z3::model& m) {
   is_time_limit_reached();
 
@@ -572,6 +599,20 @@ void MEGASampler::do_epoch(const z3::model& m) {
       std::cout << t.to_string() << ",";
     }
     std::cout << "\n";
+  }
+
+  if (config.interval_size){
+    if (debug) std::cout << "documenting interval size: ";
+    int64_t i_size;
+    bool are_intervals_finite = intervals_size(s.i_map, i_size);
+    bool unbounded_selects = has_unbounded_selects(s.i_map);
+    if (!are_intervals_finite || unbounded_selects){
+      if (debug) std::cout << "infinite\n";
+      num_infinite_intervals++;
+    } else {
+      if (debug) std::cout << i_size << "\n";
+      average_interval_size += (i_size - average_interval_size) / epochs;
+    }
   }
 
   if (config.blocking) add_blocking_constraint_from_intervals(s.i_map);

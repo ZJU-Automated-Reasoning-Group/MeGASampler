@@ -140,6 +140,7 @@ class MEGASampler : public Sampler {
   void array_equality_graph_BFS(const z3::expr& array, const z3::expr& index,
                                 int64_t value,
                                 std::list<z3::expr>& new_conjucts);
+  bool has_unbounded_selects(const IntervalMap &intervalmap);
 };
 
 #endif /* MEGASAMPLER_H_ */

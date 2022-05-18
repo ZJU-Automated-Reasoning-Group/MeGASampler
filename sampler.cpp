@@ -234,9 +234,9 @@ void Sampler::write_json() {
   json_output["epochs"] = epochs;
   json_output["maxsmt calls"] = max_smt_calls;
   json_output["smt calls"] = smt_calls;
-  json_output["total samples"] = total_samples;
-  json_output["valid samples"] = valid_samples;
-  json_output["unique valid samples"] = unique_valid_samples;
+  json_output["total samples"] = (Json::UInt64)total_samples;
+  json_output["valid samples"] = (Json::UInt64)valid_samples;
+  json_output["unique valid samples"] = (Json::UInt64)unique_valid_samples;
   for (auto it = accumulated_times.cbegin(); it != accumulated_times.cend();
        ++it) {
     json_output["time stats"][it->first] = it->second;
@@ -252,8 +252,8 @@ void Sampler::write_json() {
   json_output["formula stats"]["num reals"] = num_reals;
   json_output["formula stats"]["formula AST depth"] = max_depth;
   json_output["options"]["use blocking"] = config.blocking;
-  json_output["options"]["max samples"] = config.max_samples;
-  json_output["options"]["max epoch samples"] = config.max_epoch_samples;
+  json_output["options"]["max samples"] = (Json::UInt64)config.max_samples;
+  json_output["options"]["max epoch samples"] = (Json::UInt64)config.max_epoch_samples;
   json_output["options"]["debug"] = config.debug;
   json_output["options"]["one epoch"] = config.one_epoch;
   json_output["options"]["no samples output"] = config.no_write;

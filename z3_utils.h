@@ -48,5 +48,6 @@ Z3_decl_kind reverse_bool_op(Z3_decl_kind op);
 void get_arguments_values(const z3::expr& expr, const z3::model& model, std::list<int64_t>& arguments_values);
 int count_selects(const z3::expr& e);
 bool is_array_eq(const z3::expr& e);
+void collect_vars(z3::expr& expr, z3::expr_vector& vars_collection);
 
 #endif //MEGASAMPLER_Z3_UTILS_H

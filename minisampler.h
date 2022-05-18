@@ -8,6 +8,10 @@ class MiniSampler : public Sampler {
   void do_epoch(__attribute__((unused)) const z3::model &m) {
     /* do nothing, all the work was done in Sampler::start_epoch */
   }
+
+  void finish() {
+    json_output["method name"] = "Z3";
+  }
 };
 
 #endif /* MINISAMPLER_H_ */

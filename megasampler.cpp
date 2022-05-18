@@ -181,11 +181,6 @@ z3::expr MEGASampler::rename_z3_names(z3::expr& formula) {
   return formula.substitute(z3_var_vector, new_vars_vector);
 }
 
-// TODO: implement these missing funtions here
-// assert(is_lhs(simpl_formula));
-// assert(no_select_store(simpl_formula));
-// assert(is_nnf(simpl_formula));
-// assert(no_z3_name(simpl_formula));
 
 void MEGASampler::simplify_formula() {
   // arith_lhs + lose select(store())
@@ -220,11 +215,6 @@ void MEGASampler::simplify_formula() {
   simpl_formula = rename_z3_names(nnf_formula2);
   if (debug) {
     std::cout << "after z3 renaming: " << simpl_formula.to_string() << "\n";
-    //    TODO: implement asserts
-    //    assert(is_lhs(simpl_formula));
-    //    assert(no_select_store(simpl_formula));
-    //    assert(is_nnf(simpl_formula));
-    //    assert(no_z3_name(simpl_formula));
   }
 }
 
@@ -420,8 +410,7 @@ void MEGASampler::add_equalities_from_select_terms(
     z3::expr select_array = sterm.arg(0);
     assert(select_array.decl().decl_kind() != Z3_OP_STORE);
     int64_t select_index_value;
-    bool is_i64t = model.eval(sterm.arg(1)).is_numeral_i64(select_index_value);
-    assert(is_i64t);
+    assert(model.eval(sterm.arg(1)).is_numeral_i64(select_index_value));
     //    std::cout << "applying BFS for select-term: " << sterm.to_string() <<
     //    "\n";
     array_equality_graph_BFS(select_array, sterm.arg(1), select_index_value,

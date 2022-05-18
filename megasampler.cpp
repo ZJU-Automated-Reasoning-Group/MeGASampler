@@ -603,8 +603,9 @@ void MEGASampler::do_epoch(const z3::model& m) {
 
   if (config.interval_size) {
     if (debug) std::cout << "documenting interval size: ";
-    int64_t i_size;
+    int64_t i_size = -1;
     bool are_intervals_finite = intervals_size(s.i_map, i_size);
+    assert(i_size > 0);
     bool unbounded_selects = has_unbounded_selects(s.i_map);
     if (!are_intervals_finite || unbounded_selects) {
       if (debug) std::cout << "infinite\n";

@@ -194,3 +194,13 @@ int count_selects(const z3::expr& e) {
 bool is_array_eq(const z3::expr& e) {
   return e.is_eq() && e.arg(0).is_array();
 }
+
+void collect_vars(z3::expr& expr, z3::expr_vector& vars_collection){
+  if (expr.is_const() && !expr.is_numeral()){
+    vars_collection.push_back(expr);
+    return;
+  }
+  for (auto arg : expr){
+    collect_vars(arg, vars_collection);
+  }
+}

@@ -63,6 +63,7 @@ void Sampler::initialize_solvers() {
   opt.add(original_formula);  // adds formula as hard constraint to optimization
                               // solver (no weight specified for it)
   solver.add(original_formula);  // adds formula as constraint to normal solver
+  if (config.blocking) solver.push();
 }
 
 double Sampler::duration(struct timespec *a, struct timespec *b) {
@@ -282,17 +283,26 @@ z3::model Sampler::start_epoch() {
   if (debug)
     std::cout << "Sampler: Starting an epoch (" << epochs << ")" << std::endl;
 
-  opt.push();  // because formula is constant, but other hard/soft constraints
-               // change between epochs
+  if (!config.blocking)
+    opt.push();  // because formula is constant, but other hard/soft constraints
+                 // change between epochs
   if (config.blocking) {
     add_blocking_soft_constraints();
   } else {
     choose_random_assignment();
   }
-  z3::check_result res = solve("epoch", !config.avoid_maxsmt);
+  z3::check_result res =
+      solve("epoch", !config.blocking && !config.avoid_maxsmt);
+
+  if (config.blocking && res == z3::unsat) {
+    /* we blocked everything, lets start over */
+    solver.pop();
+    solver.push();
+    res = solve("epoch", false);
+  }
 
   assert(res != z3::unsat);
-  opt.pop();
+  if (!config.blocking) opt.pop();
 
   epochs++;
   total_samples++;

@@ -584,7 +584,7 @@ void MEGASampler::do_epoch(const z3::model& m) {
     std::cout << "\n";
   }
 
-  if (config.blocking) add_soft_constraint_from_intervals(s.i_map);
+  if (config.blocking) add_blocking_constraint_from_intervals(s.i_map);
 
   if (is_time_limit_reached("epoch")) return;
 
@@ -700,7 +700,7 @@ void MEGASampler::sample_intervals_in_rounds(const IntervalMap& intervalmap) {
               << ", rate = " << rate << "\n";
 }
 
-void MEGASampler::add_soft_constraint_from_intervals(
+void MEGASampler::add_blocking_constraint_from_intervals(
     const IntervalMap& intervalmap) {
   z3::expr intervals_expr(c);
   for (const auto& var_interval : intervalmap) {
@@ -717,5 +717,5 @@ void MEGASampler::add_soft_constraint_from_intervals(
   }
   if (debug)
     std::cout << "blocking constraint: " << intervals_expr.to_string() << "\n";
-  opt.add_soft(!intervals_expr, 1);
+  solver.add(!intervals_expr); // add as *HARD* constraint
 }

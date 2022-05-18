@@ -84,7 +84,7 @@ class MEGASampler : public Sampler {
   void finish();
   void
   initialize_solvers();  // for MEGA, solve simpl_formula, not original_formula
-  virtual void add_blocking_soft_constraints() { /* do nothing */
+  void add_blocking_soft_constraints() { /* do nothing */
   }
 
  private:
@@ -101,7 +101,7 @@ class MEGASampler : public Sampler {
   void sample_intervals_in_rounds(const IntervalMap& intervalmap);
   bool get_random_sample_from_intervals(const IntervalMap& intervalmap,
                                         Model& sample);
-  void add_soft_constraint_from_intervals(const IntervalMap& intervalmap);
+  void add_blocking_constraint_from_intervals(const IntervalMap& intervalmap);
   /*
    * simplifies original_formula and saves the result in simpl_fomrula
    */

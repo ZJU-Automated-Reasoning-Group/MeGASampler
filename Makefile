@@ -2,27 +2,35 @@
 
 BINARY=megasampler
 SRC=$(wildcard *.cpp) $(wildcard *.h) $(wildcard *.c++) $(wildcard *.c)
+OBJS=sampler.o megasampler.o smtsampler.o interval.o intervalmap.o \
+ model.o strengthener.o z3_utils.o main.o
+DEPS=$(OBJS:%.o=%.d)
+
 PYVER=$(shell python --version | cut -d. -f1-2 | cut -d' ' -f2)
 
 all: $(BINARY)
 
-CXXFLAGS=-Wall -Wextra -Wshadow -Wnon-virtual-dtor -pedantic -ggdb \
-  -std=gnu++17 -march=native -pipe -O3
+CXXFLAGS=-Wall -Wextra -Wnon-virtual-dtor -pedantic -ggdb \
+  -std=gnu++17 -march=native -pipe -O3 -flto
 Z3DIR=../z3
-Z3FLAGS=-isystem $(Z3DIR)/src/api -isystem ../z3/src/api/c++ \
- -L ../z3/build -lz3
+Z3FLAGS=-isystem $(Z3DIR)/src/api -isystem ../z3/src/api/c++
+Z3LINKFLAGS=-L ../z3/build -lz3
 
 clean:
-	rm -f $(BINARY) testmodel strengthener
+	rm -f $(BINARY) $(OBJS) $(DEPS) testmodel strengthener
 
 tidy:
 	clang-tidy *.cpp -- $(CXXFLAGS) $(Z3FLAGS)
 
-$(BINARY): $(SRC)
+%.o: %.cpp
+	$(CC) $(CFLAGS) $(CXXFLAGS) $(Z3FLAGS) -MMD -c $<
+
+-include $(DEPS)
+
+$(BINARY): $(OBJS)
 	g++ $(CXXFLAGS) -o $(BINARY) \
-  smtsampler.cpp megasampler.cpp sampler.cpp intervalmap.cpp \
-  main.cpp model.cpp strengthener.cpp interval.cpp z3_utils.cpp \
-  $(Z3FLAGS) -ljsoncpp -lpthread
+  $(OBJS) \
+  $(Z3LINKFLAGS) -ljsoncpp -lpthread
 
 testmodel: test_model.cpp model.cpp model.h
 	g++ $(CXXFLAGS) -o testmodel \

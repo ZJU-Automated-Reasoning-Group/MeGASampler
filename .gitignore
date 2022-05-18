@@ -8,6 +8,8 @@ strengthener
 *.capnp.h
 build
 */__pycache__
+*.o
+*.d
 
 # results
 *.smt2.samples

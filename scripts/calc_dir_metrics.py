@@ -10,36 +10,56 @@ import typing as typ
 import calc_metric
 
 PARSER = argparse.ArgumentParser(description="calc_metric.py on whole dir")
-PARSER.add_argument('-f',
-                    '--formula',
-                    metavar='DIR',
-                    type=pathlib.Path,
-                    required=True,
-                    help="Formulas basedir")
-PARSER.add_argument('-s',
-                    '--samples',
-                    metavar='DIR',
-                    type=pathlib.Path,
-                    required=True,
-                    action='append',
-                    help="Sample basedirs (multiple supported)")
+PARSER.add_argument(
+    "-f",
+    "--formula",
+    metavar="DIR",
+    type=pathlib.Path,
+    required=True,
+    help="Formulas basedir",
+)
+PARSER.add_argument(
+    "-s",
+    "--samples",
+    metavar="DIR",
+    type=pathlib.Path,
+    required=True,
+    action="append",
+    help="Sample basedirs (multiple supported)",
+)
+PARSER.add_argument(
+    "-i",
+    "--input",
+    metavar="FILE",
+    type=pathlib.Path,
+    required=False,
+    help="Single formula input (for handling just one formula)",
+)
+PARSER.add_argument(
+    "-d", "--delete", action='store_true', help="Delete sample files after we're done with them."
+)
 
 
 def process_single_formula(formula_file, args):
     formula_file = formula_file.relative_to(args.formula)
-    files = [(sample_dir.joinpath(formula_file.with_suffix('.smt2.json')),
-              sample_dir.joinpath(formula_file.with_suffix('.smt2.samples')))
-             for sample_dir in args.samples
-             if sample_dir.joinpath(formula_file.with_suffix('.smt2.json')).is_file()]
+    files: (pathlib.Path, pathlib.Path) = [
+        (
+            sample_dir.joinpath(formula_file.with_suffix(".smt2.json")),
+            sample_dir.joinpath(formula_file.with_suffix(".smt2.samples")),
+        )
+        for sample_dir in args.samples
+        if sample_dir.joinpath(formula_file.with_suffix(".smt2.json")).is_file()
+    ]
     if not files:
         return
     with open(args.formula.joinpath(formula_file)) as formula:
         try:
             metric = calc_metric.ManualSatisfiesMetric(
-                formula.read(),
-                statistics=calc_metric.WireCoverageStatistics())
+                formula.read(), statistics=calc_metric.WireCoverageStatistics()
+            )
         except Exception as e:
             import traceback
+
             traceback.print_exc()
             print(f"Failed to process {formula_file}")
             return
@@ -54,9 +74,12 @@ def process_single_formula(formula_file, args):
                     metric.count_sample(s)
                 except Exception as e:
                     import traceback
+
                     traceback.print_exc()
                     print(f"Failed to process {formula_file} -- {samples_file}")
-                    return
+                    break
+        if (args.delete):
+            samples_file.unlink()
 
     totals = calc_metric.WireCoverageStatistics.union_totals(*statistics.values())
     for s in statistics.values():
@@ -71,13 +94,13 @@ def process_single_formula(formula_file, args):
         summary["wire_coverage"] = str(result)
         summary["wire_coverage_denom"] = result.denominator
         summary["wire_coverage_numer"] = result.numerator
-        with open(json_file, 'w') as jf:
+        with open(json_file, "w") as jf:
             json.dump(summary, jf)
     print(f"{formula_file}: {len(files)} JSONs updated")
 
 
 def main():
-    sys.setrecursionlimit(10500) # need a bit more
+    sys.setrecursionlimit(10500)  # need a bit more
     args = PARSER.parse_args(sys.argv[1:])
 
     for sample in args.samples:
@@ -85,11 +108,19 @@ def main():
             PARSER.error(f"{sample} is not a directory.")
 
     if not args.formula.is_dir():
-        PARSER.error(f"{formula} is not a directory.")
+        PARSER.error(f"{args.formula} is not a directory.")
 
-    pool = multiprocessing.Pool()
-    pool.map(functools.partial(process_single_formula, args=args), args.formula.glob('**/*.smt2'))
+    if not args.input:
+        pool = multiprocessing.Pool()
+        pool.map(
+            functools.partial(process_single_formula, args=args),
+            args.formula.glob("**/*.smt2"),
+        )
+    else:
+        if not args.input.is_file():
+            PARSER.error(f"{args.input} is not an existing file.")
+        process_single_formula(args.input, args=args)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

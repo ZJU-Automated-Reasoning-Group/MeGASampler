@@ -3,10 +3,9 @@
 #include <filesystem>
 #include <fstream>
 
-Sampler::Sampler(z3::context *_c, const std::string& _input, const std::string& _output_dir,
-                 int _max_samples, double _max_time, int _max_epoch_samples,
-                 double _max_epoch_time, int __attribute__((unused)) _strategy,
-                 bool _json, bool _blocking, bool _exhaust_epoch, bool _avoid_maxsmt)
+Sampler::Sampler(z3::context *_c, const std::string &_input,
+                 const std::string &_output_dir,
+                 const MeGA::SamplerConfig &config)
     : c(*_c),
       original_formula(c),
       params(c),
@@ -15,14 +14,7 @@ Sampler::Sampler(z3::context *_c, const std::string& _input, const std::string& 
       solver(c),
       input_filename(_input),
       output_dir(_output_dir),
-      json(_json),
-      use_blocking(_blocking),
-      exhaust_epoch(_exhaust_epoch),
-      avoid_maxsmt(_avoid_maxsmt),
-      max_samples(_max_samples),
-      max_time(_max_time),
-      max_epoch_samples(_max_epoch_samples),
-      max_epoch_time(_max_epoch_time) {
+      config(config) {
   z3::set_param("rewriter.expand_select_store", "true");
   // Parallel makes it ignore the timeout :(
   // z3::set_param("parallel.enable", "true");
@@ -134,14 +126,15 @@ void Sampler::check_if_satisfiable() {
   }
 }
 
-z3::check_result Sampler::solve(const std::string &timer_category, bool solve_opt) {
+z3::check_result Sampler::solve(const std::string &timer_category,
+                                bool solve_opt) {
   z3::check_result res = z3::unknown;
   if (solve_opt) {
     try {
       max_smt_calls++;
       const unsigned timeout = std::min<unsigned>(
-              1000 * 60 * 5,
-              static_cast<unsigned>(800 * get_time_left(timer_category)));
+          1000 * 60 * 5,
+          static_cast<unsigned>(800 * get_time_left(timer_category)));
       params.set(":timeout", timeout);
       params.set("timeout", timeout);
 
@@ -211,7 +204,7 @@ bool Sampler::is_time_limit_reached() {
 void Sampler::set_exit() volatile { should_exit = true; }
 
 void Sampler::finish() {  // todo: remove exit and add where calling
-  if (json) {
+  if (config.json) {
     write_json();
   }
   if ((is_timer_on.find("total") != is_timer_on.cend()) &&
@@ -254,9 +247,9 @@ void Sampler::write_json() {
   json_output["formula stats"]["num ints"] = num_ints;
   json_output["formula stats"]["num reals"] = num_reals;
   json_output["formula stats"]["formula AST depth"] = max_depth;
-  json_output["options"]["use blocking"] = use_blocking;
-  json_output["options"]["max samples"] = max_samples;
-  json_output["options"]["max epoch samples"] = max_epoch_samples;
+  json_output["options"]["use blocking"] = config.blocking;
+  json_output["options"]["max samples"] = config.max_samples;
+  json_output["options"]["max epoch samples"] = config.max_epoch_samples;
 
   Json::StreamWriterBuilder builder;
   builder["indentation"] = " ";
@@ -291,12 +284,12 @@ z3::model Sampler::start_epoch() {
 
   opt.push();  // because formula is constant, but other hard/soft constraints
                // change between epochs
-  if (use_blocking) {
+  if (config.blocking) {
     add_blocking_soft_constraints();
   } else {
     choose_random_assignment();
   }
-  z3::check_result res = solve("epoch", !avoid_maxsmt);
+  z3::check_result res = solve("epoch", !config.avoid_maxsmt);
 
   assert(res != z3::unsat);
   opt.pop();
@@ -468,7 +461,7 @@ bool Sampler::save_and_output_sample_if_unique(const std::string &sample) {
     results_file << unique_valid_samples << ": " << sample << '\n';
   }
   accumulate_time("output");
-  if (unique_valid_samples >= max_samples) {
+  if (unique_valid_samples >= config.max_samples) {
     failure_cause = "Reached max samples.";
     safe_exit(0);
   }

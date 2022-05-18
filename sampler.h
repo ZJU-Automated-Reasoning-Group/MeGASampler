@@ -7,10 +7,11 @@
 #include <algorithm>  // for std::find
 #include <fstream>    //for results_file
 #include <map>
+#include <string>
 #include <unordered_set>
 #include <vector>
 
-enum { STRAT_SMTBIT, STRAT_SMTBV, STRAT_SAT };
+#include "sampler_config.h"
 
 Z3_ast parse_bv(char const *n, Z3_sort s, Z3_context ctx);
 std::string bv_string(Z3_ast ast, Z3_context ctx);
@@ -40,18 +41,11 @@ class Sampler {
   std::string json_filename;
 
   // Settings
-  bool json = false;
-  bool random_soft_bit = false;  // TODO enable change from cmd line or remove
-  bool use_blocking = false;
-  bool should_exit = false;
-  bool exhaust_epoch = false;
-  bool avoid_maxsmt = false;
+  const MeGA::SamplerConfig config;
 
-  // TODO take these max values into account during computation
-  int max_samples;
-  double max_time;
-  int max_epoch_samples;
-  double max_epoch_time;
+  bool random_soft_bit = false;  // TODO enable change from cmd line or remove
+  bool should_exit = false;
+
   std::map<std::string, struct timespec> timer_start_times;
   std::map<std::string, bool> is_timer_on;
   std::map<std::string, double> accumulated_times;
@@ -79,11 +73,11 @@ class Sampler {
   int epochs = 0;
   int max_smt_calls = 0;
   int smt_calls = 0;
-  int total_samples = 0;  // how many samples we stumbled upon (repetitions are
-                          // counted multiple times)
-  int valid_samples = 0;  // how many samples were valid (repetitions are
-                          // counted multiple times)
-  int unique_valid_samples =
+  unsigned long total_samples = 0;  // how many samples we stumbled upon
+                                    // (repetitions are counted multiple times)
+  unsigned long valid_samples = 0;  // how many samples were valid (repetitions
+                                    // are counted multiple times)
+  unsigned long unique_valid_samples =
       0;  // how many different valid samples were found (should always equal
           // the size of the samples set and the number of lines in the results
           // file)
@@ -111,7 +105,8 @@ class Sampler {
    * Check result (sat/unsat/unknown) is returned.
    * If sat - model is put in model variable.
    */
-  z3::check_result solve(const std::string &timer_category, bool solve_opt = true);
+  z3::check_result solve(const std::string &timer_category,
+                         bool solve_opt = true);
   /*
    * Prints statistic information about the sampling procedure:
    * number of samples and epochs and time spent on each phase.
@@ -131,9 +126,7 @@ class Sampler {
    * Creates output file (stored in results_file).
    */
   Sampler(z3::context *_c, const std::string &input,
-          const std::string &output_dir, int max_samples, double max_time,
-          int max_epoch_samples, double max_epoch_time, int strategy, bool json,
-          bool blocking, bool exhaust_epoch = false, bool avoid_maxsmt = false);
+          const std::string &output_dir, const MeGA::SamplerConfig &config);
 
   /*
    * Initializes solvers (MAX-SMT and SMT) with formula.
@@ -223,7 +216,6 @@ class Sampler {
   void set_epochs(int _epochs);
 
   virtual ~Sampler(){};
-
 };
 
 #endif /* SAMPLER_H_ */

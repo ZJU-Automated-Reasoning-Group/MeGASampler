@@ -4,6 +4,7 @@
 #include <unordered_map>
 
 #include "sampler.h"
+#include "sampler_config.h"
 
 class SMTSampler : public Sampler {
   std::vector<z3::func_decl> ind;
@@ -20,9 +21,7 @@ class SMTSampler : public Sampler {
 
  public:
   SMTSampler(z3::context *_c, const std::string &input,
-             const std::string &output_dir, int max_samples, double max_time,
-             int max_epoch_samples, double max_epoch_time, int strategy,
-             bool json, bool blocking, bool _exhaust_epoch = false, bool avoid_maxsmt = false);
+             const std::string &output_dir, const MeGA::SamplerConfig& config);
   /*
    * Finds additional valid models (samples) of the formula
    * (based on the given model, which is assumed valid).

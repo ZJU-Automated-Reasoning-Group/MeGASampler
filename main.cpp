@@ -9,23 +9,26 @@
 #include "megasampler.h"
 #include "minisampler.h"
 #include "sampler.h"
+#include "sampler_config.h"
 #include "smtsampler.h"
 
+namespace MeGA {
 const char *argp_program_version = "megasampler 0.1";
 const char *argp_program_bug_address = "<mip@cs.technion.ac.il>";
 
 static const char *argp_doc = "megasampler -- Sample SMT formulas";
 
 static const char *argp_args_doc = "INPUT";
-enum algorithm { ALGO_UNSET = 0, ALGO_MEGA, ALGO_MEGAB, ALGO_SMT, ALGO_Z3 };
 
 static struct argp_option options[] = {
     {"algorithm", 'a', "ALGORITHM", 0,
      "Select which sampling algorithm to use {MeGA, MeGAb, SMT, z3}", 0},
     {"one-epoch", '1', 0, 0, "Run all algorithms for one epoch", 0},
     {"debug", 'd', 0, 0, "Show debug messages (can be very verbose)", 0},
-    {"exhaust-epoch", 'x', 0, 0, "Disable heuristics for early termination of sampling in epoch", 0},
-    {"interval-size", 'i', 0, 0, "Calculate and document interval size in each epoch", 0},
+    {"exhaust-epoch", 'x', 0, 0,
+     "Disable heuristics for early termination of sampling in epoch", 0},
+    {"interval-size", 'i', 0, 0,
+     "Calculate and document interval size in each epoch", 0},
     {"avoid-maxsmt", 'm', 0, 0, "Don't use MAX-SMT to find the seed", 0},
     {"samples", 'n', "NUM", 0, "Number of samples", 0},
     {"time", 't', "SECONDS", 0, "Time limit", 0},
@@ -45,7 +48,8 @@ struct args {
                max_epoch_samples = 10000;
   enum algorithm algorithm = ALGO_UNSET;
   int strategy = STRAT_SMTBIT;
-  bool json = false, debug = false, one_epoch = false, exhaust_epoch = false, save_interval_size = false, avoid_maxsmt = false;
+  bool json = false, debug = false, one_epoch = false, exhaust_epoch = false,
+       save_interval_size = false, avoid_maxsmt = false;
   double max_time = 3600.0, max_epoch_time = 600.0;
 };
 
@@ -124,9 +128,6 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
   return 0;
 }
 
-static struct argp argp = {options, parse_opt, argp_args_doc, argp_doc, 0,
-                           0,       0};
-
 namespace {
 static volatile Sampler *volatile global_samplers[4] = {
     NULL,
@@ -142,37 +143,36 @@ void signal_handler(__attribute__((unused)) int sig) {
   }
 }
 
+SamplerConfig configFromArgs(const struct args &args, bool blocking) {
+  return SamplerConfig(blocking, args.one_epoch, args.debug, args.exhaust_epoch,
+                       args.save_interval_size, args.avoid_maxsmt,
+                       args.max_samples, args.max_epoch_samples, args.max_time,
+                       args.max_epoch_time, args.strategy, args.json);
+}
+
 int regular_run(z3::context &c, const struct args &args) {
   std::unique_ptr<Sampler> s;
 
   switch (args.algorithm) {
-    case ALGO_UNSET:
+    case MeGA::ALGO_UNSET:
       std::cout << "Please select an algorithm\n";
       exit(1);
       break;
-    case ALGO_MEGA:
-      s = std::make_unique<MEGASampler>(
-          &c, args.input, args.output_dir, args.max_samples, args.max_time,
-          args.max_epoch_samples, args.max_epoch_time, args.strategy, args.json,
-          false, args.save_interval_size, args.exhaust_epoch, args.avoid_maxsmt);
+    case MeGA::ALGO_MEGA:
+      s = std::make_unique<MEGASampler>(&c, args.input, args.output_dir,
+                                        configFromArgs(args, false));
       break;
-    case ALGO_MEGAB:
-      s = std::make_unique<MEGASampler>(
-          &c, args.input, args.output_dir, args.max_samples, args.max_time,
-          args.max_epoch_samples, args.max_epoch_time, args.strategy, args.json,
-          true, args.save_interval_size, args.exhaust_epoch, args.avoid_maxsmt);
+    case MeGA::ALGO_MEGAB:
+      s = std::make_unique<MEGASampler>(&c, args.input, args.output_dir,
+                                        configFromArgs(args, true));
       break;
-    case ALGO_SMT:
-      s = std::make_unique<SMTSampler>(
-          &c, args.input, args.output_dir, args.max_samples, args.max_time,
-          args.max_epoch_samples, args.max_epoch_time, args.strategy, args.json,
-          false, args.exhaust_epoch, args.avoid_maxsmt);
+    case MeGA::ALGO_SMT:
+      s = std::make_unique<SMTSampler>(&c, args.input, args.output_dir,
+                                       configFromArgs(args, false));
       break;
-    case ALGO_Z3:
-      s = std::make_unique<MiniSampler>(
-          &c, args.input, args.output_dir, args.max_samples, args.max_time,
-          args.max_epoch_samples, args.max_epoch_time, args.strategy, args.json,
-          false, args.exhaust_epoch, args.avoid_maxsmt);
+    case MeGA::ALGO_Z3:
+      s = std::make_unique<MiniSampler>(&c, args.input, args.output_dir,
+                                        configFromArgs(args, false));
       break;
   }
   if (args.debug) s->debug = true;
@@ -206,21 +206,13 @@ int regular_run(z3::context &c, const struct args &args) {
 int one_epoch_run(z3::context &c, const struct args &args) {
   std::unique_ptr<Sampler> samplers[] = {
       std::make_unique<MEGASampler>(&c, args.input, args.output_dir + "/MeGA",
-                                    args.max_samples, args.max_time,
-                                    args.max_epoch_samples, args.max_epoch_time,
-                                    args.strategy, args.json, false, true, true),
+                                    configFromArgs(args, false)),
       std::make_unique<MEGASampler>(&c, args.input, args.output_dir + "/MeGAb",
-                                    args.max_samples, args.max_time,
-                                    args.max_epoch_samples, args.max_epoch_time,
-                                    args.strategy, args.json, true, true),
+                                    configFromArgs(args, true)),
       std::make_unique<SMTSampler>(&c, args.input, args.output_dir + "/SMT",
-                                   args.max_samples, args.max_time,
-                                   args.max_epoch_samples, args.max_epoch_time,
-                                   args.strategy, args.json, false, true),
+                                   configFromArgs(args, false)),
       std::make_unique<MiniSampler>(&c, args.input, args.output_dir + "/Z3",
-                                    args.max_samples, args.max_time,
-                                    args.max_epoch_samples, args.max_epoch_time,
-                                    args.strategy, args.json, false, true)};
+                                    configFromArgs(args, false))};
 
   for (unsigned int i = 0; i < sizeof(samplers) / sizeof(*samplers); ++i) {
     global_samplers[i] = samplers[i].get();
@@ -273,18 +265,28 @@ int one_epoch_run(z3::context &c, const struct args &args) {
 
   return 0;
 }
+}  // namespace MeGA
+
+static struct argp argp = {MeGA::options,
+                           MeGA::parse_opt,
+                           MeGA::argp_args_doc,
+                           MeGA::argp_doc,
+                           0,
+                           0,
+                           0};
+
 
 int main(int argc, char *argv[]) {
-  std::signal(SIGHUP, signal_handler);
-  struct args args;
+  std::signal(SIGHUP, MeGA::signal_handler);
+  struct MeGA::args args;
   argp_parse(&argp, argc, argv, 0, 0, &args);
 
-  if (args.strategy == STRAT_SAT) {
+  if (args.strategy == MeGA::STRAT_SAT) {
     std::cout << "Conversion to SAT is temporarily not supported\n";
     return 1;
   }
 
-  if (args.one_epoch && args.algorithm != ALGO_UNSET) {
+  if (args.one_epoch && args.algorithm != MeGA::ALGO_UNSET) {
     std::cout << "Can't choose an algorithm in one-epoch mode.";
     return 1;
   }

@@ -5,14 +5,9 @@
 #include <cstring>
 
 SMTSampler::SMTSampler(z3::context *_c, const std::string &_input,
-                       const std::string &_output_dir, int _max_samples,
-                       double _max_time, int _max_epoch_samples,
-                       double _max_epoch_time, int _strategy, bool _json,
-                       bool _blocking, bool _exhaust_epoch, bool _avoid_maxsmt)
-    : Sampler(_c, _input, _output_dir, _max_samples, _max_time,
-              _max_epoch_samples, _max_epoch_time, _strategy,
-              _json, _blocking, _exhaust_epoch, _avoid_maxsmt),
-      strategy(_strategy) {
+                       const std::string &_output_dir,
+                       const MeGA::SamplerConfig &config)
+    : Sampler(_c, _input, _output_dir, config) {
   initialize_solvers();
   //  if (!convert) {
   ind = variables;
@@ -72,33 +67,24 @@ void SMTSampler::find_neighboring_solutions(
   int progress = 0;
   for (size_t count = 0; count < constraints.size(); ++count) {
     is_time_limit_reached();
-    // todo uncomment? is this necessary?
-    //		auto u = unsat_ind.find(cons_to_ind[count].first);
-    //		if (u != unsat_ind.end()
-    //				&& u->second.find(cons_to_ind[count].second)
-    //						!= u->second.end()) {
-    //			continue;
-    //		}
     z3::expr &cond = constraints[count];
     opt.push();
     solver.push();
     opt.add(!cond);
     solver.add(!cond);
-    // probably redundant: soft seems to always be empty
-    //		for (z3::expr &soft : soft_constraints[count]) {
-    //			assert_soft(soft);
-    //		}
     struct timespec end;
     clock_gettime(CLOCK_REALTIME, &end);
     double elapsed = duration(&timer_start_times["total"], &end);
     double cost = calls ? (elapsed - start_epoch) / calls : 0.0;
     cost *= constraints.size() - count;
-    if (max_time / 3.0 + start_epoch > max_time && elapsed + cost > max_time) {
+    if (config.max_time / 3.0 + start_epoch > config.max_time &&
+        elapsed + cost > config.max_time) {
       std::cout << "Stopping: slow\n";
       finish();
     }
     z3::check_result res = z3::unknown;
-    if (cost * rand() <= (max_time / 3.0 + start_epoch - elapsed) * RAND_MAX) {
+    if (cost * rand() <=
+        (config.max_time / 3.0 + start_epoch - elapsed) * RAND_MAX) {
       res = solve("epoch");
       ++calls;
     }
@@ -209,7 +195,7 @@ void SMTSampler::find_combined_solutions(
     std::unordered_set<std::string> &mutations, const std::string &a_string) {
   std::vector<std::string> initial(mutations.begin(), mutations.end());
   std::vector<std::string> sigma = initial;
-  for (int k = 2; exhaust_epoch || k <= 6; ++k) {
+  for (int k = 2; config.exhaust_epoch || k <= 6; ++k) {
     is_time_limit_reached();
     if (debug) std::cout << "Combining " << k << " mutations\n";
     std::vector<std::string> new_sigma;
@@ -279,7 +265,7 @@ void SMTSampler::find_combined_solutions(
       std::cout << "Valid: " << good << " / " << all_new << " = " << accuracy
                 << '\n';
     //		print_stats();
-    if (!exhaust_epoch && (all_new == 0 || accuracy < 0.1)) break;
+    if (!config.exhaust_epoch && (all_new == 0 || accuracy < 0.1)) break;
 
     sigma = new_sigma;
   }

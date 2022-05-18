@@ -234,11 +234,12 @@ void MEGASampler::initialize_solvers() {
   solver.add(simpl_formula);  // adds formula as constraint to normal solver
 }
 
-static void remove_or(z3::expr& formula, const z3::model& m,
-                      std::list<z3::expr>& res) {
+void MEGASampler::remove_or(z3::expr& formula,
+                            const z3::model& m,
+                            std::list<z3::expr>& res) {
   if (formula.decl().decl_kind() != Z3_OP_OR &&
       formula.decl().decl_kind() != Z3_OP_AND) {
-    res.push_back(formula);
+    res.push_front(formula);
   } else if (formula.decl().decl_kind() == Z3_OP_OR) {
     std::vector<int> satisfied_disjncts_distances;
     int i = 0;
@@ -248,8 +249,8 @@ static void remove_or(z3::expr& formula, const z3::model& m,
       }
       i++;
     }
-    std::random_shuffle(satisfied_disjncts_distances.begin(),
-                        satisfied_disjncts_distances.end());
+    std::shuffle(satisfied_disjncts_distances.begin(),
+                 satisfied_disjncts_distances.end(), g);
     i = *satisfied_disjncts_distances.begin();
     int j = 0;
     for (auto child : formula) {
@@ -680,7 +681,8 @@ void MEGASampler::sample_intervals_in_rounds(const IntervalMap& intervalmap) {
     is_time_limit_reached();
     unsigned int new_samples = 0;
     unsigned int round_samples = 0;
-    for (; config.exhaust_epoch || round_samples <= MAX_SAMPLES; ++round_samples) {
+    for (; config.exhaust_epoch || round_samples <= MAX_SAMPLES;
+         ++round_samples) {
       is_time_limit_reached();
       ++total_samples;
       Model m_out(variable_names);
@@ -717,5 +719,5 @@ void MEGASampler::add_blocking_constraint_from_intervals(
   }
   if (debug)
     std::cout << "blocking constraint: " << intervals_expr.to_string() << "\n";
-  solver.add(!intervals_expr); // add as *HARD* constraint
+  solver.add(!intervals_expr);  // add as *HARD* constraint
 }

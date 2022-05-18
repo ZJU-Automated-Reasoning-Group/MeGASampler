@@ -2,6 +2,7 @@
 #define MEGASAMPLER_H_
 
 #include <list>
+#include <random>
 #include <set>
 
 #include "model.h"
@@ -16,6 +17,10 @@ class MEGASampler : public Sampler {
   std::list<z3::expr> intervals_select_terms;
   int num_infinite_intervals = 0;
   long double average_interval_size = 0.0;
+
+  /* for randomness */
+  std::random_device rd;
+  std::mt19937 g{rd()};
 
   // data structures for removing array equalities
   struct storeEqIndexValue {
@@ -102,6 +107,9 @@ class MEGASampler : public Sampler {
   bool get_random_sample_from_intervals(const IntervalMap& intervalmap,
                                         Model& sample);
   void add_blocking_constraint_from_intervals(const IntervalMap& intervalmap);
+  void remove_or(z3::expr& formula, const z3::model& m,
+                 std::list<z3::expr>& res);
+
   /*
    * simplifies original_formula and saves the result in simpl_fomrula
    */
@@ -112,7 +120,8 @@ class MEGASampler : public Sampler {
   z3::expr rename_z3_names(z3::expr& formula);
   void print_array_equality_graph();
   void register_array_eq(z3::expr& f);
-  void remove_array_equalities(std::list<z3::expr>& conjuncts, bool debug_me);
+  void remove_array_equalities(std::list<z3::expr>& conjuncts,
+                               bool debug_me);
   void add_equalities_from_select_terms(std::list<z3::expr>& conjuncts);
   void add_opposite_array_constraint(
       const MEGASampler::storeEqIndexValue& curr_ival,

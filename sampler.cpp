@@ -107,7 +107,8 @@ void Sampler::parse_formula(const std::string &input) {
     safe_exit(1);
   }
   original_formula = formula;
-  std::cout << "Read formula: " << original_formula << std::endl;
+  if (config.debug)
+    std::cout << "Read formula: " << original_formula << std::endl;
 }
 
 void Sampler::check_if_satisfiable() {

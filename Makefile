@@ -15,6 +15,7 @@ CXXFLAGS=-Wall -Wextra -Wnon-virtual-dtor -pedantic -ggdb \
 Z3DIR=../z3
 Z3FLAGS=-isystem $(Z3DIR)/src/api -isystem ../z3/src/api/c++
 Z3LINKFLAGS=-L ../z3/build -lz3
+LDFLAGS=$(Z3LINKFLAGS) -ldl -rdynamic -ljsoncpp -lpthread
 
 clean:
 	rm -f $(BINARY) $(OBJS) $(DEPS) testmodel strengthener
@@ -30,7 +31,8 @@ tidy:
 $(BINARY): $(OBJS)
 	g++ $(CXXFLAGS) -o $(BINARY) \
   $(OBJS) \
-  $(Z3LINKFLAGS) -ljsoncpp -lpthread
+  $(LDFLAGS)
+	strip $(BINARY)
 
 testmodel: test_model.cpp model.cpp model.h
 	g++ $(CXXFLAGS) -o testmodel \

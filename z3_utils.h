@@ -49,5 +49,7 @@ void get_arguments_values(const z3::expr& expr, const z3::model& model, std::lis
 int count_selects(const z3::expr& e);
 bool is_array_eq(const z3::expr& e);
 void collect_vars(z3::expr& expr, z3::expr_vector& vars_collection);
+int64_t to_integer(z3::expr expr);
+
 
 #endif //MEGASAMPLER_Z3_UTILS_H

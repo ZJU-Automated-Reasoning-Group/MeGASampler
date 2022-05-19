@@ -62,7 +62,7 @@ class SMTSampler : public Sampler {
   z3::model gen_model(const std::string &candidate,
                       std::vector<z3::func_decl> &ind);
   void assert_is_int_var(const z3::func_decl &v);
-
+  
   std::string parse_function(std::string const &m_string, size_t &pos,
                              int arity,
                              std::unordered_map<std::string, Triple> &values,

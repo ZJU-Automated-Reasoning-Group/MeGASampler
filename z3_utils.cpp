@@ -144,7 +144,10 @@ bool is_numeral_constant(const z3::expr& expr){
 
 int64_t model_eval_to_int64(const z3::model& model, const z3::expr& int64_expr){
   int64_t res;
-  assert(model.eval(int64_expr, true).is_numeral_i64(res));
+  bool success = model.eval(int64_expr, true).is_numeral_i64(res);
+  assert(success);
+  if (!success)
+    abort();
   return res;
 }
 
@@ -203,4 +206,12 @@ void collect_vars(z3::expr& expr, z3::expr_vector& vars_collection){
   for (auto arg : expr){
     collect_vars(arg, vars_collection);
   }
+}
+
+int64_t to_integer(z3::expr expr) {
+  int64_t res;
+  bool success = expr.is_numeral_i64(res);
+  assert(success);
+  if (!success) abort();
+  return res;
 }

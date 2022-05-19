@@ -162,11 +162,13 @@ std::string SMTSampler::parse_function(
     std::string const &m_string, size_t &pos, int arity,
     std::unordered_map<std::string, SMTSampler::Triple> &values, int index) {
   size_t start;
+#ifndef NDEBUG
   bool is_array = false;
   if (arity == 0) {
     is_array = true;
     arity = 1;
   }
+#endif
   assert(m_string[pos] == (is_array ? '[' : '('));
   ++pos;
   int num = atoi(m_string.c_str() + pos);
@@ -354,8 +356,7 @@ std::string SMTSampler::model_string(z3::model m,
     } else if (v.is_const()) {
       // case const, i.e., int or bool sorts
       z3::expr b = m.eval(v(), true);
-      Z3_ast ast = b;
-      assert(ast);  // model should have an interpretation for all variables
+      assert((Z3_ast) ast);  // model should have an interpretation for all variables
       switch (v.range().sort_kind()) {
         case Z3_INT_SORT:
           ss << b << ';';
@@ -386,6 +387,7 @@ z3::expr SMTSampler::value(char const *n, z3::sort s) {
       return c.bool_val(ll_value(n) == 1);
     default:
       assert(false);
+      abort();
   }
 }
 
@@ -466,9 +468,14 @@ z3::model SMTSampler::gen_model(const std::string &candidate,
   return m;
 }
 
+#ifndef NDEBUG
 void SMTSampler::assert_is_int_var(const z3::func_decl &v) {
   assert(v.is_const() and v.range().sort_kind() == Z3_INT_SORT);
 }
+#else
+void SMTSampler::assert_is_int_var(const z3::func_decl &v __attribute__((unused)) ) {}
+
+#endif
 
 bool SMTSampler::b_value(char const *n) {
   assert(n);

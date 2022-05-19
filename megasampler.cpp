@@ -4,6 +4,7 @@
 #include <iostream>
 
 #include "model.h"
+#include "z3_utils.h"
 
 void MEGASampler::print_array_equality_graph() {
   std::cout << "array equality graph:\n";
@@ -282,9 +283,7 @@ void MEGASampler::build_index_value_vector(arrayEqualityEdge& store_eq) {
   for (unsigned int i = 0; i < store_eq.a_indices.size(); i++) {
     storeEqIndexValue ival(c);
     const z3::expr& model_eval_res = model.eval(store_eq.a_indices[i], true);
-    int64_t value;
-    assert(model_eval_res.is_numeral_i64(value));
-    ival.value = value;
+    ival.value = to_integer(model_eval_res);
     ival.serial_number_in_array = i;
     ival.index_expr = store_eq.a_indices[i];
     ival.value_expr = store_eq.a_values[i];
@@ -295,9 +294,7 @@ void MEGASampler::build_index_value_vector(arrayEqualityEdge& store_eq) {
   for (unsigned int i = 0; i < store_eq.b_indices.size(); i++) {
     storeEqIndexValue ival(c);
     const z3::expr& model_eval_res = model.eval(store_eq.b_indices[i], true);
-    int64_t value;
-    assert(model_eval_res.is_numeral_i64(value));
-    ival.value = value;
+    ival.value = to_integer(model_eval_res);
     ival.serial_number_in_array = i;
     ival.index_expr = store_eq.b_indices[i];
     ival.value_expr = store_eq.b_values[i];
@@ -398,19 +395,11 @@ void MEGASampler::add_equalities_from_select_terms(
   for (const auto& conj : conjuncts) {
     collect_select_terms(conj, select_terms);
   }
-  //  std::cout << "select terms collected: ";
-  //  for (const auto& sterm : select_terms){
-  //    std::cout << sterm.to_string() << ", ";
-  //  }
-  //  std::cout << "\n";
   for (const auto& sterm : select_terms) {
     assert(sterm.decl().decl_kind() == Z3_OP_SELECT);
     z3::expr select_array = sterm.arg(0);
     assert(select_array.decl().decl_kind() != Z3_OP_STORE);
-    int64_t select_index_value;
-    assert(model.eval(sterm.arg(1)).is_numeral_i64(select_index_value));
-    //    std::cout << "applying BFS for select-term: " << sterm.to_string() <<
-    //    "\n";
+    const int64_t select_index_value = to_integer(sterm.arg(1));
     array_equality_graph_BFS(select_array, sterm.arg(1), select_index_value,
                              new_conjuncts);
   }
@@ -652,7 +641,10 @@ bool MEGASampler::get_random_sample_from_intervals(
       const Interval& interval = varinterval.second;
       const std::string& varname = var.to_string();
       int64_t rand = interval.random_in_range();
-      bool res = m_out.addIntAssignment(varname, rand);
+#ifndef NDEBUG
+      bool res =
+#endif
+          m_out.addIntAssignment(varname, rand);
       assert(res);
     }
   }

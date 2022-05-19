@@ -128,7 +128,10 @@ std::pair<int64_t, bool> Model::evalIntExpr(const z3::expr& e, bool debug,
     auto res = evalIntVar(name);
     if (model_completion && !res.second) {
       int64_t rand = draw_random_int();
-      auto r = addIntAssignment(name, rand);
+      #ifndef NDEBUG
+      auto r =
+#endif
+        addIntAssignment(name, rand);
       assert(r);
       if (debug)
         std::cout << "returning mc rand value: " << std::to_string(rand)
@@ -150,7 +153,10 @@ std::pair<int64_t, bool> Model::evalIntExpr(const z3::expr& e, bool debug,
       auto res = evalArrayVar(array_name, index_res.first);
       if (model_completion && !res.second) {
         int64_t rand = draw_random_int();
-        auto r = addArrayAssignment(array_name, index_res.first, rand);
+#ifndef NDEBUG
+        auto r =
+#endif
+          addArrayAssignment(array_name, index_res.first, rand);
         assert(r);
         if (debug)
           std::cout << "returning mc rand value for array: "

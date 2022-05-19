@@ -453,10 +453,6 @@ void Sampler::_compute_formula_stats_aux(z3::expr e, int depth) {
       ++num_uf;
     }
   }
-  //  if (e.is_bool() || e.is_bv()) { // todo figure out if we need sub for the
-  //  smtsampler implementation
-  //	  sub.insert(e);
-  //  }
   sup.insert(e);
   if (depth > max_depth) {
     max_depth = depth;
@@ -490,44 +486,47 @@ std::string Sampler::model_to_string(const z3::model &m) {
   s.reserve(10 + num_arrays * 25 + num_ints * 10);
   for (const auto &v : variables) {
     if (v.range().is_array()) {  // array case
-      s += v.name().str() + ':';
+      s += v.name().str();
+      s += ':';
+      z3::expr e{c};
       if (!m.has_interp(v)) {
-        //          failure_cause = "variable not in model";
-        //          safe_exit(1);
-        continue;
+          e = m.eval(v(), true);
+      } else {
+        e = m.get_const_interp(v);
       }
-      z3::expr e = m.get_const_interp(v);
       assert(e);
       Z3_func_decl as_array = Z3_get_as_array_func_decl(c, e);
       if (as_array) {
         z3::func_interp f = m.get_func_interp(to_func_decl(c, as_array));
-        s += "[";
+        s += '[';
         s += std::to_string(f.num_entries());
-        s += ",";
-        s += f.else_value().to_string();
+        s += ',';
+        s += std::to_string(f.else_value());
         s += ',';
         for (size_t j = 0; j < f.num_entries(); ++j) {
-          s += f.entry(j).arg(0).to_string() + "->";
-          s += f.entry(j).value().to_string() + ',';
+          s += std::to_string(f.entry(j).arg(0));
+          s += "->";
+          s += std::to_string(f.entry(j).arg(1));
+          s += ',';
         }
         s += "];";
       } else {
         std::vector<std::string> args;
         std::vector<std::string> values;
         while (e.decl().name().str() == "store") {
-          std::string arg = e.arg(1).to_string();
+          std::string arg = std::to_string(e.arg(1));
           if (std::find(args.begin(), args.end(), arg) != args.end()) {
             e = e.arg(0);
             continue;
           }
           args.push_back(arg);
-          values.push_back(e.arg(2).to_string());
+          values.push_back(std::to_string(e.arg(2)));
           e = e.arg(0);
         }
         s += "[";
         s += std::to_string(args.size());
         s += ',';
-        s += e.arg(0).to_string();
+        s += std::to_string(e.arg(0));
         s += ',';
         for (int j = args.size() - 1; j >= 0; --j) {
           s += args[j];

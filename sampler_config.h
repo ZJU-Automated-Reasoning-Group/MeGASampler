@@ -45,6 +45,6 @@ struct SamplerConfig {
   const bool no_write;
 };
 
-};  // namespace MeGA
+}  // namespace MeGA
 
 #endif

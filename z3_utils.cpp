@@ -209,9 +209,17 @@ void collect_vars(z3::expr& expr, z3::expr_vector& vars_collection){
 }
 
 int64_t to_integer(z3::expr expr) {
+  assert(expr.is_numeral());
   int64_t res;
   bool success = expr.is_numeral_i64(res);
-  assert(success);
-  if (!success) abort();
+  if (!success) {
+    if (!expr.is_numeral())
+      abort();
+    std::string str;
+    expr.is_numeral(str);
+    if (str[0] == '-')
+      return INT64_MIN;
+    return INT64_MAX;
+  }
   return res;
 }

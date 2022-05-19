@@ -39,8 +39,7 @@ Sampler::Sampler(z3::context *_c, const std::string &_input,
   const std::string output_base =
       (output_path / input_path.filename()).string();
   json_filename = output_base + ".json";
-  if (!config.no_write)
-    results_file.open(output_base + ".samples");
+  if (!config.no_write) results_file.open(output_base + ".samples");
 
   if (num_bv > 0 || num_uf > 0 || num_reals > 0) {
     std::cout << "Unsupported sort in formula. Exiting.\n";
@@ -215,8 +214,7 @@ void Sampler::finish() {  // todo: remove exit and add where calling
     accumulate_time("total");
   }
   print_stats();
-  if (!config.no_write)
-  results_file.close();
+  if (!config.no_write) results_file.close();
 }
 
 void Sampler::write_json() {
@@ -253,7 +251,8 @@ void Sampler::write_json() {
   json_output["formula stats"]["formula AST depth"] = max_depth;
   json_output["options"]["use blocking"] = config.blocking;
   json_output["options"]["max samples"] = (Json::UInt64)config.max_samples;
-  json_output["options"]["max epoch samples"] = (Json::UInt64)config.max_epoch_samples;
+  json_output["options"]["max epoch samples"] =
+      (Json::UInt64)config.max_epoch_samples;
   json_output["options"]["debug"] = config.debug;
   json_output["options"]["one epoch"] = config.one_epoch;
   json_output["options"]["no samples output"] = config.no_write;
@@ -300,11 +299,15 @@ z3::model Sampler::start_epoch() {
   z3::check_result res =
       solve("epoch", !config.blocking && !config.avoid_maxsmt);
 
+  if (config.debug)
+    std::cout << "start epoch, after solve, res: " << res << '\n';
+
   if (config.blocking && res == z3::unsat) {
     /* we blocked everything, lets start over */
     solver.pop();
     solver.push();
     res = solve("epoch", false);
+    if (config.debug) std::cout << "second solve, res: " << res << '\n';
   }
 
   assert(res != z3::unsat);
@@ -314,6 +317,8 @@ z3::model Sampler::start_epoch() {
   total_samples++;
 
   if (res == z3::sat) save_and_output_sample_if_unique(model_to_string(model));
+
+  if (config.debug) std::cout << "finished start epoch\n";
 
   return model;
 }
@@ -483,6 +488,7 @@ bool Sampler::save_and_output_sample_if_unique(const std::string &sample) {
 
 std::string Sampler::model_to_string(const z3::model &m) {
   std::string s;
+  if (config.debug) std::cout << "model_to_string(" << m << ")\n";
   s.reserve(10 + num_arrays * 25 + num_ints * 10);
   for (const auto &v : variables) {
     if (v.range().is_array()) {  // array case
@@ -490,26 +496,34 @@ std::string Sampler::model_to_string(const z3::model &m) {
       s += ':';
       z3::expr e{c};
       if (!m.has_interp(v)) {
-          e = m.eval(v(), true);
+        if (config.debug)
+          std::cout << "wtf no interp for v (" << v << ") in m (" << m << ")\n";
+        e = m.eval(v(), true);
       } else {
         e = m.get_const_interp(v);
       }
       assert(e);
       Z3_func_decl as_array = Z3_get_as_array_func_decl(c, e);
       if (as_array) {
+        if (config.debug)
+          std::cout << "as array\n";
         z3::func_interp f = m.get_func_interp(to_func_decl(c, as_array));
         s += '[';
         s += std::to_string(f.num_entries());
         s += ',';
         s += std::to_string(f.else_value());
         s += ',';
+        if (config.debug)
+          std::cout << "s: " << s << ", f num_entries: " << f.num_entries() << '\n';
         for (size_t j = 0; j < f.num_entries(); ++j) {
           s += std::to_string(f.entry(j).arg(0));
           s += "->";
-          s += std::to_string(f.entry(j).arg(1));
+          s += std::to_string(f.entry(j).value());
           s += ',';
         }
         s += "];";
+        if (config.debug)
+          std::cout << "done as array, s: " << s << '\n';
       } else {
         std::vector<std::string> args;
         std::vector<std::string> values;

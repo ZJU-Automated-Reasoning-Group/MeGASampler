@@ -343,11 +343,6 @@ void MEGASampler::remove_duplicates_in_index_values(
     }
     it++;
   }
-  //  std::cout << "index values after removing duplicates: \n";
-  //  for (auto ival2: index_values){
-  //    std::cout << ival2.to_string() << ",";
-  //  }
-  //  std::cout << "\n";
 }
 
 void MEGASampler::add_array_value_constraints(const arrayEqualityEdge& store_eq,
@@ -399,7 +394,7 @@ void MEGASampler::add_equalities_from_select_terms(
     assert(sterm.decl().decl_kind() == Z3_OP_SELECT);
     z3::expr select_array = sterm.arg(0);
     assert(select_array.decl().decl_kind() != Z3_OP_STORE);
-    const int64_t select_index_value = to_integer(sterm.arg(1));
+    const int64_t select_index_value = model_eval_to_int64(model, sterm.arg(1));
     array_equality_graph_BFS(select_array, sterm.arg(1), select_index_value,
                              new_conjuncts);
   }
@@ -467,6 +462,9 @@ void MEGASampler::remove_array_equalities(std::list<z3::expr>& conjuncts,
     std::cout
         << "before adding select-term equalities graph looks like this:\n";
     print_array_equality_graph();
+  }
+  if (debug_me) {
+    std::cout << "before add_equalities_from_select_terms();";
   }
   add_equalities_from_select_terms(conjuncts);
   if (debug_me) {
@@ -536,7 +534,7 @@ void MEGASampler::do_epoch(const z3::model& m) {
     std::cout << "\n";
   }
 
-  remove_array_equalities(implicant_conjuncts_list);
+  remove_array_equalities(implicant_conjuncts_list, config.debug);
   if (debug) {
     std::cout << "after remove array equalities: ";
     for (const auto& conj : implicant_conjuncts_list) {

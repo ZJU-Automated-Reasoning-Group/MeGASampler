@@ -8,6 +8,7 @@ Sampler::Sampler(z3::context *_c, const std::string &_input,
                  const MeGA::SamplerConfig &config)
     : c(*_c),
       original_formula(c),
+      debug(config.debug),
       params(c),
       model(c),
       opt(c),

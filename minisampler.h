@@ -11,6 +11,7 @@ class MiniSampler : public Sampler {
 
   void finish() {
     json_output["method name"] = "Z3";
+    Sampler::finish();
   }
 };
 

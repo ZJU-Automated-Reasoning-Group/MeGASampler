@@ -137,7 +137,7 @@ z3::check_result Sampler::solve(const std::string &timer_category,
       max_smt_calls++;
       const unsigned timeout = std::min<unsigned>(
           1000 * 60 * 5,
-          static_cast<unsigned>(800 * get_time_left(timer_category)));
+          static_cast<unsigned>(250 * get_time_left(timer_category)));
       params.set(":timeout", timeout);
       params.set("timeout", timeout);
 

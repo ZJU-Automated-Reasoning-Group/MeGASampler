@@ -678,7 +678,7 @@ void MEGASampler::sample_intervals_in_rounds(const IntervalMap& intervalmap) {
   for (const auto& imap : intervalmap) {
     const auto& i = imap.second;
     if (i.is_low_minf() || i.is_high_inf()) {
-      coeff += 32;
+      coeff *= 4;
       continue;
     }
     coeff =
@@ -689,7 +689,7 @@ void MEGASampler::sample_intervals_in_rounds(const IntervalMap& intervalmap) {
       std::min(std::max(config.blocking ? 50UL : 10UL, coeff),
                config.max_samples >> 7UL);
   const unsigned int MAX_SAMPLES = 30;
-  const double MIN_RATE = 0.95;
+  const double MIN_RATE = 0.96;
   uint64_t debug_samples = 0;
 
   if (debug)

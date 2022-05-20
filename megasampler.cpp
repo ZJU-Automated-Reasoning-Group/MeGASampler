@@ -689,7 +689,7 @@ void MEGASampler::sample_intervals_in_rounds(const IntervalMap& intervalmap) {
       std::min(std::max(config.blocking ? 50UL : 10UL, coeff),
                config.max_samples >> 7UL);
   const unsigned int MAX_SAMPLES = 30;
-  const float MIN_RATE = 0.75;
+  const double MIN_RATE = 0.95;
   uint64_t debug_samples = 0;
 
   if (debug)
@@ -698,19 +698,18 @@ void MEGASampler::sample_intervals_in_rounds(const IntervalMap& intervalmap) {
               << ", MAX_SAMPLES = " << MAX_SAMPLES << "\n";
 
   double rate = 1.0;
-  for (uint64_t round = 0; round < MAX_ROUNDS && rate > MIN_RATE; ++round) {
+  for (uint64_t round = 0;
+       config.exhaust_epoch || (round < MAX_ROUNDS && rate > MIN_RATE);
+       ++round) {
     is_time_limit_reached();
     unsigned int new_samples = 0;
     unsigned int round_samples = 0;
-    for (; config.exhaust_epoch || round_samples <= MAX_SAMPLES;
-         ++round_samples) {
-      is_time_limit_reached();
+    for (; round_samples <= MAX_SAMPLES; ++round_samples) {
       ++total_samples;
       Model m_out(variable_names);
       bool valid_model = get_random_sample_from_intervals(intervalmap, m_out);
       if (valid_model) {
-        const std::string& sample = m_out.toString();
-        if (save_and_output_sample_if_unique(sample)) {
+        if (save_and_output_sample_if_unique(m_out.toString())) {
           if (debug) ++debug_samples;
           ++new_samples;
         }

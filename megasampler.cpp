@@ -686,8 +686,7 @@ void MEGASampler::sample_intervals_in_rounds(const IntervalMap& intervalmap) {
   }
   if (config.blocking) coeff = coeff + intervalmap.size();
   const uint64_t MAX_ROUNDS =
-      std::min(std::max(config.blocking ? 50UL : 25UL, coeff),
-               config.max_samples >> 7UL);
+      std::min(std::max(config.num_rounds, coeff), config.max_samples >> 7UL);
   const unsigned long MAX_SAMPLES = 100;
   uint64_t debug_samples = 0;
 

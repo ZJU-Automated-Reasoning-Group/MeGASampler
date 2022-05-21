@@ -15,20 +15,23 @@ struct SamplerConfig {
                 bool interval_size, bool avoid_maxsmt,
                 unsigned long max_samples, unsigned long max_epoch_samples,
                 unsigned long max_time, unsigned long max_epoch_time,
-                unsigned long strategy, bool json, bool no_write)
+                unsigned long strategy, bool json, bool no_write,
+                double min_rate, unsigned long num_rounds)
       : blocking(blocking),
         one_epoch(one_epoch),
         debug(debug),
         exhaust_epoch(exhaust_epoch),
         interval_size(interval_size),
         avoid_maxsmt(avoid_maxsmt),
+        json(json),
+        no_write(no_write),
         max_samples(max_samples),
         max_epoch_samples(max_epoch_samples),
         max_time(max_time),
         max_epoch_time(max_epoch_time),
         strategy(strategy),
-        json(json),
-        no_write(no_write) {}
+        min_rate(min_rate),
+        num_rounds(num_rounds) {}
 
   const bool blocking;
   const bool one_epoch;
@@ -36,13 +39,15 @@ struct SamplerConfig {
   const bool exhaust_epoch;
   const bool interval_size;
   const bool avoid_maxsmt;
+  const bool json;
+  const bool no_write;
   const unsigned long max_samples;
   const unsigned long max_epoch_samples;
   const unsigned long max_time;
   const unsigned long max_epoch_time;
   const unsigned long strategy;
-  const bool json;
-  const bool no_write;
+  const double min_rate;
+  const unsigned long num_rounds;
 };
 
 }  // namespace MeGA

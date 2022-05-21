@@ -686,10 +686,9 @@ void MEGASampler::sample_intervals_in_rounds(const IntervalMap& intervalmap) {
   }
   if (config.blocking) coeff = coeff + intervalmap.size();
   const uint64_t MAX_ROUNDS =
-      std::min(std::max(config.blocking ? 50UL : 10UL, coeff),
+      std::min(std::max(config.blocking ? 50UL : 25UL, coeff),
                config.max_samples >> 7UL);
-  const unsigned int MAX_SAMPLES = 30;
-  const double MIN_RATE = 0.96;
+  const unsigned long MAX_SAMPLES = 100;
   uint64_t debug_samples = 0;
 
   if (debug)
@@ -699,9 +698,10 @@ void MEGASampler::sample_intervals_in_rounds(const IntervalMap& intervalmap) {
 
   double rate = 1.0;
   for (uint64_t round = 0;
-       config.exhaust_epoch || (round < MAX_ROUNDS && rate > MIN_RATE);
+       config.exhaust_epoch || (round < MAX_ROUNDS && rate > config.min_rate);
        ++round) {
     is_time_limit_reached();
+    if (epoch_samples >= config.max_epoch_samples) break;
     unsigned int new_samples = 0;
     unsigned int round_samples = 0;
     for (; round_samples <= MAX_SAMPLES; ++round_samples) {

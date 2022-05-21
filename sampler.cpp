@@ -285,6 +285,7 @@ void Sampler::print_stats() {
 
 z3::model Sampler::start_epoch() {
   is_time_limit_reached();
+  epoch_samples = 0;
 
   if (debug)
     std::cout << "Sampler: Starting an epoch (" << epochs << ")" << std::endl;
@@ -471,11 +472,12 @@ void Sampler::_compute_formula_stats_aux(z3::expr e, int depth) {
 void Sampler::assert_soft(z3::expr const &e) { opt.add(e, 1); }
 
 bool Sampler::save_and_output_sample_if_unique(const std::string &sample) {
-  valid_samples++;
+  ++valid_samples;
   set_timer_on("output");
   const auto res = samples.insert(sample);
   if (res.second) {
-    unique_valid_samples++;
+    ++unique_valid_samples;
+    ++epoch_samples;
     if (!config.no_write)
       results_file << unique_valid_samples << ": " << sample << '\n';
   }

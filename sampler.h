@@ -73,6 +73,7 @@ class Sampler {
   int epochs = 0;
   int max_smt_calls = 0;
   int smt_calls = 0;
+  unsigned long epoch_samples = 0;
   unsigned long total_samples = 0;  // how many samples we stumbled upon
                                     // (repetitions are counted multiple times)
   unsigned long valid_samples = 0;  // how many samples were valid (repetitions

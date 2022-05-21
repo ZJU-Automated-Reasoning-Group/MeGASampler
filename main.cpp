@@ -66,10 +66,15 @@ static struct argp_option options[] = {
     {"epochs", 'e', "NUM", 0, "Number of epochs", 0},
     {"epoch-samples", 'y', "NUM", 0, "Samples per epoch", 0},
     {"epoch-time", 'r', "SECONDS", 0, "Time limit per epoch", 0},
-    {"strategy", 's', "STRAT", 0, "Strategy: {smtbit, smtbv, sat}", 0},
+    {"strategy", 's', "STRAT", 0, "SMTSampler: Strategy: {smtbit, smtbv, sat}",
+     0},
     {"json", 'j', 0, 0, "Write JSON output", 0},
+    {"min-sampling-rate", 'R', "RATE", 0,
+     "MeGA: Below this rate, move to next epoch", 0},
     {"no-samples-output", 'J', 0, 0,
      "Don't output the samples (use with JSON output)", 0},
+    {"sampling-rounds", 'S', "ROUNDS", 0,
+     "MeGA: Number of sampling rounds in each epoch", 0},
     {"output-dir", 'o', "DIRECTORY", 0,
      "Output directory (for statistics, samples, ...)", 0},
     {0, 0, 0, 0, 0, 0}};
@@ -78,12 +83,12 @@ struct args {
   char *input;
   std::string output_dir{getcwd(NULL, 0)};
   unsigned int max_epochs = 1000000, max_samples = 1000000,
-               max_epoch_samples = 10000;
+               max_epoch_samples = 10000, num_rounds = 50;
   enum algorithm algorithm = ALGO_UNSET;
   int strategy = STRAT_SMTBIT;
   bool json = false, no_write = false, debug = false, one_epoch = false,
        exhaust_epoch = false, save_interval_size = false, avoid_maxsmt = false;
-  double max_time = 3600.0, max_epoch_time = 600.0;
+  double max_time = 3600.0, max_epoch_time = 600.0, min_rate = 0.95;
 };
 
 static error_t parse_opt(int key, char *arg, struct argp_state *state) {
@@ -150,6 +155,12 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state) {
     case 'o':
       args->output_dir = arg;
       break;
+    case 'R':
+      args->min_rate = atof(arg);
+      break;
+    case 'S':
+      args->num_rounds = atoi(arg);
+      break;
     case ARGP_KEY_END:
       if (state->arg_num < 1) argp_usage(state);
       break;
@@ -184,7 +195,7 @@ SamplerConfig configFromArgs(const struct args &args, bool blocking) {
                        args.save_interval_size, args.avoid_maxsmt,
                        args.max_samples, args.max_epoch_samples, args.max_time,
                        args.max_epoch_time, args.strategy, args.json,
-                       args.no_write);
+                       args.no_write, args.min_rate, args.num_rounds);
 }
 
 int regular_run(z3::context &c, const struct args &args) {

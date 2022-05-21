@@ -1,10 +1,16 @@
 #include <argp.h>
+#include <cxxabi.h>
+#include <dlfcn.h>
+#include <execinfo.h>
 #include <unistd.h>
 
 #include <csignal>
 #include <cstdlib>
 #include <cstring>
+#include <iostream>
 #include <memory>
+#include <string>
+#include <typeinfo>
 
 #include "megasampler.h"
 #include "minisampler.h"
@@ -12,35 +18,32 @@
 #include "sampler_config.h"
 #include "smtsampler.h"
 
-#include <iostream>
-#include <dlfcn.h>
-#include <execinfo.h>
-#include <typeinfo>
-#include <string>
-#include <memory>
-#include <cxxabi.h>
-#include <cstdlib>
-
+/* Debugging stuff */
 namespace {
-  void * last_frames[20];
-  size_t last_size;
-  std::string exception_name;
+void *last_frames[20];
+size_t last_size;
+std::string exception_name;
 
-  std::string demangle(const char *name) {
-    int status;
-    std::unique_ptr<char,void(*)(void*)> realname(abi::__cxa_demangle(name, 0, 0, &status), &std::free);
-    return status ? "failed" : &*realname;
-  }
+std::string demangle(const char *name) {
+  int status;
+  std::unique_ptr<char, void (*)(void *)> realname(
+      abi::__cxa_demangle(name, 0, 0, &status), &std::free);
+  return status ? "failed" : &*realname;
 }
+}  // namespace
 
+/* Mess around with C++'s exception throwing to display backtraces */
 extern "C" {
-  void __cxa_throw(void *ex, void *info, void (*dest)(void *)) {
-    exception_name = demangle(reinterpret_cast<const std::type_info*>(info)->name());
-    last_size = backtrace(last_frames, sizeof last_frames/sizeof(void*));
+void __cxa_throw(void *ex, void *info, void (*dest)(void *)) {
+  exception_name =
+      demangle(reinterpret_cast<const std::type_info *>(info)->name());
+  last_size = backtrace(last_frames, sizeof last_frames / sizeof(void *));
 
-    static void (*const rethrow)(void*,void*,void(*)(void*)) __attribute__ ((noreturn)) = (void (*)(void*,void*,void(*)(void*)))dlsym(RTLD_NEXT, "__cxa_throw");
-    rethrow(ex,info,dest);
-  }
+  static void (*const rethrow)(void *, void *, void (*)(void *))
+      __attribute__((noreturn)) = (void (*)(
+          void *, void *, void (*)(void *)))dlsym(RTLD_NEXT, "__cxa_throw");
+  rethrow(ex, info, dest);
+}
 }
 
 namespace MeGA {
@@ -245,6 +248,7 @@ int regular_run(z3::context &c, const struct args &args) {
     }
   } catch (const z3::exception &except) {
     std::cout << "Termination due to: " << except << "\n";
+    /* if we caught an exception, display some backtrace */
     backtrace_symbols_fd(last_frames, last_size, 2);
   }
   s->accumulate_time("total");

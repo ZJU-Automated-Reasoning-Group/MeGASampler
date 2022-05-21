@@ -31,7 +31,7 @@ def display(i):
     return f"{ret}{{{round(v):>8}}}"
 
 def short_name(x):
-    return x.split("_")[-1][8:13]
+    return x
 
 
 def main():

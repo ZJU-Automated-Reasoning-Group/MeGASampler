@@ -30,9 +30,11 @@ def display(i):
         return f"{ret}{{{float(v)*100:>8.2f}}}"
     return f"{ret}{{{round(v):>8}}}"
 
-def short_name(x):
-    return x
+#def short_name(x):
+#    return x.split("_")[-1][8:16]
 
+def short_name(x):
+    return x.split("/")[0]
 
 def main():
     args = PARSER.parse_args(sys.argv[1:])
@@ -73,7 +75,7 @@ def main():
 
             d["d_epochs"][cat].append(summary["epochs"])
             d["b_depth"][cat].append(summary["formula stats"]["formula AST depth"])
-            d["a_ints"][cat].append(summary["formula stats"]["num ints"])
+            d["a_ints"][cat].append(summary["formula stats"]["num ints"] + summary["formula stats"]["num arrays"] + summary["formula stats"]["num bools"])
             d["f_solutions"][cat].append(summary["unique valid samples"])
             d["c_coverage"][cat].append(fractions.Fraction(summary.get("wire_coverage", 0)))
             d["e_smtcalls"][cat].append(summary["maxsmt calls"])
@@ -82,7 +84,15 @@ def main():
             totals[f"solutions_{short_name(cat.name)}"].append(d["f_solutions"][cat][-1])
 
 
-    totals[f"coverage_megasampler"] = totals[f"coverage_{short_name(args.samples[0].name)}"] + totals[f"coverage_{short_name(args.samples[1].name)}"]
+    megamax_coverages = []
+    for benchmark in store:
+        mega = store[benchmark]["c_coverage"][args.samples[0]]
+        megab = store[benchmark]["c_coverage"][args.samples[1]]
+        for a, b in zip(mega, megab):
+            print(a, b)
+            megamax_coverages.append(max(a, b))
+
+    totals[f"coverage_megasampler"] = megamax_coverages
     totals[f"solutions_megasampler"] = totals[f"solutions_{short_name(args.samples[0].name)}"] + totals[f"solutions_{short_name(args.samples[1].name)}"]
 
     for key in totals:
@@ -94,15 +104,17 @@ def main():
         for column in store[benchmark]:
             top = 0
             for cat in store[benchmark][column]:
+                print(f"{short_name(cat.name)}")
                 if column == 'e_smtcalls' and cat != args.samples[-1]:
                     continue
                 value = statistics.mean(store[benchmark][column][cat])
-                top =  max(value, top)
+                top = max(value, top)
                 store2[benchmark][f"{column}_{short_name(cat.name)}"] = value
             for cat in store[benchmark][column]:
                 if column == 'e_smtcalls' and cat != args.samples[-1]:
                     continue
                 value = store2[benchmark][f"{column}_{short_name(cat.name)}"] 
+                assert(not isinstance(value, tuple))
                 if value == top:
                     value = (True, value)
                 else:

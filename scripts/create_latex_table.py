@@ -125,14 +125,21 @@ def main():
 
             d["d_epochs"][cat].append(summary["epochs"])
             d["b_depth"][cat].append(summary["formula stats"]["formula AST depth"])
-            d["a_ints"][cat].append(summary["formula stats"]["num ints"] + summary["formula stats"]["num arrays"] + summary["formula stats"]["num bools"])
+            d["a_ints"][cat].append(
+                summary["formula stats"]["num ints"]
+                + summary["formula stats"]["num arrays"]
+                + summary["formula stats"]["num bools"]
+            )
             d["f_solutions"][cat].append(summary["unique valid samples"])
-            d["c_coverage"][cat].append(fractions.Fraction(summary.get("wire_coverage", 0)))
+            d["c_coverage"][cat].append(
+                fractions.Fraction(summary.get("wire_coverage", 0))
+            )
             d["e_smtcalls"][cat].append(summary["maxsmt calls"])
 
             totals[f"coverage_{short_name(cat.name)}"].append(d["c_coverage"][cat][-1])
-            totals[f"solutions_{short_name(cat.name)}"].append(d["f_solutions"][cat][-1])
-
+            totals[f"solutions_{short_name(cat.name)}"].append(
+                d["f_solutions"][cat][-1]
+            )
 
     megamax_coverages = []
     for benchmark in store:
@@ -143,7 +150,13 @@ def main():
             megamax_coverages.append(max(a, b))
 
     totals[f"coverage_megasampler"] = megamax_coverages
-    totals[f"solutions_megasampler"] = totals[f"solutions_{short_name(args.samples[0].name)}"] + totals[f"solutions_{short_name(args.samples[1].name)}"]
+    totals[f"solutions_megasampler"] = (
+        totals[f"solutions_{short_name(args.samples[0].name)}"]
+        + totals[f"solutions_{short_name(args.samples[1].name)}"]
+    )
+
+    if not args.full:
+        store = collapse_dirs(store, ["CAV_2009_benchmarks"])
 
     for key in totals:
         totals[key] = statistics.mean(totals[key])

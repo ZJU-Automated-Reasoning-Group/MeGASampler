@@ -8,19 +8,24 @@ import statistics
 import sys
 
 PARSER = argparse.ArgumentParser(description="Evaluate JSONs into LaTeX table")
-PARSER.add_argument('-f',
-                    '--formula',
-                    metavar='DIR',
-                    type=pathlib.Path,
-                    required=True,
-                    help="Formulas basedir")
-PARSER.add_argument('-s',
-                    '--samples',
-                    metavar='DIR',
-                    type=pathlib.Path,
-                    required=True,
-                    action='append',
-                    help="Sample basedirs (multiple supported)")
+PARSER.add_argument(
+    "-f",
+    "--formula",
+    metavar="DIR",
+    type=pathlib.Path,
+    required=True,
+    help="Formulas basedir",
+)
+PARSER.add_argument(
+    "-s",
+    "--samples",
+    metavar="DIRS",
+    nargs="+",
+    type=pathlib.Path,
+    required=True,
+    help="Sample basedirs (multiple supported)",
+)
+PARSER.add_argument("--full", action="store_true", help="do not collapse CAV2009")
 
 
 def display(i):
@@ -30,11 +35,52 @@ def display(i):
         return f"{ret}{{{float(v)*100:>8.2f}}}"
     return f"{ret}{{{round(v):>8}}}"
 
-#def short_name(x):
-#    return x.split("_")[-1][8:16]
 
 def short_name(x):
-    return x.split("/")[0]
+    return x
+
+
+def dump_benchmark(bm, data):
+    print(bm)
+    for k1, v1 in data.items():
+        print("   ", k1)
+        for k2, v2 in v1.items():
+            print("     ", k2, v2)
+
+
+def collapse_dirs(store, dirnames):
+    to_coalesce = collections.defaultdict(list)
+    to_remove = []
+    for bm, data in store.items():
+        for pdir in bm.parents:
+            if pdir.name in dirnames:
+                to_coalesce[pdir].append(data)
+                to_remove.append(bm)
+
+    for k, v in to_coalesce.items():
+        store[k] = coalesce(v)
+
+    for k in to_remove:
+        del store[k]
+    return store
+
+
+def coalesce(dicts):
+    # assumes all dicts have the same keys
+    keys = dicts[0].keys()
+    assert all(d.keys() == keys for d in dicts)
+
+    combined = {}
+    for k in keys:
+        values = [d[k] for d in dicts]
+        if isinstance(values[0], dict):
+            combined_val = coalesce(values)
+        else:
+            combined_val = sum(values, [])
+        combined[k] = combined_val
+
+    return combined
+
 
 def main():
     args = PARSER.parse_args(sys.argv[1:])
@@ -49,21 +95,25 @@ def main():
     # samples = sorted(args.samples)
     store = collections.defaultdict(
         functools.partial(
-            collections.defaultdict, functools.partial(
-                collections.defaultdict, list)))
+            collections.defaultdict, functools.partial(collections.defaultdict, list)
+        )
+    )
 
     totals = collections.defaultdict(list)
     benchmark_count = collections.defaultdict(int)
 
-    for formula in args.formula.glob('**/*.smt2'):
+    for formula in args.formula.glob("**/*.smt2"):
         single = formula.relative_to(args.formula)
-        jsons = [ (sample_dir.joinpath(single.with_suffix('.smt2.json')),
-                   sample_dir, )
-                  for sample_dir in args.samples
-                  if sample_dir.joinpath(single.with_suffix('.smt2.json')).is_file() ]
+        jsons = [
+            (
+                sample_dir.joinpath(single.with_suffix(".smt2.json")),
+                sample_dir,
+            )
+            for sample_dir in args.samples
+            if sample_dir.joinpath(single.with_suffix(".smt2.json")).is_file()
+        ]
         if len(jsons) != len(args.samples):
             continue
-        
 
         formula_dir = single.parent
         d = store[formula_dir]
@@ -104,17 +154,15 @@ def main():
         for column in store[benchmark]:
             top = 0
             for cat in store[benchmark][column]:
-                print(f"{short_name(cat.name)}")
-                if column == 'e_smtcalls' and cat != args.samples[-1]:
+                if column == "e_smtcalls" and cat != args.samples[-1]:
                     continue
                 value = statistics.mean(store[benchmark][column][cat])
                 top = max(value, top)
                 store2[benchmark][f"{column}_{short_name(cat.name)}"] = value
             for cat in store[benchmark][column]:
-                if column == 'e_smtcalls' and cat != args.samples[-1]:
+                if column == "e_smtcalls" and cat != args.samples[-1]:
                     continue
-                value = store2[benchmark][f"{column}_{short_name(cat.name)}"] 
-                assert(not isinstance(value, tuple))
+                value = store2[benchmark][f"{column}_{short_name(cat.name)}"]
                 if value == top:
                     value = (True, value)
                 else:
@@ -129,43 +177,63 @@ def main():
             if not key.startswith("b_depth"):
                 continue
             if depth != -1:
-                assert(depth == store2[benchmark][key][1])
+                assert depth == store2[benchmark][key][1]
             depth = store2[benchmark][key][1]
             del store2[benchmark][key]
         for key in list(store2[benchmark].keys()):
             if not key.startswith("a_ints"):
                 continue
             if ints != -1:
-                assert(ints == store2[benchmark][key][1])
+                assert ints == store2[benchmark][key][1]
             ints = store2[benchmark][key][1]
             del store2[benchmark][key]
         for key in store2[benchmark]:
-            if key.startswith('e_smtcalls'):
+            if key.startswith("e_smtcalls"):
                 store2[benchmark][key] = (False, store2[benchmark][key][1])
         store2[benchmark]["a_ints"] = (False, ints)
         store2[benchmark]["b_depth"] = (False, depth)
 
     n = max(len(store2[x]) for x in store2)
 
+    # for row in store2:
+    #    print(row, store2[row]['f_solutions_MeGA'])
+    # return
+
     print("% benchmark " + " ".join((sorted(store2[list(store2.keys())[-1]]))))
     for benchmark in sorted(store2):
         if len(store2[benchmark]) < n:
             continue
-        data = " & ".join(display(store2[benchmark][key]) for key in sorted(store2[benchmark].keys()))
+        data = " & ".join(
+            display(store2[benchmark][key]) for key in sorted(store2[benchmark].keys())
+        )
         quoted = str(benchmark)
-        if 'Bromberger' in quoted:
-            quoted = quoted.replace(r"20180326-Bromberger/more_slacked/CAV_2009_benchmarks/smt", r"CAV2009-slacked\tnote{1}\;\,")
-            quoted = quoted.replace(r"20180326-Bromberger/unbd-sage/unbd010v15c", r"unbd-sage\tnote{2}\;\,")
-        elif 'random' in quoted:
-            quoted = quoted.replace(r"bofill-scheduling/SMT_random_LIA", r"bofill-sched-random\tnote{4}\;\,")
-        elif 'real' in quoted:
-            quoted = quoted.replace(r"bofill-scheduling/SMT_real_LIA", r"bofill-sched-real\tnote{5}\;\,")
+        if "Bromberger" in quoted:
+            quoted = quoted.replace(
+                r"20180326-Bromberger/more_slacked/CAV_2009_benchmarks/smt",
+                r"CAV2009-slacked\tnote{1}\;\,",
+            )
+            quoted = quoted.replace(
+                r"20180326-Bromberger/unbd-sage/unbd010v15c", r"unbd-sage\tnote{2}\;\,"
+            )
+            quoted = quoted.replace(
+                r"20180326-Bromberger/more_slacked/CAV_2009_benchmarks",
+                r"CAV2009-slacked\tnote{1}\;\,",
+            )
+        elif "random" in quoted:
+            quoted = quoted.replace(
+                r"bofill-scheduling/SMT_random_LIA", r"bofill-sched-random\tnote{4}\;\,"
+            )
+        elif "real" in quoted:
+            quoted = quoted.replace(
+                r"bofill-scheduling/SMT_real_LIA", r"bofill-sched-real\tnote{5}\;\,"
+            )
         else:
             quoted = quoted.replace(r"CAV_2009_benchmarks/smt", r"CAV2009\tnote{3}\;\,")
-        quoted = quoted.replace('_', r'\_')
+            quoted = quoted.replace(r"CAV_2009_benchmarks", r"CAV2009\tnote{3}\;\,")
+        quoted = quoted.replace("_", r"\_")
         print(f"{quoted: <50} & {data} \\\\")
     print("% " + " ".join(f"{key}={float(value)}" for key, value in totals.items()))
-        
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     main()

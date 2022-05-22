@@ -4,7 +4,12 @@
 
 class MiniSampler : public Sampler {
  public:
-  using Sampler::Sampler;
+  MiniSampler(z3::context* c, const std::string& input,
+                           const std::string &output,
+                           const MeGA::SamplerConfig &config)
+    : Sampler(c, input, output, config) {
+    initialize_solvers();
+  }
   void do_epoch(__attribute__((unused)) const z3::model &m) {
     /* do nothing, all the work was done in Sampler::start_epoch */
   }

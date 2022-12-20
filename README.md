@@ -1,7 +1,12 @@
-# MeGASampler
-MeGASampler (SMT Sampling Using Model-Guided Approximation)
 
-Paper: FM 23
+# NOTE:
+
+I moved some code in https://github.com/ZJU-Automated-Reasoning-Group/smt_sampler to this repo. (e.g., `z3_plus.h`, `file_system.h`, `region_sampler.h`)
+However, the features have not beed tested.
+
+
+# MeGASampler
+MeGASampler (SMT Sampling Using Model-Guided Approximation), FM'2023
 
 # Previous Work
 

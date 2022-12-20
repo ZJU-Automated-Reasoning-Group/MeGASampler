@@ -1,7 +1,7 @@
 # MeGASampler
 MeGASampler (SMT Sampling Using Model-Guided Approximation)
 
-Paper: TBD
+Paper: FM 23
 
 # Previous Work
 
